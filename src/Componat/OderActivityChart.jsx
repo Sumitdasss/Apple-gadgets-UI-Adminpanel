@@ -65,13 +65,15 @@ export default function OrderActivityChart({ data = [] }) {
               />
 
               <YAxis
-                allowDecimals={false}
-                axisLine={false}
-                tickLine={false}
-                tick={{
-                  fill: "#9ca3af",
-                  fontSize: 11,
-                }}
+               domain={[0, 30]}
+  ticks={[0, 5, 10, 15, 20, 25, 30]}
+  allowDecimals={false}
+  axisLine={false}
+  tickLine={false}
+  tick={{
+    fill: "#9ca3af",
+    fontSize: 11,
+  }}
               />
 
               <Tooltip
