@@ -23,6 +23,10 @@ import {
 } from "lucide-react";
 
 import OrderActivityChart from "./OderActivityChart.jsx";
+import CreateOrderModal from "./CreateOrderModal.jsx";
+import AddProductPage from "./Addproduct.jsx";
+import ProductListView from "./ProductListView.jsx";
+import UpdateProductPage from "./UpdateProduct.jsx";
 
 const API =
   import.meta.env.VITE_API_URL ||
@@ -104,7 +108,10 @@ const Notice = ({ children }) => (
 // =========================================================
 
 export default function DeshbordUI() {
+  const [createOrderOpen, setCreateOrderOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("Dashboard");
+  const [openSubMenu, setOpenSubMenu] = useState(null);
+  const [productSubTab, setProductSubTab] = useState("add");
   const [selectedDate, setSelectedDate] = useState(getToday());
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -131,9 +138,7 @@ export default function DeshbordUI() {
         const result = await response.json();
 
         if (!result.success) {
-          throw new Error(
-            result.message || "Dashboard data load failed"
-          );
+          throw new Error(result.message || "Dashboard data load failed");
         }
 
         setDashboard(result);
@@ -158,7 +163,16 @@ export default function DeshbordUI() {
   const navItems = [
     { name: "Dashboard", icon: LayoutDashboard },
     { name: "Orders", icon: ShoppingCart },
-    { name: "Product", icon: Package, hasSub: true },
+    {
+      name: "Product",
+      icon: Package,
+      hasSub: true,
+      subItems: [
+        { name: "Add Product", key: "add" },
+        { name: "Update Product", key: "update" },
+        { name: "Product List", key: "list" },
+      ],
+    },
     { name: "Users", icon: Users, hasSub: true },
     { name: "Reports", icon: BarChart3, hasSub: true },
     { name: "Courier", icon: Truck, hasSub: true },
@@ -252,7 +266,11 @@ export default function DeshbordUI() {
         </button>
 
         {/* CREATE ORDER */}
-        <button className="flex items-center gap-1.5 px-3.5 py-1.5 bg-red-800 text-white text-xs font-medium rounded-md hover:bg-red-900 transition shadow-sm">
+        <button
+          type="button"
+          onClick={() => setCreateOrderOpen(true)}
+          className="flex items-center gap-1.5 px-3.5 py-1.5 bg-red-800 text-white text-xs font-medium rounded-md hover:bg-red-900 transition shadow-sm"
+        >
           <Plus className="w-4 h-4" />
           <span>Create Order</span>
         </button>
@@ -305,9 +323,7 @@ export default function DeshbordUI() {
       return (
         <Notice>
           <div className="max-w-md mx-auto">
-            <p className="text-red-600 font-semibold">
-              Dashboard load failed
-            </p>
+            <p className="text-red-600 font-semibold">Dashboard load failed</p>
             <p className="mt-2 text-xs">{error}</p>
             <button
               onClick={() => setSelectedDate(getToday())}
@@ -338,9 +354,7 @@ export default function DeshbordUI() {
         {/* SELECTED DATE HEADER */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-gray-800">
-              Dashboard
-            </h1>
+            <h1 className="text-xl font-bold text-gray-800">Dashboard</h1>
             <p className="text-xs text-gray-500 mt-1">
               Showing details for{" "}
               <span className="font-semibold text-gray-700">
@@ -404,9 +418,7 @@ export default function DeshbordUI() {
             </h3>
 
             {d.topProducts.length === 0 ? (
-              <p className="text-xs text-gray-400">
-                No product data available.
-              </p>
+              <p className="text-xs text-gray-400">No product data available.</p>
             ) : (
               <table className="w-full text-left text-xs">
                 <thead>
@@ -455,10 +467,7 @@ export default function DeshbordUI() {
             <div className="flex flex-col sm:flex-row items-center justify-around gap-6 py-4">
               {/* DONUT SVG */}
               <div className="relative w-36 h-36 flex items-center justify-center">
-                <svg
-                  className="w-full h-full -rotate-90"
-                  viewBox="0 0 36 36"
-                >
+                <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
                   <circle
                     cx="18"
                     cy="18"
@@ -531,9 +540,7 @@ export default function DeshbordUI() {
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <span className="font-bold text-gray-700">
-                        {s.count}
-                      </span>
+                      <span className="font-bold text-gray-700">{s.count}</span>
                       <span className="font-bold text-gray-800">
                         {taka(s.total)}
                       </span>
@@ -545,9 +552,7 @@ export default function DeshbordUI() {
 
             <div className="text-right text-xs font-semibold text-gray-600 border-t border-gray-100 pt-3 mt-2">
               Total:{" "}
-              <span className="text-gray-900 font-bold">
-                {taka(totalSales)}
-              </span>
+              <span className="text-gray-900 font-bold">{taka(totalSales)}</span>
             </div>
           </div>
 
@@ -569,18 +574,14 @@ export default function DeshbordUI() {
                   <div key={a.location}>
                     <div className="flex justify-between text-xs font-medium text-gray-600 mb-1.5">
                       <span>{a.location}</span>
-                      <span className="font-bold text-gray-800">
-                        {a.count}
-                      </span>
+                      <span className="font-bold text-gray-800">{a.count}</span>
                     </div>
 
                     <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-red-700 rounded-full transition-all duration-300"
                         style={{
-                          width: `${
-                            (Number(a.count || 0) / maxArea) * 100
-                          }%`,
+                          width: `${(Number(a.count || 0) / maxArea) * 100}%`,
                         }}
                       />
                     </div>
@@ -605,15 +606,20 @@ export default function DeshbordUI() {
   const OrdersView = () => (
     <div className="p-6 bg-slate-50 min-h-[calc(100vh-65px)]">
       <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-        <h2 className="text-lg font-bold text-gray-800">
-          Orders Management
-        </h2>
+        <h2 className="text-lg font-bold text-gray-800">Orders Management</h2>
         <p className="text-xs text-gray-500 mt-1">
           Orders API can be connected here later.
         </p>
       </div>
     </div>
   );
+
+  // =========================================================
+  // PRODUCT SUB VIEWS
+  // =========================================================
+
+ 
+
 
   // =========================================================
   // GENERIC VIEW
@@ -628,9 +634,7 @@ export default function DeshbordUI() {
         <div className="w-16 h-16 rounded-full bg-red-100 text-red-800 flex items-center justify-center mb-4">
           <Icon className="w-8 h-8" />
         </div>
-        <h2 className="text-2xl font-bold text-gray-800 mb-2">
-          {activeTab}
-        </h2>
+        <h2 className="text-2xl font-bold text-gray-800 mb-2">{activeTab}</h2>
         <p className="text-sm text-gray-500 max-w-md mb-6">
           This page is not built yet.
         </p>
@@ -670,33 +674,70 @@ export default function DeshbordUI() {
 
         {/* NAVIGATION */}
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          {navItems.map(({ name, icon: Icon, hasSub }) => {
+          {navItems.map(({ name, icon: Icon, hasSub, subItems }) => {
             const active = activeTab === name;
+            const isOpen = openSubMenu === name;
 
             return (
-              <button
-                key={name}
-                type="button"
-                onClick={() => setActiveTab(name)}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs font-medium transition-colors ${
-                  active
-                    ? "bg-slate-800/90 text-white font-semibold"
-                    : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <Icon
-                    className={`w-4 h-4 ${
-                      active ? "text-red-500" : "text-slate-400"
-                    }`}
-                  />
-                  <span>{name}</span>
-                </div>
+              <div key={name}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (hasSub) {
+                      setOpenSubMenu(isOpen ? null : name);
+                      setActiveTab(name);
+                    } else {
+                      setActiveTab(name);
+                      setOpenSubMenu(null);
+                    }
+                  }}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs font-medium transition-colors ${
+                    active
+                      ? "bg-slate-800/90 text-white font-semibold"
+                      : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Icon
+                      className={`w-4 h-4 ${
+                        active ? "text-red-500" : "text-slate-400"
+                      }`}
+                    />
+                    <span>{name}</span>
+                  </div>
 
-                {hasSub && (
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
+                  {hasSub && (
+                    <ChevronDown
+                      className={`w-3.5 h-3.5 text-slate-500 transition-transform duration-200 ${
+                        isOpen ? "rotate-180" : ""
+                      }`}
+                    />
+                  )}
+                </button>
+
+                {/* SUB MENU */}
+                {hasSub && isOpen && subItems && (
+                  <div className="ml-4 mt-1 space-y-1 border-l border-slate-700 pl-3">
+                    {subItems.map((sub) => (
+                      <button
+                        key={sub.key}
+                        type="button"
+                        onClick={() => {
+                          setActiveTab(name);
+                          setProductSubTab(sub.key);
+                        }}
+                        className={`w-full text-left px-3 py-2 rounded-md text-[11px] font-medium transition ${
+                          productSubTab === sub.key && activeTab === name
+                            ? "bg-red-900/40 text-red-400"
+                            : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200"
+                        }`}
+                      >
+                        {sub.name}
+                      </button>
+                    ))}
+                  </div>
                 )}
-              </button>
+              </div>
             );
           })}
         </nav>
@@ -719,6 +760,17 @@ export default function DeshbordUI() {
         </div>
       </aside>
 
+      {/* CREATE ORDER MODAL */}
+      <CreateOrderModal
+        open={createOrderOpen}
+        onClose={() => setCreateOrderOpen(false)}
+        onSuccess={() => {
+          setCreateOrderOpen(false);
+          // order create হওয়ার পরে dashboard রিফ্রেশ করতে চাইলে:
+          // setSelectedDate(getToday());
+        }}
+      />
+
       {/* MAIN CONTENT AREA */}
       <main className="flex-1 min-w-0">
         <header className="sticky top-0 z-40">
@@ -730,6 +782,12 @@ export default function DeshbordUI() {
             <DashboardView />
           ) : activeTab === "Orders" ? (
             <OrdersView />
+          ) : activeTab === "Product" ? (
+            <>
+              {productSubTab === "add" && <AddProductPage />}
+              {productSubTab === "update" && <UpdateProductPage />}
+              {productSubTab === "list" && <ProductListView />}
+            </>
           ) : (
             <Generic />
           )}
