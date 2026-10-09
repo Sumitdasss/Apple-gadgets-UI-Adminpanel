@@ -79,21 +79,45 @@ export default function AddProductPage() {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showSubCategoryModal, setShowSubCategoryModal] = useState(false);
   const [showChildCategoryModal, setShowChildCategoryModal] = useState(false);
+  const [showSubChildCategoryModal, setShowSubChildCategoryModal] =
+    useState(false);
 
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newSubCategoryName, setNewSubCategoryName] = useState("");
   const [newChildCategoryName, setNewChildCategoryName] = useState("");
+  const [newSubChildCategoryName, setNewSubChildCategoryName] = useState("");
+
+  // ==============================
+  // CATEGORY IMAGE STATES
+  // ==============================
+  const [newCategoryImage, setNewCategoryImage] = useState(null);
+  const [newCategoryImagePreview, setNewCategoryImagePreview] = useState("");
+  const [newSubCategoryImage, setNewSubCategoryImage] = useState(null);
+  const [newSubCategoryImagePreview, setNewSubCategoryImagePreview] =
+    useState("");
+  const [newChildCategoryImage, setNewChildCategoryImage] = useState(null);
+  const [newChildCategoryImagePreview, setNewChildCategoryImagePreview] =
+    useState("");
+  const [newSubChildCategoryImage, setNewSubChildCategoryImage] =
+    useState(null);
+  const [newSubChildCategoryImagePreview, setNewSubChildCategoryImagePreview] =
+    useState("");
+
+  // Separate banner files/previews for each category level.
+  const [newCategoryBannerImage, setNewCategoryBannerImage] = useState(null);
+  const [newCategoryBannerPreview, setNewCategoryBannerPreview] = useState("");
+  const [newSubCategoryBannerImage, setNewSubCategoryBannerImage] = useState(null);
+  const [newSubCategoryBannerPreview, setNewSubCategoryBannerPreview] = useState("");
+  const [newChildCategoryBannerImage, setNewChildCategoryBannerImage] = useState(null);
+  const [newChildCategoryBannerPreview, setNewChildCategoryBannerPreview] = useState("");
+  const [newSubChildCategoryBannerImage, setNewSubChildCategoryBannerImage] = useState(null);
+  const [newSubChildCategoryBannerPreview, setNewSubChildCategoryBannerPreview] = useState("");
 
   const [categoryAdding, setCategoryAdding] = useState(false);
   const [subCategoryAdding, setSubCategoryAdding] = useState(false);
   const [childCategoryAdding, setChildCategoryAdding] = useState(false);
-
-  const [newSubChildCategoryName, setNewSubChildCategoryName] = useState("");
-
   const [subChildCategoryAdding, setSubChildCategoryAdding] = useState(false);
 
-  const [showSubChildCategoryModal, setShowSubChildCategoryModal] =
-    useState(false);
   // ==============================
   // LOAD 4-LEVEL CATEGORY TREE
   // Main → Sub → Child → Sub Child
@@ -288,13 +312,10 @@ export default function AddProductPage() {
       return updated;
     });
   };
-  // ==============================
-  // COLOR
-  // ==============================
-  // ==============================
-  // COLOR
-  // ==============================
 
+  // ==============================
+  // COLOR
+  // ==============================
   const handleColorImageChange = (e) => {
     const file = e.target.files?.[0];
 
@@ -335,10 +356,8 @@ export default function AddProductPage() {
 
     setFormData((prev) => ({
       ...prev,
-
       colors: [
         ...prev.colors,
-
         {
           name: colorName.trim(),
           code: colorCode,
@@ -357,7 +376,6 @@ export default function AddProductPage() {
   const removeColor = (index) => {
     setFormData((prev) => ({
       ...prev,
-
       colors: prev.colors.filter((_, i) => i !== index),
     }));
   };
@@ -530,15 +548,10 @@ export default function AddProductPage() {
         name: selectedColor.name,
         code: selectedColor.code || "#000000",
       },
-
       ram: variantRam.trim(),
-
       storage: variantStorage.trim(),
-
       stock: Number(variantStock),
-
       price: Number(variantPrice),
-
       sku: variantSku.trim(),
     };
 
@@ -636,23 +649,18 @@ export default function AddProductPage() {
       data.append("discountPercentage", formData.discountPercentage || "");
       data.append("stock", formData.stock);
       data.append("sku", formData.sku);
-      // ==============================
-      // COLORS DATA
-      // ==============================
+
       data.append(
         "additionalCategories",
         JSON.stringify(formData.additionalCategories || []),
       );
+
       const colorsWithoutFiles = formData.colors.map((color) => ({
         name: color.name,
         code: color.code,
       }));
 
       data.append("colors", JSON.stringify(colorsWithoutFiles));
-
-      // ==============================
-      // COLOR IMAGES
-      // ==============================
 
       formData.colors.forEach((color) => {
         if (color.imageFile) {
@@ -661,14 +669,8 @@ export default function AddProductPage() {
       });
 
       data.append("sizes", JSON.stringify(formData.sizes));
-
       data.append("ram", JSON.stringify(formData.ram));
-
       data.append("specifications", JSON.stringify(formData.specifications));
-
-      // ==============================
-      // VARIANTS DATA
-      // ==============================
       data.append("variants", JSON.stringify(formData.variants));
 
       data.append("rating", String(rating));
@@ -678,6 +680,7 @@ export default function AddProductPage() {
       data.append("isBestSeller", String(formData.isBestSeller));
       data.append("metaTitle", formData.metaTitle);
       data.append("metaDescription", formData.metaDescription);
+
       formData.images.forEach((image) => {
         data.append("images", image);
       });
@@ -711,8 +714,97 @@ export default function AddProductPage() {
   };
 
   // ==============================
-  // ADD MAIN CATEGORY
+  // CATEGORY IMAGE HANDLERS
   // ==============================
+  const handleCategoryImageChange = (e, level) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      alert("Only image files are allowed");
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+
+    if (level === "main") {
+      setNewCategoryImage(file);
+      setNewCategoryImagePreview(previewUrl);
+    } else if (level === "sub") {
+      setNewSubCategoryImage(file);
+      setNewSubCategoryImagePreview(previewUrl);
+    } else if (level === "child") {
+      setNewChildCategoryImage(file);
+      setNewChildCategoryImagePreview(previewUrl);
+    } else if (level === "subChild") {
+      setNewSubChildCategoryImage(file);
+      setNewSubChildCategoryImagePreview(previewUrl);
+    }
+
+    e.target.value = "";
+  };
+
+  const clearCategoryImage = (level) => {
+    if (level === "main") {
+      if (newCategoryImagePreview) URL.revokeObjectURL(newCategoryImagePreview);
+      setNewCategoryImage(null);
+      setNewCategoryImagePreview("");
+    } else if (level === "sub") {
+      if (newSubCategoryImagePreview)
+        URL.revokeObjectURL(newSubCategoryImagePreview);
+      setNewSubCategoryImage(null);
+      setNewSubCategoryImagePreview("");
+    } else if (level === "child") {
+      if (newChildCategoryImagePreview)
+        URL.revokeObjectURL(newChildCategoryImagePreview);
+      setNewChildCategoryImage(null);
+      setNewChildCategoryImagePreview("");
+    } else if (level === "subChild") {
+      if (newSubChildCategoryImagePreview)
+        URL.revokeObjectURL(newSubChildCategoryImagePreview);
+      setNewSubChildCategoryImage(null);
+      setNewSubChildCategoryImagePreview("");
+    }
+  };
+
+  // ==============================
+  // ADD MAIN CATEGORY (with image)
+  // ==============================
+  const handleCategoryBannerChange = (e, level) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      alert("Only image files are allowed");
+      e.target.value = "";
+      return;
+    }
+    const previewUrl = URL.createObjectURL(file);
+    const config = {
+      main: [setNewCategoryBannerImage, setNewCategoryBannerPreview, newCategoryBannerPreview],
+      sub: [setNewSubCategoryBannerImage, setNewSubCategoryBannerPreview, newSubCategoryBannerPreview],
+      child: [setNewChildCategoryBannerImage, setNewChildCategoryBannerPreview, newChildCategoryBannerPreview],
+      subChild: [setNewSubChildCategoryBannerImage, setNewSubChildCategoryBannerPreview, newSubChildCategoryBannerPreview],
+    }[level];
+    if (!config) { URL.revokeObjectURL(previewUrl); return; }
+    if (config[2]) URL.revokeObjectURL(config[2]);
+    config[0](file);
+    config[1](previewUrl);
+    e.target.value = "";
+  };
+
+  const clearCategoryBanner = (level) => {
+    const config = {
+      main: [setNewCategoryBannerImage, setNewCategoryBannerPreview, newCategoryBannerPreview],
+      sub: [setNewSubCategoryBannerImage, setNewSubCategoryBannerPreview, newSubCategoryBannerPreview],
+      child: [setNewChildCategoryBannerImage, setNewChildCategoryBannerPreview, newChildCategoryBannerPreview],
+      subChild: [setNewSubChildCategoryBannerImage, setNewSubChildCategoryBannerPreview, newSubChildCategoryBannerPreview],
+    }[level];
+    if (!config) return;
+    if (config[2]) URL.revokeObjectURL(config[2]);
+    config[0](null);
+    config[1]("");
+  };
+
   const handleAddCategory = async () => {
     if (!newCategoryName.trim()) {
       alert("Enter a main category name");
@@ -722,12 +814,19 @@ export default function AddProductPage() {
     try {
       setCategoryAdding(true);
 
+      const formDataToSend = new FormData();
+      formDataToSend.append("name", newCategoryName.trim());
+
+      if (newCategoryImage) {
+        formDataToSend.append("image", newCategoryImage);
+      }
+      if (newCategoryBannerImage) {
+        formDataToSend.append("bannerImage", newCategoryBannerImage);
+      }
+
       const response = await fetch(CATEGORY_API.main, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: newCategoryName.trim(),
-        }),
+        body: formDataToSend,
       });
 
       const data = await response.json();
@@ -752,6 +851,8 @@ export default function AddProductPage() {
       }));
 
       setNewCategoryName("");
+      clearCategoryImage("main");
+      clearCategoryBanner("main");
       setShowCategoryModal(false);
     } catch (error) {
       console.error("Add main category error:", error);
@@ -762,7 +863,7 @@ export default function AddProductPage() {
   };
 
   // ==============================
-  // ADD SUB CATEGORY
+  // ADD SUB CATEGORY (with image)
   // ==============================
   const handleAddSubCategory = async () => {
     if (!formData.category) {
@@ -778,13 +879,20 @@ export default function AddProductPage() {
     try {
       setSubCategoryAdding(true);
 
+      const formDataToSend = new FormData();
+      formDataToSend.append("name", newSubCategoryName.trim());
+      formDataToSend.append("mainCategory", formData.category);
+
+      if (newSubCategoryImage) {
+        formDataToSend.append("image", newSubCategoryImage);
+      }
+      if (newSubCategoryBannerImage) {
+        formDataToSend.append("bannerImage", newSubCategoryBannerImage);
+      }
+
       const response = await fetch(CATEGORY_API.sub, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: newSubCategoryName.trim(),
-          mainCategory: formData.category,
-        }),
+        body: formDataToSend,
       });
 
       const data = await response.json();
@@ -820,6 +928,8 @@ export default function AddProductPage() {
       }));
 
       setNewSubCategoryName("");
+      clearCategoryImage("sub");
+      clearCategoryBanner("sub");
       setShowSubCategoryModal(false);
     } catch (error) {
       console.error("Add sub category error:", error);
@@ -830,7 +940,7 @@ export default function AddProductPage() {
   };
 
   // ==============================
-  // ADD CHILD CATEGORY
+  // ADD CHILD CATEGORY (with image)
   // ==============================
   const handleAddChildCategory = async () => {
     if (!formData.subCategory) {
@@ -846,13 +956,20 @@ export default function AddProductPage() {
     try {
       setChildCategoryAdding(true);
 
+      const formDataToSend = new FormData();
+      formDataToSend.append("name", newChildCategoryName.trim());
+      formDataToSend.append("subCategory", formData.subCategory);
+
+      if (newChildCategoryImage) {
+        formDataToSend.append("image", newChildCategoryImage);
+      }
+      if (newChildCategoryBannerImage) {
+        formDataToSend.append("bannerImage", newChildCategoryBannerImage);
+      }
+
       const response = await fetch(CATEGORY_API.child, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: newChildCategoryName.trim(),
-          subCategory: formData.subCategory,
-        }),
+        body: formDataToSend,
       });
 
       const data = await response.json();
@@ -895,6 +1012,8 @@ export default function AddProductPage() {
       }));
 
       setNewChildCategoryName("");
+      clearCategoryImage("child");
+      clearCategoryBanner("child");
       setShowChildCategoryModal(false);
     } catch (error) {
       console.error("Add child category error:", error);
@@ -905,7 +1024,7 @@ export default function AddProductPage() {
   };
 
   // ==============================
-  // ADD SUB CHILD CATEGORY
+  // ADD SUB CHILD CATEGORY (with image)
   // ==============================
   const handleAddSubChildCategory = async () => {
     if (!formData.childCategory) {
@@ -921,13 +1040,20 @@ export default function AddProductPage() {
     try {
       setSubChildCategoryAdding(true);
 
+      const formDataToSend = new FormData();
+      formDataToSend.append("name", newSubChildCategoryName.trim());
+      formDataToSend.append("childCategory", formData.childCategory);
+
+      if (newSubChildCategoryImage) {
+        formDataToSend.append("image", newSubChildCategoryImage);
+      }
+      if (newSubChildCategoryBannerImage) {
+        formDataToSend.append("bannerImage", newSubChildCategoryBannerImage);
+      }
+
       const response = await fetch(CATEGORY_API.subChild, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: newSubChildCategoryName.trim(),
-          childCategory: formData.childCategory,
-        }),
+        body: formDataToSend,
       });
 
       const data = await response.json();
@@ -981,6 +1107,8 @@ export default function AddProductPage() {
       }));
 
       setNewSubChildCategoryName("");
+      clearCategoryImage("subChild");
+      clearCategoryBanner("subChild");
       setShowSubChildCategoryModal(false);
     } catch (error) {
       console.error("Add sub child category error:", error);
@@ -998,6 +1126,7 @@ export default function AddProductPage() {
     childCategories.find(
       (childCategory) => childCategory._id === formData.childCategory,
     )?.name || "";
+
   return (
     <div className="min-h-screen bg-slate-100 p-4 md:p-8">
       <div className="mx-auto max-w-6xl">
@@ -1066,7 +1195,6 @@ export default function AddProductPage() {
             </div>
           </section>
 
-          {/* ================= CATEGORY ================= */}
           {/* ================= CATEGORY & BRAND ================= */}
           <section className="rounded-2xl bg-white p-6 shadow-sm">
             <h2 className="mb-5 text-xl font-semibold text-slate-900">
@@ -1313,14 +1441,12 @@ export default function AddProductPage() {
                                 const current = prev.additionalCategories || [];
 
                                 if (e.target.checked) {
-                                  // duplicate prevent
                                   if (current.includes(category._id)) {
                                     return prev;
                                   }
 
                                   return {
                                     ...prev,
-
                                     additionalCategories: [
                                       ...current,
                                       category._id,
@@ -1328,10 +1454,8 @@ export default function AddProductPage() {
                                   };
                                 }
 
-                                // uncheck
                                 return {
                                   ...prev,
-
                                   additionalCategories: current.filter(
                                     (id) => id !== category._id,
                                   ),
@@ -1350,7 +1474,6 @@ export default function AddProductPage() {
                 </div>
               )}
 
-              {/* Selected category preview */}
               {formData.additionalCategories?.length > 0 && (
                 <div className="mt-4 rounded-xl bg-slate-50 p-4">
                   <p className="mb-2 text-sm font-semibold text-slate-700">
@@ -1437,7 +1560,6 @@ export default function AddProductPage() {
             </div>
           </section>
 
-          {/* ================= IMAGE ================= */}
           {/* ================= PRODUCT GALLERY ================= */}
           <section className="rounded-2xl bg-white p-6 shadow-sm">
             <h2 className="mb-2 text-xl font-semibold text-slate-900">
@@ -1458,7 +1580,6 @@ export default function AddProductPage() {
               className="w-full cursor-pointer rounded-xl border border-dashed border-slate-400 bg-slate-50 p-4"
             />
 
-            {/* Gallery Preview */}
             {imagePreviews.length > 0 && (
               <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
                 {imagePreviews.map((image, index) => (
@@ -1472,14 +1593,12 @@ export default function AddProductPage() {
                       className="h-40 w-full object-cover"
                     />
 
-                    {/* Main image badge */}
                     {index === 0 && (
                       <span className="absolute left-2 top-2 rounded-full bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white">
                         Main Image
                       </span>
                     )}
 
-                    {/* Remove */}
                     <button
                       type="button"
                       onClick={() => removeImage(index)}
@@ -1511,16 +1630,10 @@ export default function AddProductPage() {
           </section>
 
           {/* ================= COLORS ================= */}
-          {/* ================= COLORS ================= */}
-
           <section className="rounded-2xl bg-white p-6 shadow-sm">
             <h2 className="mb-5 text-xl font-semibold">Colors</h2>
 
-            {/* ================= ADD COLOR ================= */}
-
             <div className="grid gap-4 md:grid-cols-2">
-              {/* COLOR NAME */}
-
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   Color Name
@@ -1531,20 +1644,9 @@ export default function AddProductPage() {
                   value={colorName}
                   onChange={(e) => setColorName(e.target.value)}
                   placeholder="Example: Burgundy"
-                  className="
-          w-full
-          rounded-xl
-          border
-          border-slate-300
-          px-4
-          py-3
-          outline-none
-          focus:border-blue-500
-        "
+                  className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
                 />
               </div>
-
-              {/* COLOR CODE */}
 
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">
@@ -1556,37 +1658,18 @@ export default function AddProductPage() {
                     type="color"
                     value={colorCode}
                     onChange={(e) => setColorCode(e.target.value)}
-                    className="
-            h-[48px]
-            w-[70px]
-            cursor-pointer
-            rounded-lg
-            border
-            border-slate-300
-          "
+                    className="h-[48px] w-[70px] cursor-pointer rounded-lg border border-slate-300"
                   />
 
                   <input
                     type="text"
                     value={colorCode}
                     onChange={(e) => setColorCode(e.target.value)}
-                    className="
-            flex-1
-            rounded-xl
-            border
-            border-slate-300
-            px-4
-            py-3
-            uppercase
-            outline-none
-            focus:border-blue-500
-          "
+                    className="flex-1 rounded-xl border border-slate-300 px-4 py-3 uppercase outline-none focus:border-blue-500"
                   />
                 </div>
               </div>
             </div>
-
-            {/* ================= COLOR IMAGE ================= */}
 
             <div className="mt-5">
               <label className="mb-2 block text-sm font-medium text-slate-700">
@@ -1594,26 +1677,7 @@ export default function AddProductPage() {
               </label>
 
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                {/* Upload */}
-
-                <label
-                  className="
-          flex
-          h-32
-          w-32
-          cursor-pointer
-          flex-col
-          items-center
-          justify-center
-          overflow-hidden
-          rounded-xl
-          border-2
-          border-dashed
-          border-slate-300
-          bg-slate-50
-          hover:border-blue-500
-        "
-                >
+                <label className="flex h-32 w-32 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 hover:border-blue-500">
                   {colorImagePreview ? (
                     <img
                       src={colorImagePreview}
@@ -1623,7 +1687,6 @@ export default function AddProductPage() {
                   ) : (
                     <>
                       <span className="text-3xl text-slate-400">+</span>
-
                       <span className="mt-1 text-xs text-slate-500">
                         Choose Image
                       </span>
@@ -1638,15 +1701,12 @@ export default function AddProductPage() {
                   />
                 </label>
 
-                {/* File information */}
-
                 <div>
                   {colorImage ? (
                     <>
                       <p className="text-sm font-medium text-slate-700">
                         {colorImage.name}
                       </p>
-
                       <p className="mt-1 text-xs text-green-600">
                         Image selected
                       </p>
@@ -1660,27 +1720,13 @@ export default function AddProductPage() {
               </div>
             </div>
 
-            {/* ================= ADD BUTTON ================= */}
-
             <button
               type="button"
               onClick={addColor}
-              className="
-      mt-5
-      rounded-xl
-      bg-blue-600
-      px-6
-      py-3
-      font-medium
-      text-white
-      transition
-      hover:bg-blue-700
-    "
+              className="mt-5 rounded-xl bg-blue-600 px-6 py-3 font-medium text-white transition hover:bg-blue-700"
             >
               + Add Color
             </button>
-
-            {/* ================= ADDED COLORS ================= */}
 
             {formData.colors.length > 0 && (
               <div className="mt-6 space-y-3">
@@ -1691,89 +1737,37 @@ export default function AddProductPage() {
                 {formData.colors.map((color, index) => (
                   <div
                     key={`${color.name}-${index}`}
-                    className="
-            flex
-            items-center
-            justify-between
-            gap-4
-            rounded-xl
-            border
-            border-slate-200
-            bg-slate-50
-            p-3
-          "
+                    className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 p-3"
                   >
                     <div className="flex items-center gap-4">
-                      {/* IMAGE */}
-
                       {color.imagePreview ? (
                         <img
                           src={color.imagePreview}
                           alt={color.name}
-                          className="
-                  h-16
-                  w-16
-                  rounded-lg
-                  border
-                  border-slate-200
-                  bg-white
-                  object-contain
-                  p-1
-                "
+                          className="h-16 w-16 rounded-lg border border-slate-200 bg-white object-contain p-1"
                         />
                       ) : (
-                        <div
-                          className="
-                  h-16
-                  w-16
-                  rounded-lg
-                  border
-                  bg-white
-                "
-                        />
+                        <div className="h-16 w-16 rounded-lg border bg-white" />
                       )}
-
-                      {/* COLOR */}
 
                       <div>
                         <div className="flex items-center gap-2">
                           <span
-                            className="
-                    h-5
-                    w-5
-                    rounded-full
-                    border
-                  "
-                            style={{
-                              backgroundColor: color.code,
-                            }}
+                            className="h-5 w-5 rounded-full border"
+                            style={{ backgroundColor: color.code }}
                           />
-
                           <span className="font-medium">{color.name}</span>
                         </div>
-
                         <p className="mt-1 text-xs text-slate-500">
                           {color.code}
                         </p>
                       </div>
                     </div>
 
-                    {/* REMOVE */}
-
                     <button
                       type="button"
                       onClick={() => removeColor(index)}
-                      className="
-              flex
-              h-8
-              w-8
-              items-center
-              justify-center
-              rounded-full
-              bg-red-50
-              text-red-500
-              hover:bg-red-100
-            "
+                      className="flex h-8 w-8 items-center justify-center rounded-full bg-red-50 text-red-500 hover:bg-red-100"
                     >
                       ×
                     </button>
@@ -1824,31 +1818,26 @@ export default function AddProductPage() {
           </section>
 
           {/* ================= SPECIFICATIONS ================= */}
-          {/* ================= SPECIFICATIONS ================= */}
           <section className="rounded-2xl bg-white p-6 shadow-sm">
             <div className="mb-6">
               <h2 className="text-xl font-semibold text-slate-900">
                 Specifications
               </h2>
-
               <p className="mt-1 text-sm text-slate-500">
                 Add product technical specifications
               </p>
             </div>
 
-            {/* Add Specification */}
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
               <h3 className="mb-4 text-base font-semibold text-slate-800">
                 Add Specification
               </h3>
 
               <div className="grid gap-4 md:grid-cols-2">
-                {/* Specification Name */}
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700">
                     Specification Name
                   </label>
-
                   <input
                     value={specKey}
                     onChange={(e) => setSpecKey(e.target.value)}
@@ -1857,12 +1846,10 @@ export default function AddProductPage() {
                   />
                 </div>
 
-                {/* Specification Value */}
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700">
                     Specification Value
                   </label>
-
                   <input
                     value={specValue}
                     onChange={(e) => setSpecValue(e.target.value)}
@@ -1887,13 +1874,11 @@ export default function AddProductPage() {
               </button>
             </div>
 
-            {/* RAM / MEMORY */}
             <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
               <div className="mb-4">
                 <h3 className="text-base font-semibold text-slate-800">
                   Memory / RAM
                 </h3>
-
                 <p className="mt-1 text-sm text-slate-500">
                   You can add multiple memory variants
                 </p>
@@ -1922,7 +1907,6 @@ export default function AddProductPage() {
                 </button>
               </div>
 
-              {/* RAM Array */}
               {formData.ram.length > 0 && (
                 <div className="mt-4 flex flex-wrap gap-3">
                   {formData.ram.map((item, index) => (
@@ -1933,7 +1917,6 @@ export default function AddProductPage() {
                       <span className="text-sm font-medium text-slate-700">
                         {item}
                       </span>
-
                       <button
                         type="button"
                         onClick={() => removeRam(index)}
@@ -1947,14 +1930,12 @@ export default function AddProductPage() {
               )}
             </div>
 
-            {/* ADDED SPECIFICATIONS */}
             {formData.specifications.length > 0 && (
               <div className="mt-6">
                 <div className="mb-3 flex items-center justify-between">
                   <h3 className="text-base font-semibold text-slate-800">
                     Added Specifications
                   </h3>
-
                   <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-600">
                     {formData.specifications.length} items
                   </span>
@@ -1967,17 +1948,12 @@ export default function AddProductPage() {
                         key={`${item.key}-${index}`}
                         className="grid grid-cols-1 md:grid-cols-[220px_1fr_auto] md:items-center"
                       >
-                        {/* Key */}
                         <div className="bg-slate-50 px-4 py-4 font-medium text-slate-700">
                           {item.key}
                         </div>
-
-                        {/* Value */}
                         <div className="px-4 py-4 text-sm text-slate-600">
                           {item.value}
                         </div>
-
-                        {/* Remove */}
                         <div className="px-4 py-3">
                           <button
                             type="button"
@@ -2001,7 +1977,6 @@ export default function AddProductPage() {
               <h2 className="text-xl font-semibold text-slate-900">
                 Product Variants
               </h2>
-
               <p className="mt-1 text-sm text-slate-500">
                 Combine a color, RAM and storage to create a purchasable variant
                 with its own stock, price and SKU.
@@ -2016,12 +1991,10 @@ export default function AddProductPage() {
 
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
               <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
-                {/* COLOR */}
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700">
                     Color
                   </label>
-
                   <select
                     value={variantColorName}
                     onChange={(e) => setVariantColorName(e.target.value)}
@@ -2037,12 +2010,10 @@ export default function AddProductPage() {
                   </select>
                 </div>
 
-                {/* RAM */}
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700">
                     RAM
                   </label>
-
                   <input
                     list="variant-ram-options"
                     value={variantRam}
@@ -2057,12 +2028,10 @@ export default function AddProductPage() {
                   </datalist>
                 </div>
 
-                {/* STORAGE */}
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700">
                     Storage
                   </label>
-
                   <input
                     value={variantStorage}
                     onChange={(e) => setVariantStorage(e.target.value)}
@@ -2071,12 +2040,10 @@ export default function AddProductPage() {
                   />
                 </div>
 
-                {/* STOCK */}
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700">
                     Stock
                   </label>
-
                   <input
                     type="number"
                     min="0"
@@ -2087,12 +2054,10 @@ export default function AddProductPage() {
                   />
                 </div>
 
-                {/* PRICE */}
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700">
                     Price
                   </label>
-
                   <input
                     type="number"
                     min="0"
@@ -2104,12 +2069,10 @@ export default function AddProductPage() {
                   />
                 </div>
 
-                {/* SKU */}
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700">
                     SKU
                   </label>
-
                   <input
                     value={variantSku}
                     onChange={(e) => setVariantSku(e.target.value)}
@@ -2135,14 +2098,12 @@ export default function AddProductPage() {
               </button>
             </div>
 
-            {/* ADDED VARIANTS */}
             {formData.variants.length > 0 && (
               <div className="mt-6">
                 <div className="mb-3 flex items-center justify-between">
                   <h3 className="text-base font-semibold text-slate-800">
                     Added Variants
                   </h3>
-
                   <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-600">
                     {formData.variants.length} variants
                   </span>
@@ -2306,13 +2267,15 @@ export default function AddProductPage() {
         </form>
       </div>
 
-      {/* ================= CATEGORY MODAL ================= */}
+      {/* ================= CATEGORY MODAL (with image) ================= */}
       <Modal
         open={showCategoryModal}
         title="Add category"
         onClose={() => {
           setShowCategoryModal(false);
           setNewCategoryName("");
+          clearCategoryImage("main");
+          clearCategoryBanner("main");
         }}
       >
         <input
@@ -2329,12 +2292,65 @@ export default function AddProductPage() {
           className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
         />
 
+        {/* Category Image Upload */}
+        <div className="mt-4">
+          <label className="mb-2 block text-sm font-medium text-slate-700">
+            Category Image (optional)
+          </label>
+          <div className="flex items-center gap-4">
+            <label className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 hover:border-blue-500">
+              {newCategoryImagePreview ? (
+                <img
+                  src={newCategoryImagePreview}
+                  alt="Category preview"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <>
+                  <span className="text-2xl text-slate-400">+</span>
+                  <span className="mt-1 text-xs text-slate-500">Image</span>
+                </>
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => handleCategoryImageChange(e, "main")}
+                className="hidden"
+              />
+            </label>
+            {newCategoryImage && (
+              <div>
+                <p className="text-sm font-medium text-slate-700 truncate max-w-[160px]">
+                  {newCategoryImage.name}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => clearCategoryImage("main")}
+                  className="mt-1 text-xs font-medium text-red-500 hover:text-red-700"
+                >
+                  Remove
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <CategoryFileUpload
+          label="Category banner image (optional)"
+          fileName={newCategoryBannerImage?.name}
+          preview={newCategoryBannerPreview}
+          onChange={(e) => handleCategoryBannerChange(e, "main")}
+          onRemove={() => clearCategoryBanner("main")}
+        />
+
         <div className="mt-5 flex justify-end gap-3">
           <button
             type="button"
             onClick={() => {
               setShowCategoryModal(false);
               setNewCategoryName("");
+              clearCategoryImage("main");
+          clearCategoryBanner("main");
             }}
             className="rounded-xl border border-slate-300 px-5 py-2.5 font-medium text-slate-700 hover:bg-slate-50"
           >
@@ -2352,13 +2368,15 @@ export default function AddProductPage() {
         </div>
       </Modal>
 
-      {/* ================= SUB CATEGORY MODAL ================= */}
+      {/* ================= SUB CATEGORY MODAL (with image) ================= */}
       <Modal
         open={showSubCategoryModal}
         title="Add sub category"
         onClose={() => {
           setShowSubCategoryModal(false);
           setNewSubCategoryName("");
+          clearCategoryImage("sub");
+          clearCategoryBanner("sub");
         }}
       >
         <p className="mb-3 text-sm text-slate-500">
@@ -2382,12 +2400,65 @@ export default function AddProductPage() {
           className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
         />
 
+        {/* Sub Category Image Upload */}
+        <div className="mt-4">
+          <label className="mb-2 block text-sm font-medium text-slate-700">
+            Sub Category Image (optional)
+          </label>
+          <div className="flex items-center gap-4">
+            <label className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 hover:border-blue-500">
+              {newSubCategoryImagePreview ? (
+                <img
+                  src={newSubCategoryImagePreview}
+                  alt="Sub category preview"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <>
+                  <span className="text-2xl text-slate-400">+</span>
+                  <span className="mt-1 text-xs text-slate-500">Image</span>
+                </>
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => handleCategoryImageChange(e, "sub")}
+                className="hidden"
+              />
+            </label>
+            {newSubCategoryImage && (
+              <div>
+                <p className="text-sm font-medium text-slate-700 truncate max-w-[160px]">
+                  {newSubCategoryImage.name}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => clearCategoryImage("sub")}
+                  className="mt-1 text-xs font-medium text-red-500 hover:text-red-700"
+                >
+                  Remove
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <CategoryFileUpload
+          label="Sub category banner image (optional)"
+          fileName={newSubCategoryBannerImage?.name}
+          preview={newSubCategoryBannerPreview}
+          onChange={(e) => handleCategoryBannerChange(e, "sub")}
+          onRemove={() => clearCategoryBanner("sub")}
+        />
+
         <div className="mt-5 flex justify-end gap-3">
           <button
             type="button"
             onClick={() => {
               setShowSubCategoryModal(false);
               setNewSubCategoryName("");
+              clearCategoryImage("sub");
+          clearCategoryBanner("sub");
             }}
             className="rounded-xl border border-slate-300 px-5 py-2.5 font-medium text-slate-700 hover:bg-slate-50"
           >
@@ -2405,13 +2476,15 @@ export default function AddProductPage() {
         </div>
       </Modal>
 
-      {/* ================= CHILD CATEGORY MODAL ================= */}
+      {/* ================= CHILD CATEGORY MODAL (with image) ================= */}
       <Modal
         open={showChildCategoryModal}
         title="Add child category"
         onClose={() => {
           setShowChildCategoryModal(false);
           setNewChildCategoryName("");
+          clearCategoryImage("child");
+          clearCategoryBanner("child");
         }}
       >
         <p className="mb-3 text-sm text-slate-500">
@@ -2435,12 +2508,65 @@ export default function AddProductPage() {
           className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
         />
 
+        {/* Child Category Image Upload */}
+        <div className="mt-4">
+          <label className="mb-2 block text-sm font-medium text-slate-700">
+            Child Category Image (optional)
+          </label>
+          <div className="flex items-center gap-4">
+            <label className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 hover:border-blue-500">
+              {newChildCategoryImagePreview ? (
+                <img
+                  src={newChildCategoryImagePreview}
+                  alt="Child category preview"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <>
+                  <span className="text-2xl text-slate-400">+</span>
+                  <span className="mt-1 text-xs text-slate-500">Image</span>
+                </>
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => handleCategoryImageChange(e, "child")}
+                className="hidden"
+              />
+            </label>
+            {newChildCategoryImage && (
+              <div>
+                <p className="text-sm font-medium text-slate-700 truncate max-w-[160px]">
+                  {newChildCategoryImage.name}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => clearCategoryImage("child")}
+                  className="mt-1 text-xs font-medium text-red-500 hover:text-red-700"
+                >
+                  Remove
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <CategoryFileUpload
+          label="Child category banner image (optional)"
+          fileName={newChildCategoryBannerImage?.name}
+          preview={newChildCategoryBannerPreview}
+          onChange={(e) => handleCategoryBannerChange(e, "child")}
+          onRemove={() => clearCategoryBanner("child")}
+        />
+
         <div className="mt-5 flex justify-end gap-3">
           <button
             type="button"
             onClick={() => {
               setShowChildCategoryModal(false);
               setNewChildCategoryName("");
+              clearCategoryImage("child");
+          clearCategoryBanner("child");
             }}
             className="rounded-xl border border-slate-300 px-5 py-2.5 font-medium text-slate-700 hover:bg-slate-50"
           >
@@ -2458,12 +2584,15 @@ export default function AddProductPage() {
         </div>
       </Modal>
 
+      {/* ================= SUB CHILD CATEGORY MODAL (with image) ================= */}
       <Modal
         open={showSubChildCategoryModal}
         title="Add sub child category"
         onClose={() => {
           setShowSubChildCategoryModal(false);
           setNewSubChildCategoryName("");
+          clearCategoryImage("subChild");
+          clearCategoryBanner("subChild");
         }}
       >
         <p className="mb-3 text-sm text-slate-500">
@@ -2488,12 +2617,65 @@ export default function AddProductPage() {
           className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
         />
 
+        {/* Sub Child Category Image Upload */}
+        <div className="mt-4">
+          <label className="mb-2 block text-sm font-medium text-slate-700">
+            Sub Child Category Image (optional)
+          </label>
+          <div className="flex items-center gap-4">
+            <label className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 hover:border-blue-500">
+              {newSubChildCategoryImagePreview ? (
+                <img
+                  src={newSubChildCategoryImagePreview}
+                  alt="Sub child category preview"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <>
+                  <span className="text-2xl text-slate-400">+</span>
+                  <span className="mt-1 text-xs text-slate-500">Image</span>
+                </>
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => handleCategoryImageChange(e, "subChild")}
+                className="hidden"
+              />
+            </label>
+            {newSubChildCategoryImage && (
+              <div>
+                <p className="text-sm font-medium text-slate-700 truncate max-w-[160px]">
+                  {newSubChildCategoryImage.name}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => clearCategoryImage("subChild")}
+                  className="mt-1 text-xs font-medium text-red-500 hover:text-red-700"
+                >
+                  Remove
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <CategoryFileUpload
+          label="Sub child category banner image (optional)"
+          fileName={newSubChildCategoryBannerImage?.name}
+          preview={newSubChildCategoryBannerPreview}
+          onChange={(e) => handleCategoryBannerChange(e, "subChild")}
+          onRemove={() => clearCategoryBanner("subChild")}
+        />
+
         <div className="mt-5 flex justify-end gap-3">
           <button
             type="button"
             onClick={() => {
               setShowSubChildCategoryModal(false);
               setNewSubChildCategoryName("");
+              clearCategoryImage("subChild");
+          clearCategoryBanner("subChild");
             }}
             className="rounded-xl border border-slate-300 px-5 py-2.5 font-medium text-slate-700 hover:bg-slate-50"
           >
@@ -2517,6 +2699,34 @@ export default function AddProductPage() {
 // ======================================
 // MODAL
 // ======================================
+function CategoryFileUpload({ label, fileName, preview, onChange, onRemove }) {
+  return (
+    <div className="mt-4">
+      <label className="mb-2 block text-sm font-medium text-slate-700">{label}</label>
+      <div className="flex flex-wrap items-center gap-4">
+        <label className="flex h-28 w-full max-w-xs cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 hover:border-blue-500">
+          {preview ? (
+            <img src={preview} alt={label} className="h-full w-full object-cover" />
+          ) : (
+            <>
+              <span className="text-2xl text-slate-400">+</span>
+              <span className="mt-1 text-xs text-slate-500">Choose banner</span>
+            </>
+          )}
+          <input type="file" accept="image/*" onChange={onChange} className="hidden" />
+        </label>
+        {fileName && (
+          <div className="min-w-0">
+            <p className="max-w-[180px] truncate text-sm font-medium text-slate-700">{fileName}</p>
+            <button type="button" onClick={onRemove} className="mt-1 text-xs font-medium text-red-500 hover:text-red-700">Remove banner</button>
+          </div>
+        )}
+      </div>
+      <p className="mt-1 text-xs text-slate-500">Banner is saved separately from the category thumbnail.</p>
+    </div>
+  );
+}
+
 function Modal({ open, title, onClose, children }) {
   useEffect(() => {
     if (!open) return;
