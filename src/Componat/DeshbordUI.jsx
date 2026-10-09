@@ -29,7 +29,7 @@ import ProductListView from "./ProductListView.jsx";
 import UpdateProductPage from "./UpdateProduct.jsx";
 
 const API = (
-  import.meta.env.VITE_API_URL || "http://localhost:4000"
+  import.meta.env.VITE_API_URL || "https://apple-gadgets-ui-backend.vercel.app"
 ).replace(/\/+$/, "");
 
 // =====================================================
