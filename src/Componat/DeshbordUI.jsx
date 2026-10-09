@@ -26,6 +26,7 @@ import CreateOrderModal from "./CreateOrderModal.jsx";
 import AddProductPage from "./Addproduct.jsx";
 import ProductListView from "./ProductListView.jsx";
 import UpdateProductPage from "./UpdateProduct.jsx";
+import OrdersPage from "./OrderManege.jsx";
 
 const API = (
   import.meta.env.VITE_API_URL || "https://apple-gadgets-ui-backend.vercel.app"
@@ -51,24 +52,16 @@ const getToday = () => {
 };
 
 const isValidDate = (value) => {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value || "")) {
-    return false;
-  }
-
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value || "")) return false;
   const date = new Date(`${value}T00:00:00Z`);
-
-  return (
-    !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value
-  );
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
 };
 
 const formatDate = (dateStr) => {
   if (!dateStr || dateStr === "all") return "All Time";
-
   if (!isValidDate(dateStr)) return dateStr;
 
   const [year, month, day] = dateStr.split("-").map(Number);
-
   return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString("en-GB", {
     day: "2-digit",
     month: "long",
@@ -81,12 +74,7 @@ const taka = (value) => `৳ ${Number(value || 0).toLocaleString("en-US")}`;
 
 const getDateFromItem = (item) => {
   const value = item?.date ?? item?._id ?? item?.day ?? "";
-
-  if (typeof value === "string") {
-    return value.slice(0, 10);
-  }
-
-  return "";
+  return typeof value === "string" ? value.slice(0, 10) : "";
 };
 
 // =====================================================
@@ -94,40 +82,42 @@ const getDateFromItem = (item) => {
 // =====================================================
 
 const cardMeta = {
-  orders: {
-    title: "Total Orders",
-    icon: ShoppingCart,
-    money: false,
-  },
-  sales: {
-    title: "Total Sales",
-    icon: Wallet,
-    money: true,
-  },
-  items: {
-    title: "Total Items",
-    icon: Package,
-    money: false,
-  },
-  customers: {
-    title: "Total Customers",
-    icon: Users,
-    money: false,
-  },
+  orders: { title: "Total Orders", icon: ShoppingCart, money: false },
+  sales: { title: "Total Sales", icon: Wallet, money: true },
+  items: { title: "Total Items", icon: Package, money: false },
+  customers: { title: "Total Customers", icon: Users, money: false },
 };
 
 // =====================================================
-// STATUS COLORS
+// STATUS HELPERS (matches real order statuses)
 // =====================================================
 
 const statusColor = {
-  Pending: "bg-amber-400",
-  Completed: "bg-emerald-500",
-  Incomplete: "bg-slate-400",
-  Cancelled: "bg-red-500",
-  Processing: "bg-blue-500",
-  Delivered: "bg-emerald-500",
+  pending: "bg-amber-400",
+  confirmed: "bg-blue-500",
+  processing: "bg-indigo-500",
+  ready_for_shipment: "bg-purple-500",
+  handed_over_to_courier: "bg-violet-500",
+  shipped: "bg-cyan-500",
+  delivered: "bg-emerald-500",
+  returned: "bg-orange-500",
+  cancelled: "bg-red-500",
 };
+
+const donutColors = {
+  pending: "#fbbf24",
+  confirmed: "#3b82f6",
+  processing: "#6366f1",
+  ready_for_shipment: "#a855f7",
+  handed_over_to_courier: "#8b5cf6",
+  shipped: "#06b6d4",
+  delivered: "#10b981",
+  returned: "#f97316",
+  cancelled: "#ef4444",
+};
+
+const formatStatusLabel = (status = "") =>
+  status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
 // =====================================================
 // NOTICE
@@ -145,15 +135,10 @@ const Notice = ({ children }) => (
 
 export default function DeshbordUI() {
   const [createOrderOpen, setCreateOrderOpen] = useState(false);
-
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [openSubMenu, setOpenSubMenu] = useState(null);
   const [productSubTab, setProductSubTab] = useState("add");
-
-  // "all" = all-time report
-  // "YYYY-MM-DD" = selected date
   const [selectedDate, setSelectedDate] = useState("all");
-
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -163,9 +148,6 @@ export default function DeshbordUI() {
 
   // =====================================================
   // LOAD DASHBOARD
-  // API:
-  // /api/dashboard/summary?date=all
-  // /api/dashboard/summary?date=2026-10-09
   // =====================================================
 
   useEffect(() => {
@@ -177,44 +159,30 @@ export default function DeshbordUI() {
 
       try {
         const response = await fetch(
-          `${API}/api/dashboard/summary?date=${encodeURIComponent(
-            selectedDate,
-          )}`,
+          `${API}/api/dashboard/summary?date=${encodeURIComponent(selectedDate)}`,
           {
             signal: controller.signal,
-            headers: {
-              Accept: "application/json",
-            },
+            headers: { Accept: "application/json" },
           },
         );
 
-        if (!response.ok) {
-          throw new Error(`Server error: ${response.status}`);
-        }
+        if (!response.ok) throw new Error(`Server error: ${response.status}`);
 
         const result = await response.json();
-
-        if (!result.success) {
-          throw new Error(result.message || "Dashboard data load failed");
-        }
+        if (!result.success) throw new Error(result.message || "Dashboard data load failed");
 
         setDashboard(result);
       } catch (err) {
         if (err.name === "AbortError") return;
-
         console.error("Dashboard error:", err);
-
         setError(err.message || "Unable to load dashboard");
         setDashboard(null);
       } finally {
-        if (!controller.signal.aborted) {
-          setLoading(false);
-        }
+        if (!controller.signal.aborted) setLoading(false);
       }
     };
 
     loadDashboard();
-
     return () => controller.abort();
   }, [selectedDate, refreshKey]);
 
@@ -264,8 +232,6 @@ export default function DeshbordUI() {
     },
   };
 
-  // All valid dates returned by the API.
-  // These are used as hints, not as restrictions on the calendar.
   const availableDates = useMemo(() => {
     return [
       ...new Set(
@@ -278,14 +244,13 @@ export default function DeshbordUI() {
   }, [d.availableDates]);
 
   // =====================================================
-  // DATE FILTER HEADER
+  // HEADER
   // =====================================================
 
   const Header = () => (
-    <header className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-200 bg-white px-4 py-3.5 shadow-sm sm:px-6">
-      {/* CALENDAR DATE FILTER */}
+    <header className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-200/80 bg-white/90 px-4 py-3.5 shadow-sm backdrop-blur-md sm:px-6">
       <div className="flex min-w-0 flex-wrap items-center gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-700">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-red-50 to-red-100 text-red-700 shadow-sm">
           <CalendarDays className="h-5 w-5" />
         </div>
 
@@ -305,26 +270,22 @@ export default function DeshbordUI() {
               max={today}
               onChange={(event) => {
                 const value = event.target.value;
-
                 if (!value) {
                   setSelectedDate("all");
                   return;
                 }
-
-                if (isValidDate(value)) {
-                  setSelectedDate(value);
-                }
+                if (isValidDate(value)) setSelectedDate(value);
               }}
               onClick={(event) => {
                 if (typeof event.currentTarget.showPicker === "function") {
                   try {
                     event.currentTarget.showPicker();
                   } catch {
-                    // The browser may prevent opening the picker.
+                    // ignore
                   }
                 }
               }}
-              className="w-[190px] cursor-pointer rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-100"
+              className="w-[190px] cursor-pointer rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-100"
               aria-label="Select dashboard report date"
             />
           </div>
@@ -336,38 +297,35 @@ export default function DeshbordUI() {
           </span>
         </div>
 
-        {/* ALL TIME */}
         <button
           type="button"
           onClick={() => setSelectedDate("all")}
-          className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${
+          className={`rounded-xl border px-3.5 py-2 text-xs font-semibold transition ${
             selectedDate === "all"
-              ? "border-red-800 bg-red-800 text-white"
+              ? "border-red-800 bg-red-800 text-white shadow-sm"
               : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
           }`}
         >
           All Time
         </button>
 
-        {/* TODAY */}
         <button
           type="button"
           onClick={() => setSelectedDate(today)}
-          className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${
+          className={`rounded-xl border px-3.5 py-2 text-xs font-semibold transition ${
             selectedDate === today
-              ? "border-red-800 bg-red-800 text-white"
+              ? "border-red-800 bg-red-800 text-white shadow-sm"
               : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
           }`}
         >
           Today
         </button>
 
-        {/* RESET */}
         {selectedDate !== "all" && (
           <button
             type="button"
             onClick={() => setSelectedDate("all")}
-            className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-600 transition hover:bg-gray-50"
+            className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-xs font-semibold text-gray-600 transition hover:bg-gray-50"
           >
             <RotateCcw className="h-3.5 w-3.5" />
             Reset
@@ -375,7 +333,6 @@ export default function DeshbordUI() {
         )}
       </div>
 
-      {/* RIGHT ACTIONS */}
       <div className="ml-auto flex flex-wrap items-center gap-2 sm:gap-3">
         <button
           type="button"
@@ -384,7 +341,7 @@ export default function DeshbordUI() {
             setProductSubTab("list");
             setOpenSubMenu("Product");
           }}
-          className="flex items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 sm:px-3"
+          className="flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 transition hover:bg-amber-100"
         >
           <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
           <span>Stock Alert ({d.stockAlerts})</span>
@@ -393,7 +350,7 @@ export default function DeshbordUI() {
         <button
           type="button"
           onClick={() => setCreateOrderOpen(true)}
-          className="flex items-center gap-1.5 rounded-md bg-red-800 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-red-900"
+          className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-red-700 to-red-800 px-3.5 py-2 text-xs font-semibold text-white shadow-md shadow-red-200 transition hover:from-red-800 hover:to-red-900"
         >
           <Plus className="h-4 w-4" />
           <span>Create Order</span>
@@ -402,7 +359,7 @@ export default function DeshbordUI() {
         <button
           type="button"
           onClick={() => setActiveTab("Accounting")}
-          className="hidden items-center gap-1.5 rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-xs font-medium text-gray-700 transition hover:bg-gray-100 md:flex"
+          className="hidden items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-xs font-medium text-gray-700 transition hover:bg-gray-50 md:flex"
         >
           <span className="flex h-5 w-5 items-center justify-center rounded-full bg-red-700 text-[10px] font-bold text-white">
             ৳
@@ -414,19 +371,18 @@ export default function DeshbordUI() {
           type="button"
           aria-label="Notifications"
           onClick={() => setActiveTab("Messages")}
-          className="relative rounded-full p-2 text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+          className="relative rounded-full p-2.5 text-gray-600 transition hover:bg-gray-100 hover:text-gray-900"
         >
           <Bell className="h-5 w-5" />
-
           {d.notifications > 0 && (
-            <span className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-white bg-red-600 px-1 text-[10px] font-bold text-white">
+            <span className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-white bg-red-600 px-1 text-[10px] font-bold text-white">
               {d.notifications}
             </span>
           )}
         </button>
 
-        <div className="flex items-center gap-2 border-l border-gray-200 pl-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full border border-red-200 bg-red-100 text-xs font-bold text-red-700">
+        <div className="flex items-center gap-2 border-l border-gray-200 pl-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full border border-red-200 bg-gradient-to-br from-red-50 to-red-100 text-xs font-bold text-red-700 shadow-sm">
             A
           </div>
         </div>
@@ -443,8 +399,8 @@ export default function DeshbordUI() {
       return (
         <Notice>
           <div className="flex flex-col items-center justify-center gap-3">
-            <div className="h-7 w-7 animate-spin rounded-full border-2 border-red-700 border-t-transparent" />
-            <span>Loading dashboard...</span>
+            <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-red-700 border-t-transparent" />
+            <span className="text-sm font-medium text-gray-500">Loading dashboard...</span>
           </div>
         </Notice>
       );
@@ -454,14 +410,12 @@ export default function DeshbordUI() {
       return (
         <Notice>
           <div className="mx-auto max-w-md">
-            <p className="font-semibold text-red-600">Dashboard load failed</p>
-
-            <p className="mt-2 break-words text-xs">{error}</p>
-
+            <p className="text-base font-semibold text-red-600">Dashboard load failed</p>
+            <p className="mt-2 break-words text-xs text-gray-500">{error}</p>
             <button
               type="button"
               onClick={() => setRefreshKey((key) => key + 1)}
-              className="mt-4 inline-flex items-center gap-2 rounded-md bg-red-800 px-4 py-2 text-xs font-semibold text-white hover:bg-red-900"
+              className="mt-5 inline-flex items-center gap-2 rounded-xl bg-red-800 px-5 py-2.5 text-xs font-semibold text-white shadow-md transition hover:bg-red-900"
             >
               <RotateCcw className="h-3.5 w-3.5" />
               Retry
@@ -474,26 +428,18 @@ export default function DeshbordUI() {
     const totalOrders = Number(
       d.summary.find((item) => item.key === "orders")?.value || 0,
     );
-
     const totalSales = Number(
       d.summary.find((item) => item.key === "sales")?.value || 0,
     );
-
-    const maxArea = Math.max(
-      1,
-      ...d.areas.map((area) => Number(area.count || 0)),
-    );
-
-    let offset = 0;
+    const maxArea = Math.max(1, ...d.areas.map((area) => Number(area.count || 0)));
 
     return (
-      <div className="min-h-[calc(100vh-65px)] space-y-6 bg-slate-50 p-4 sm:p-6">
+      <div className="min-h-[calc(100vh-65px)] space-y-6 bg-gradient-to-b from-slate-50 to-slate-100/80 p-4 sm:p-6">
         {/* PAGE TITLE */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-xl font-bold text-gray-800">Dashboard</h1>
-
-            <p className="mt-1 text-xs text-gray-500">
+            <h1 className="text-2xl font-bold tracking-tight text-gray-900">Dashboard</h1>
+            <p className="mt-1 text-sm text-gray-500">
               {selectedDate === "all"
                 ? "Showing all-time store performance and date-wise activity"
                 : `Showing details for ${formatDate(selectedDate)}`}
@@ -501,16 +447,15 @@ export default function DeshbordUI() {
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-[11px] font-semibold text-gray-500">
+            <span className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold tracking-wide text-gray-500 shadow-sm">
               {selectedDate === "all" ? "ALL-TIME REPORT" : "DAILY REPORT"}
             </span>
 
             <button
               type="button"
               onClick={() => setRefreshKey((key) => key + 1)}
-              className="rounded-lg border border-gray-200 bg-white p-2 text-gray-600 transition hover:bg-gray-100"
+              className="rounded-xl border border-gray-200 bg-white p-2.5 text-gray-600 shadow-sm transition hover:bg-gray-50"
               title="Refresh dashboard"
-              aria-label="Refresh dashboard"
             >
               <RotateCcw className="h-4 w-4" />
             </button>
@@ -519,7 +464,7 @@ export default function DeshbordUI() {
               <button
                 type="button"
                 onClick={() => setSelectedDate("all")}
-                className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100"
+                className="rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-xs font-semibold text-gray-600 shadow-sm transition hover:bg-gray-50"
               >
                 All Time
               </button>
@@ -537,25 +482,23 @@ export default function DeshbordUI() {
             return (
               <div
                 key={key}
-                className="flex items-center justify-between rounded-xl border border-gray-200/80 bg-white p-4 shadow-sm"
+                className="group relative overflow-hidden rounded-2xl border border-gray-200/60 bg-white p-5 shadow-sm transition hover:shadow-md"
               >
-                <div className="min-w-0 space-y-1">
-                  <span className="text-xs font-medium text-gray-500">
-                    {meta.title}
-                  </span>
-
-                  <div className="break-words text-xl font-bold text-gray-800">
-                    {meta.money ? taka(value) : value.toLocaleString("en-US")}
+                <div className="absolute -right-4 -top-4 h-20 w-20 rounded-full bg-red-50/50 transition group-hover:bg-red-50" />
+                <div className="relative flex items-center justify-between">
+                  <div className="min-w-0 space-y-1.5">
+                    <span className="text-xs font-medium text-gray-500">{meta.title}</span>
+                    <div className="break-words text-2xl font-bold tracking-tight text-gray-900">
+                      {meta.money ? taka(value) : value.toLocaleString("en-US")}
+                    </div>
+                    <div className="flex items-center gap-1 text-[11px] font-medium text-emerald-600">
+                      <TrendingUp className="h-3.5 w-3.5" />
+                      <span>{item?.growth || "+0.0%"}</span>
+                    </div>
                   </div>
-
-                  <div className="flex items-center gap-1 text-[11px] font-medium text-emerald-600">
-                    <TrendingUp className="h-3 w-3" />
-                    <span>{item?.growth || "+0.0%"}</span>
+                  <div className="shrink-0 rounded-xl bg-gradient-to-br from-red-50 to-red-100 p-3 text-red-600 shadow-sm">
+                    <Icon className="h-5 w-5" />
                   </div>
-                </div>
-
-                <div className="shrink-0 rounded-lg bg-red-50 p-3 text-red-500">
-                  <Icon className="h-5 w-5" />
                 </div>
               </div>
             );
@@ -576,51 +519,45 @@ export default function DeshbordUI() {
             />
           </div>
 
-          <div className="min-w-0 rounded-xl border border-gray-200/80 bg-white p-5 shadow-sm">
+          <div className="min-w-0 rounded-2xl border border-gray-200/60 bg-white p-5 shadow-sm">
             <h3 className="mb-4 text-xs font-bold uppercase tracking-wider text-gray-800">
               Top Selling Products
             </h3>
 
             {d.topProducts.length === 0 ? (
-              <p className="text-xs text-gray-400">
-                No product data available.
-              </p>
+              <p className="text-xs text-gray-400">No product data available.</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead>
-                    <tr className="border-b border-gray-100 text-[10px] font-semibold uppercase text-gray-400">
-                      <th className="pb-2">Image</th>
-                      <th className="pb-2">Name</th>
-                      <th className="pb-2 text-center">Sold</th>
-                      <th className="pb-2 text-right">Price</th>
+                    <tr className="border-b border-gray-100 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                      <th className="pb-3">Image</th>
+                      <th className="pb-3">Name</th>
+                      <th className="pb-3 text-center">Sold</th>
+                      <th className="pb-3 text-right">Price</th>
                     </tr>
                   </thead>
-
                   <tbody className="divide-y divide-gray-50">
                     {d.topProducts.map((product) => (
-                      <tr key={product.id || product._id || product.name}>
-                        <td className="py-2.5 pr-2">
+                      <tr key={product.id || product._id || product.name} className="group">
+                        <td className="py-3 pr-2">
                           <img
                             src={product.image || "/images.png"}
                             alt={product.name || "Product"}
-                            onError={(event) => {
-                              event.currentTarget.onerror = null;
-                              event.currentTarget.src = "/images.png";
+                            onError={(e) => {
+                              e.currentTarget.onerror = null;
+                              e.currentTarget.src = "/images.png";
                             }}
-                            className="h-8 w-8 rounded-md border border-gray-200 object-cover"
+                            className="h-9 w-9 rounded-lg border border-gray-100 object-cover shadow-sm"
                           />
                         </td>
-
-                        <td className="max-w-[120px] truncate py-2.5 pr-2 font-medium text-gray-700">
+                        <td className="max-w-[130px] truncate py-3 pr-2 font-medium text-gray-700 group-hover:text-gray-900">
                           {product.name || "Unnamed Product"}
                         </td>
-
-                        <td className="py-2.5 text-center text-gray-600">
+                        <td className="py-3 text-center text-gray-600">
                           {Number(product.sold || 0).toLocaleString("en-US")}
                         </td>
-
-                        <td className="whitespace-nowrap py-2.5 text-right font-semibold text-gray-800">
+                        <td className="whitespace-nowrap py-3 text-right font-semibold text-gray-800">
                           {taka(product.price)}
                         </td>
                       </tr>
@@ -634,154 +571,132 @@ export default function DeshbordUI() {
 
         {/* ORDER STATUS + AREAS */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-sm lg:col-span-2">
-            <h3 className="mb-4 text-xs font-bold uppercase tracking-wider text-gray-800">
+          {/* ORDER STATUS */}
+          <div className="rounded-2xl border border-gray-200/60 bg-white p-5 shadow-sm lg:col-span-2">
+            <h3 className="mb-5 text-xs font-bold uppercase tracking-wider text-gray-800">
               Order Status
             </h3>
 
-            <div className="flex flex-col items-center justify-around gap-6 py-4 sm:flex-row">
-              {/* DONUT CHART */}
-              <div className="relative flex h-36 w-36 shrink-0 items-center justify-center">
-                <svg className="h-full w-full -rotate-90" viewBox="0 0 36 36">
+            <div className="flex flex-col items-center justify-around gap-8 py-2 sm:flex-row">
+              {/* DONUT */}
+              <div className="relative flex h-40 w-40 shrink-0 items-center justify-center">
+                <svg className="h-full w-full -rotate-90 drop-shadow-sm" viewBox="0 0 36 36">
                   <circle
                     cx="18"
                     cy="18"
                     r="15.9155"
                     fill="none"
-                    stroke="#f3f4f6"
-                    strokeWidth="4"
+                    stroke="#f1f5f9"
+                    strokeWidth="3.5"
                   />
-
-                  {d.status.map((item) => {
-                    const count = Number(item.count || 0);
-
-                    const length = totalOrders
-                      ? (count / totalOrders) * 100
-                      : 0;
-
-                    const colors = {
-                      Pending: "#fbbf24",
-                      Completed: "#10b981",
-                      Incomplete: "#94a3b8",
-                      Cancelled: "#ef4444",
-                      Processing: "#3b82f6",
-                      Delivered: "#10b981",
-                    };
-
-                    const circle = (
-                      <circle
-                        key={item.status}
-                        cx="18"
-                        cy="18"
-                        r="15.9155"
-                        fill="none"
-                        strokeWidth="4.5"
-                        stroke={colors[item.status] || "#cbd5e1"}
-                        strokeDasharray={`${length} ${100 - length}`}
-                        strokeDashoffset={-offset}
-                      />
-                    );
-
-                    offset += length;
-
-                    return circle;
-                  })}
+                  {(() => {
+                    let offset = 0;
+                    return d.status.map((item) => {
+                      const count = Number(item.count || 0);
+                      const length = totalOrders ? (count / totalOrders) * 100 : 0;
+                      const circle = (
+                        <circle
+                          key={item.status}
+                          cx="18"
+                          cy="18"
+                          r="15.9155"
+                          fill="none"
+                          strokeWidth="4"
+                          stroke={donutColors[item.status] || "#cbd5e1"}
+                          strokeDasharray={`${length} ${100 - length}`}
+                          strokeDashoffset={-offset}
+                          strokeLinecap="round"
+                        />
+                      );
+                      offset += length;
+                      return circle;
+                    });
+                  })()}
                 </svg>
-
-                <span className="absolute text-2xl font-extrabold text-gray-800">
-                  {totalOrders.toLocaleString("en-US")}
-                </span>
+                <div className="absolute flex flex-col items-center">
+                  <span className="text-3xl font-extrabold tracking-tight text-gray-900">
+                    {totalOrders.toLocaleString("en-US")}
+                  </span>
+                  <span className="text-[10px] font-medium uppercase tracking-wide text-gray-400">
+                    Orders
+                  </span>
+                </div>
               </div>
 
               {/* STATUS LIST */}
-              <div className="w-full max-w-xs space-y-3">
-                {d.status.length === 0 && (
-                  <p className="text-xs text-gray-400">
-                    No orders in this period.
-                  </p>
+              <div className="w-full max-w-sm space-y-2">
+                {d.status.length === 0 ? (
+                  <p className="text-xs text-gray-400">No orders in this period.</p>
+                ) : (
+                  d.status.map((item) => (
+                    <div
+                      key={item.status}
+                      className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/80 px-3.5 py-2.5 text-xs transition hover:bg-slate-50"
+                    >
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        <span
+                          className={`h-2.5 w-2.5 shrink-0 rounded-full ${
+                            statusColor[item.status] || "bg-slate-300"
+                          }`}
+                        />
+                        <span className="font-semibold text-slate-700">
+                          {formatStatusLabel(item.status)}
+                        </span>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-4">
+                        <span className="font-bold text-gray-800">
+                          {Number(item.count || 0).toLocaleString("en-US")}
+                        </span>
+                        <span className="min-w-[70px] text-right font-bold text-gray-900">
+                          {taka(item.total)}
+                        </span>
+                      </div>
+                    </div>
+                  ))
                 )}
-
-                {d.status.map((item) => (
-                  <div
-                    key={item.status}
-                    className="flex items-center justify-between gap-3 rounded-lg border border-slate-200/60 bg-slate-50 p-2 text-xs"
-                  >
-                    <div className="flex min-w-0 items-center gap-2">
-                      <span
-                        className={`h-2.5 w-2.5 shrink-0 rounded-full ${
-                          statusColor[item.status] || "bg-slate-300"
-                        }`}
-                      />
-
-                      <span className="font-semibold text-slate-700">
-                        {item.status}
-                      </span>
-                    </div>
-
-                    <div className="flex shrink-0 items-center gap-3">
-                      <span className="font-bold text-gray-700">
-                        {Number(item.count || 0).toLocaleString("en-US")}
-                      </span>
-
-                      <span className="font-bold text-gray-800">
-                        {taka(item.total)}
-                      </span>
-                    </div>
-                  </div>
-                ))}
               </div>
             </div>
 
-            <div className="mt-2 border-t border-gray-100 pt-3 text-right text-xs font-semibold text-gray-600">
+            <div className="mt-4 border-t border-gray-100 pt-4 text-right text-sm font-semibold text-gray-600">
               Total Sales:{" "}
-              <span className="font-bold text-gray-900">
-                {taka(totalSales)}
-              </span>
+              <span className="text-base font-bold text-gray-900">{taka(totalSales)}</span>
             </div>
           </div>
 
           {/* ORDER AREAS */}
-          <div className="flex flex-col justify-between rounded-xl border border-gray-200/80 bg-white p-5 shadow-sm">
+          <div className="flex flex-col justify-between rounded-2xl border border-gray-200/60 bg-white p-5 shadow-sm">
             <div>
               <h3 className="mb-6 text-xs font-bold uppercase tracking-wider text-gray-800">
                 Order Areas
               </h3>
 
-              <div className="space-y-4">
-                {d.areas.length === 0 && (
-                  <p className="text-xs text-gray-400">
-                    No orders in this period.
-                  </p>
+              <div className="space-y-5">
+                {d.areas.length === 0 ? (
+                  <p className="text-xs text-gray-400">No orders in this period.</p>
+                ) : (
+                  d.areas.map((area) => (
+                    <div key={area.location}>
+                      <div className="mb-1.5 flex justify-between gap-3 text-xs font-medium text-gray-600">
+                        <span className="truncate">{area.location || "Unknown"}</span>
+                        <span className="font-bold text-gray-900">
+                          {Number(area.count || 0).toLocaleString("en-US")}
+                        </span>
+                      </div>
+                      <div className="h-2.5 w-full overflow-hidden rounded-full bg-gray-100">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-red-600 to-red-700 transition-all duration-500"
+                          style={{
+                            width: `${(Number(area.count || 0) / maxArea) * 100}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))
                 )}
-
-                {d.areas.map((area) => (
-                  <div key={area.location}>
-                    <div className="mb-1.5 flex justify-between gap-3 text-xs font-medium text-gray-600">
-                      <span className="truncate">
-                        {area.location || "Unknown"}
-                      </span>
-
-                      <span className="font-bold text-gray-800">
-                        {Number(area.count || 0).toLocaleString("en-US")}
-                      </span>
-                    </div>
-
-                    <div className="h-3 w-full overflow-hidden rounded-full bg-gray-100">
-                      <div
-                        className="h-full rounded-full bg-red-700 transition-all duration-300"
-                        style={{
-                          width: `${
-                            (Number(area.count || 0) / maxArea) * 100
-                          }%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                ))}
               </div>
             </div>
 
-            <div className="mt-5 border-t border-gray-100 pt-4 text-center text-[11px] text-gray-400">
+            <div className="mt-6 border-t border-gray-100 pt-4 text-center text-[11px] text-gray-400">
               Delivery location breakdown
             </div>
           </div>
@@ -789,74 +704,48 @@ export default function DeshbordUI() {
 
         {/* DATE-WISE ACTIVITY TABLE */}
         {selectedDate === "all" && (
-          <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-sm">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <div className="rounded-2xl border border-gray-200/60 bg-white p-5 shadow-sm">
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h3 className="text-xs font-bold uppercase tracking-wider text-gray-800">
                   Date-wise Order Activity
                 </h3>
-
-                <p className="mt-1 text-xs text-gray-500">
-                  Orders and sales by date
-                </p>
+                <p className="mt-1 text-xs text-gray-500">Orders and sales by date</p>
               </div>
-
-              <span className="text-[11px] text-gray-500">
+              <span className="rounded-full bg-slate-50 px-3 py-1 text-[11px] font-medium text-gray-500">
                 {d.activity.length} records
               </span>
             </div>
 
             {d.activity.length === 0 ? (
-              <p className="text-xs text-gray-400">
-                No activity data available.
-              </p>
+              <p className="text-xs text-gray-400">No activity data available.</p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
+                <table className="w-full text-left text-sm">
                   <thead>
-                    <tr className="border-b border-gray-200 text-gray-500">
+                    <tr className="border-b border-gray-100 text-xs text-gray-500">
                       <th className="py-3 pr-4 font-semibold">Date</th>
-                      <th className="px-4 py-3 text-right font-semibold">
-                        Orders
-                      </th>
-                      <th className="py-3 pl-4 text-right font-semibold">
-                        Sales
-                      </th>
+                      <th className="px-4 py-3 text-right font-semibold">Orders</th>
+                      <th className="py-3 pl-4 text-right font-semibold">Sales</th>
                     </tr>
                   </thead>
-
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-gray-50">
                     {[...d.activity]
-                      .sort((a, b) =>
-                        getDateFromItem(b).localeCompare(getDateFromItem(a)),
-                      )
+                      .sort((a, b) => getDateFromItem(b).localeCompare(getDateFromItem(a)))
                       .map((item, index) => {
                         const date = getDateFromItem(item);
-
-                        const count = Number(
-                          item.orders ?? item.count ?? item.totalOrders ?? 0,
-                        );
-
-                        const sales = Number(
-                          item.sales ?? item.total ?? item.revenue ?? 0,
-                        );
+                        const count = Number(item.orders ?? item.count ?? item.totalOrders ?? 0);
+                        const sales = Number(item.sales ?? item.total ?? item.revenue ?? 0);
 
                         return (
-                          <tr
-                            key={`${date}-${index}`}
-                            className="hover:bg-slate-50"
-                          >
-                            <td className="whitespace-nowrap py-3 pr-4 font-medium text-gray-700">
-                              {isValidDate(date)
-                                ? formatDate(date)
-                                : date || "Unknown"}
+                          <tr key={`${date}-${index}`} className="transition hover:bg-slate-50/80">
+                            <td className="whitespace-nowrap py-3.5 pr-4 font-medium text-gray-700">
+                              {isValidDate(date) ? formatDate(date) : date || "Unknown"}
                             </td>
-
-                            <td className="px-4 py-3 text-right text-gray-700">
+                            <td className="px-4 py-3.5 text-right text-gray-700">
                               {count.toLocaleString("en-US")}
                             </td>
-
-                            <td className="whitespace-nowrap py-3 pl-4 text-right font-semibold text-gray-800">
+                            <td className="whitespace-nowrap py-3.5 pl-4 text-right font-semibold text-gray-900">
                               {taka(sales)}
                             </td>
                           </tr>
@@ -873,22 +762,6 @@ export default function DeshbordUI() {
   };
 
   // =====================================================
-  // ORDERS VIEW
-  // =====================================================
-
-  const OrdersView = () => (
-    <div className="min-h-[calc(100vh-65px)] bg-slate-50 p-4 sm:p-6">
-      <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-        <h2 className="text-lg font-bold text-gray-800">Orders Management</h2>
-
-        <p className="mt-1 text-xs text-gray-500">
-          Orders API can be connected here later.
-        </p>
-      </div>
-    </div>
-  );
-
-  // =====================================================
   // GENERIC VIEW
   // =====================================================
 
@@ -898,23 +771,18 @@ export default function DeshbordUI() {
 
     return (
       <div className="flex min-h-[calc(100vh-65px)] flex-col items-center justify-center bg-slate-50 p-8 text-center">
-        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100 text-red-800">
-          <Icon className="h-8 w-8" />
+        <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-red-50 to-red-100 text-red-700 shadow-sm">
+          <Icon className="h-9 w-9" />
         </div>
-
-        <h2 className="mb-2 text-2xl font-bold text-gray-800">{activeTab}</h2>
-
-        <p className="mb-6 max-w-md text-sm text-gray-500">
-          This page is not built yet.
-        </p>
-
+        <h2 className="mb-2 text-2xl font-bold text-gray-900">{activeTab}</h2>
+        <p className="mb-6 max-w-md text-sm text-gray-500">This page is not built yet.</p>
         <button
           type="button"
           onClick={() => {
             setActiveTab("Dashboard");
             setOpenSubMenu(null);
           }}
-          className="rounded-lg bg-red-800 px-4 py-2 text-xs font-semibold text-white transition hover:bg-red-900"
+          className="rounded-xl bg-red-800 px-5 py-2.5 text-xs font-semibold text-white shadow-md transition hover:bg-red-900"
         >
           Return to Dashboard
         </button>
@@ -932,14 +800,9 @@ export default function DeshbordUI() {
     <div className="flex min-h-screen bg-slate-100 font-sans antialiased text-gray-800">
       {/* SIDEBAR */}
       <aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col bg-[#0f172a] text-slate-300">
-        <div className="flex h-16 shrink-0 items-center border-b border-slate-800 px-5">
-          <span className="text-xl font-black italic tracking-tighter text-red-500">
-            Apple
-          </span>
-
-          <span className="ml-1 text-xl font-light tracking-wide text-white">
-            Gadgets
-          </span>
+        <div className="flex h-16 shrink-0 items-center border-b border-slate-800/80 px-5">
+          <span className="text-xl font-black italic tracking-tighter text-red-500">Apple</span>
+          <span className="ml-1 text-xl font-light tracking-wide text-white">Gadgets</span>
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
@@ -960,22 +823,16 @@ export default function DeshbordUI() {
                       setOpenSubMenu(null);
                     }
                   }}
-                  className={`flex w-full items-center justify-between rounded-lg px-3.5 py-2.5 text-xs font-medium transition-colors ${
+                  className={`flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-medium transition-all ${
                     active
-                      ? "bg-slate-800/90 font-semibold text-white"
+                      ? "bg-slate-800 font-semibold text-white shadow-sm"
                       : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <Icon
-                      className={`h-4 w-4 ${
-                        active ? "text-red-500" : "text-slate-400"
-                      }`}
-                    />
-
+                    <Icon className={`h-4 w-4 ${active ? "text-red-500" : "text-slate-400"}`} />
                     <span>{name}</span>
                   </div>
-
                   {hasSub && (
                     <ChevronDown
                       className={`h-3.5 w-3.5 text-slate-500 transition-transform duration-200 ${
@@ -986,7 +843,7 @@ export default function DeshbordUI() {
                 </button>
 
                 {hasSub && isOpen && subItems && (
-                  <div className="ml-4 mt-1 space-y-1 border-l border-slate-700 pl-3">
+                  <div className="ml-4 mt-1 space-y-1 border-l border-slate-700/80 pl-3">
                     {subItems.map((sub) => (
                       <button
                         key={sub.key}
@@ -995,7 +852,7 @@ export default function DeshbordUI() {
                           setActiveTab(name);
                           setProductSubTab(sub.key);
                         }}
-                        className={`w-full rounded-md px-3 py-2 text-left text-[11px] font-medium transition ${
+                        className={`w-full rounded-lg px-3 py-2 text-left text-[11px] font-medium transition ${
                           productSubTab === sub.key && activeTab === name
                             ? "bg-red-900/40 text-red-400"
                             : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200"
@@ -1013,16 +870,12 @@ export default function DeshbordUI() {
 
         {/* STORE INFO */}
         <div className="shrink-0 border-t border-slate-800/80 bg-[#0b1120] p-3">
-          <div className="flex items-center gap-3 rounded-lg bg-slate-800/40 p-2">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-[10px] font-bold text-emerald-400">
+          <div className="flex items-center gap-3 rounded-xl bg-slate-800/40 p-2.5">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-[10px] font-bold text-emerald-400">
               AG
             </div>
-
             <div className="min-w-0 overflow-hidden">
-              <p className="truncate text-xs font-semibold text-slate-200">
-                {storeName}
-              </p>
-
+              <p className="truncate text-xs font-semibold text-slate-200">{storeName}</p>
               <p className="truncate text-[10px] text-slate-400">
                 {d.store?.store_sub || "Admin Dashboard"}
               </p>
@@ -1051,7 +904,7 @@ export default function DeshbordUI() {
           {activeTab === "Dashboard" ? (
             <DashboardView />
           ) : activeTab === "Orders" ? (
-            <OrdersView />
+            <OrdersPage />
           ) : activeTab === "Product" ? (
             <>
               {productSubTab === "add" && <AddProductPage />}
