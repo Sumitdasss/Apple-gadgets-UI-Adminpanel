@@ -21,18 +21,18 @@ const initialFormData = {
   category: "",
   subCategory: "",
   childCategory: "",
-  subChildCategory:"",
+  subChildCategory: "",
   brand: "",
   price: "",
   discountPrice: "",
   discountPercentage: "",
-   additionalCategories: [],
+  additionalCategories: [],
   stock: "",
   sku: "",
   colors: [],
   sizes: [],
   specifications: [],
-  ram:[],
+  ram: [],
   variants: [],
   rating: 0,
   isActive: true,
@@ -47,18 +47,18 @@ const initialFormData = {
 export default function AddProductPage() {
   const [loading, setLoading] = useState(false);
   const imageInputRef = useRef(null);
-const [subChildCategories, setSubChildCategories] = useState([]);
+  const [subChildCategories, setSubChildCategories] = useState([]);
   const [formData, setFormData] = useState(initialFormData);
 
   const [colorName, setColorName] = useState("");
   const [colorCode, setColorCode] = useState("#000000");
   const [colorImage, setColorImage] = useState(null);
-const [colorImagePreview, setColorImagePreview] = useState("");
+  const [colorImagePreview, setColorImagePreview] = useState("");
   const [size, setSize] = useState("");
   const [specKey, setSpecKey] = useState("");
   const [specValue, setSpecValue] = useState("");
   const [ramValue, setRamValue] = useState("");
-const [imagePreviews, setImagePreviews] = useState([]);
+  const [imagePreviews, setImagePreviews] = useState([]);
 
   // ==============================
   // VARIANTS (color + ram + storage combination)
@@ -88,15 +88,12 @@ const [imagePreviews, setImagePreviews] = useState([]);
   const [subCategoryAdding, setSubCategoryAdding] = useState(false);
   const [childCategoryAdding, setChildCategoryAdding] = useState(false);
 
+  const [newSubChildCategoryName, setNewSubChildCategoryName] = useState("");
 
-  const [newSubChildCategoryName, setNewSubChildCategoryName] =
-  useState("");
+  const [subChildCategoryAdding, setSubChildCategoryAdding] = useState(false);
 
-const [subChildCategoryAdding, setSubChildCategoryAdding] =
-  useState(false);
-
-const [showSubChildCategoryModal, setShowSubChildCategoryModal] =
-  useState(false);
+  const [showSubChildCategoryModal, setShowSubChildCategoryModal] =
+    useState(false);
   // ==============================
   // LOAD 4-LEVEL CATEGORY TREE
   // Main → Sub → Child → Sub Child
@@ -140,7 +137,7 @@ const [showSubChildCategoryModal, setShowSubChildCategoryModal] =
     }
 
     const selected = categories.find(
-      (category) => category._id === formData.category
+      (category) => category._id === formData.category,
     );
 
     setSubCategories(selected?.subCategories || []);
@@ -156,7 +153,7 @@ const [showSubChildCategoryModal, setShowSubChildCategoryModal] =
     }
 
     const selected = subCategories.find(
-      (subCategory) => subCategory._id === formData.subCategory
+      (subCategory) => subCategory._id === formData.subCategory,
     );
 
     setChildCategories(selected?.children || []);
@@ -172,7 +169,7 @@ const [showSubChildCategoryModal, setShowSubChildCategoryModal] =
     }
 
     const selected = childCategories.find(
-      (childCategory) => childCategory._id === formData.childCategory
+      (childCategory) => childCategory._id === formData.childCategory,
     );
 
     setSubChildCategories(selected?.subChildren || []);
@@ -244,132 +241,126 @@ const [showSubChildCategoryModal, setShowSubChildCategoryModal] =
   // ==============================
   // IMAGE
   // ==============================
-const handleImageChange = (e) => {
-  const files = Array.from(e.target.files || []);
+  const handleImageChange = (e) => {
+    const files = Array.from(e.target.files || []);
 
-  if (!files.length) return;
+    if (!files.length) return;
 
-  const validFiles = files.filter((file) =>
-    file.type.startsWith("image/")
-  );
+    const validFiles = files.filter((file) => file.type.startsWith("image/"));
 
-  if (validFiles.length !== files.length) {
-    alert("Only image files are allowed");
-  }
-
-  if (!validFiles.length) return;
-
-  setFormData((prev) => ({
-    ...prev,
-    images: [...prev.images, ...validFiles],
-  }));
-
-  const newPreviews = validFiles.map((file) => ({
-    file,
-    url: URL.createObjectURL(file),
-  }));
-
-  setImagePreviews((prev) => [...prev, ...newPreviews]);
-
-  // একই file আবার select করার সুযোগ
-  e.target.value = "";
-};
-
-const removeImage = (index) => {
-  setFormData((prev) => ({
-    ...prev,
-    images: prev.images.filter((_, i) => i !== index),
-  }));
-
-  setImagePreviews((prev) => {
-    const updated = [...prev];
-
-    if (updated[index]?.url) {
-      URL.revokeObjectURL(updated[index].url);
+    if (validFiles.length !== files.length) {
+      alert("Only image files are allowed");
     }
 
-    updated.splice(index, 1);
+    if (!validFiles.length) return;
 
-    return updated;
-  });
-};
+    setFormData((prev) => ({
+      ...prev,
+      images: [...prev.images, ...validFiles],
+    }));
+
+    const newPreviews = validFiles.map((file) => ({
+      file,
+      url: URL.createObjectURL(file),
+    }));
+
+    setImagePreviews((prev) => [...prev, ...newPreviews]);
+
+    // একই file আবার select করার সুযোগ
+    e.target.value = "";
+  };
+
+  const removeImage = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index),
+    }));
+
+    setImagePreviews((prev) => {
+      const updated = [...prev];
+
+      if (updated[index]?.url) {
+        URL.revokeObjectURL(updated[index].url);
+      }
+
+      updated.splice(index, 1);
+
+      return updated;
+    });
+  };
   // ==============================
   // COLOR
   // ==============================
   // ==============================
-// COLOR
-// ==============================
+  // COLOR
+  // ==============================
 
-const handleColorImageChange = (e) => {
-  const file = e.target.files?.[0];
+  const handleColorImageChange = (e) => {
+    const file = e.target.files?.[0];
 
-  if (!file) return;
+    if (!file) return;
 
-  if (!file.type.startsWith("image/")) {
-    alert("Only image files are allowed");
-    return;
-  }
+    if (!file.type.startsWith("image/")) {
+      alert("Only image files are allowed");
+      return;
+    }
 
-  setColorImage(file);
+    setColorImage(file);
 
-  const previewUrl = URL.createObjectURL(file);
-  setColorImagePreview(previewUrl);
+    const previewUrl = URL.createObjectURL(file);
+    setColorImagePreview(previewUrl);
 
-  e.target.value = "";
-};
+    e.target.value = "";
+  };
 
-const addColor = () => {
-  if (!colorName.trim()) {
-    alert("Enter color name");
-    return;
-  }
+  const addColor = () => {
+    if (!colorName.trim()) {
+      alert("Enter color name");
+      return;
+    }
 
-  if (!colorImage) {
-    alert("Please choose an image for this color");
-    return;
-  }
+    if (!colorImage) {
+      alert("Please choose an image for this color");
+      return;
+    }
 
-  if (
-    formData.colors.some(
-      (c) =>
-        c.name.toLowerCase() ===
-        colorName.trim().toLowerCase()
-    )
-  ) {
-    alert("This color is already added");
-    return;
-  }
+    if (
+      formData.colors.some(
+        (c) => c.name.toLowerCase() === colorName.trim().toLowerCase(),
+      )
+    ) {
+      alert("This color is already added");
+      return;
+    }
 
-  setFormData((prev) => ({
-    ...prev,
+    setFormData((prev) => ({
+      ...prev,
 
-    colors: [
-      ...prev.colors,
+      colors: [
+        ...prev.colors,
 
-      {
-        name: colorName.trim(),
-        code: colorCode,
-        imageFile: colorImage,
-        imagePreview: colorImagePreview,
-      },
-    ],
-  }));
+        {
+          name: colorName.trim(),
+          code: colorCode,
+          imageFile: colorImage,
+          imagePreview: colorImagePreview,
+        },
+      ],
+    }));
 
-  setColorName("");
-  setColorCode("#000000");
-  setColorImage(null);
-  setColorImagePreview("");
-};
+    setColorName("");
+    setColorCode("#000000");
+    setColorImage(null);
+    setColorImagePreview("");
+  };
 
-const removeColor = (index) => {
-  setFormData((prev) => ({
-    ...prev,
+  const removeColor = (index) => {
+    setFormData((prev) => ({
+      ...prev,
 
-    colors: prev.colors.filter(
-      (_, i) => i !== index
-    ),
-  }));
-};
+      colors: prev.colors.filter((_, i) => i !== index),
+    }));
+  };
 
   // ==============================
   // SIZE
@@ -398,45 +389,42 @@ const removeColor = (index) => {
   // ==============================
   // SPECIFICATION
   // ==============================
- const addSpecification = () => {
-  const key = specKey.trim();
-  const value = specValue.trim();
+  const addSpecification = () => {
+    const key = specKey.trim();
+    const value = specValue.trim();
 
-  if (!key) {
-    alert("Please enter specification name");
-    return;
-  }
+    if (!key) {
+      alert("Please enter specification name");
+      return;
+    }
 
-  if (!value) {
-    alert("Please enter specification value");
-    return;
-  }
+    if (!value) {
+      alert("Please enter specification value");
+      return;
+    }
 
-  const exists = formData.specifications.some(
-    (item) => item.key.toLowerCase() === key.toLowerCase()
-  );
+    const exists = formData.specifications.some(
+      (item) => item.key.toLowerCase() === key.toLowerCase(),
+    );
 
-  if (exists) {
-    alert("This specification already exists");
-    return;
-  }
+    if (exists) {
+      alert("This specification already exists");
+      return;
+    }
 
-  const newSpecification = {
-    key,
-    value,
+    const newSpecification = {
+      key,
+      value,
+    };
+
+    setFormData((prev) => ({
+      ...prev,
+      specifications: [...prev.specifications, newSpecification],
+    }));
+
+    setSpecKey("");
+    setSpecValue("");
   };
-
-  setFormData((prev) => ({
-    ...prev,
-    specifications: [
-      ...prev.specifications,
-      newSpecification,
-    ],
-  }));
-
-  setSpecKey("");
-  setSpecValue("");
-};
 
   const removeSpecification = (index) => {
     setFormData((prev) => ({
@@ -445,143 +433,133 @@ const removeColor = (index) => {
     }));
   };
 
+  const addRam = () => {
+    if (!ramValue.trim()) {
+      alert("Enter RAM / Memory value");
+      return;
+    }
 
+    if (
+      formData.ram.some(
+        (item) => item.toLowerCase() === ramValue.trim().toLowerCase(),
+      )
+    ) {
+      alert("This RAM / Memory is already added");
+      return;
+    }
 
+    setFormData((prev) => ({
+      ...prev,
+      ram: [...prev.ram, ramValue.trim()],
+    }));
 
-const addRam = () => {
-  if (!ramValue.trim()) {
-    alert("Enter RAM / Memory value");
-    return;
-  }
+    setRamValue("");
+  };
 
-  if (
-    formData.ram.some(
-      (item) =>
-        item.toLowerCase() === ramValue.trim().toLowerCase()
-    )
-  ) {
-    alert("This RAM / Memory is already added");
-    return;
-  }
-
-  setFormData((prev) => ({
-    ...prev,
-    ram: [...prev.ram, ramValue.trim()],
-  }));
-
-  setRamValue("");
-};
-
-const removeRam = (index) => {
-  setFormData((prev) => ({
-    ...prev,
-    ram: prev.ram.filter((_, i) => i !== index),
-  }));
-};
+  const removeRam = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      ram: prev.ram.filter((_, i) => i !== index),
+    }));
+  };
 
   // ==============================
   // VARIANTS (color + ram + storage → stock/price/sku)
   // ==============================
-const addVariant = () => {
-  if (!variantColorName) {
-    alert("Select a color for this variant");
-    return;
-  }
+  const addVariant = () => {
+    if (!variantColorName) {
+      alert("Select a color for this variant");
+      return;
+    }
 
-  if (!variantRam.trim()) {
-    alert("Enter RAM for this variant");
-    return;
-  }
+    if (!variantRam.trim()) {
+      alert("Enter RAM for this variant");
+      return;
+    }
 
-  if (!variantStorage.trim()) {
-    alert("Enter storage for this variant");
-    return;
-  }
+    if (!variantStorage.trim()) {
+      alert("Enter storage for this variant");
+      return;
+    }
 
-  if (variantStock === "" || Number(variantStock) < 0) {
-    alert("Enter a valid stock quantity");
-    return;
-  }
+    if (variantStock === "" || Number(variantStock) < 0) {
+      alert("Enter a valid stock quantity");
+      return;
+    }
 
-  if (!variantPrice || Number(variantPrice) <= 0) {
-    alert("Enter a valid price for this variant");
-    return;
-  }
+    if (!variantPrice || Number(variantPrice) <= 0) {
+      alert("Enter a valid price for this variant");
+      return;
+    }
 
-  if (!variantSku.trim()) {
-    alert("Enter a SKU for this variant");
-    return;
-  }
+    if (!variantSku.trim()) {
+      alert("Enter a SKU for this variant");
+      return;
+    }
 
-  // ==============================
-  // SKU MUST BE UNIQUE
-  // ==============================
-  const skuTaken = formData.variants.some(
-    (v) =>
-      v.sku?.trim().toLowerCase() ===
-      variantSku.trim().toLowerCase()
-  );
+    // ==============================
+    // SKU MUST BE UNIQUE
+    // ==============================
+    const skuTaken = formData.variants.some(
+      (v) => v.sku?.trim().toLowerCase() === variantSku.trim().toLowerCase(),
+    );
 
-  if (skuTaken) {
-    alert("This SKU is already used by another variant");
-    return;
-  }
+    if (skuTaken) {
+      alert("This SKU is already used by another variant");
+      return;
+    }
 
-  // ==============================
-  // FIND SELECTED COLOR
-  // ==============================
-  const selectedColor = formData.colors.find(
-    (c) =>
-      c.name.trim().toLowerCase() ===
-      variantColorName.trim().toLowerCase()
-  );
+    // ==============================
+    // FIND SELECTED COLOR
+    // ==============================
+    const selectedColor = formData.colors.find(
+      (c) =>
+        c.name.trim().toLowerCase() === variantColorName.trim().toLowerCase(),
+    );
 
-  if (!selectedColor) {
-    alert("Selected color was not found");
-    return;
-  }
+    if (!selectedColor) {
+      alert("Selected color was not found");
+      return;
+    }
 
-  // ==============================
-  // CREATE NEW VARIANT
-  // ==============================
-  const newVariant = {
-    color: {
-      name: selectedColor.name,
-      code: selectedColor.code || "#000000",
-    },
+    // ==============================
+    // CREATE NEW VARIANT
+    // ==============================
+    const newVariant = {
+      color: {
+        name: selectedColor.name,
+        code: selectedColor.code || "#000000",
+      },
 
-    ram: variantRam.trim(),
+      ram: variantRam.trim(),
 
-    storage: variantStorage.trim(),
+      storage: variantStorage.trim(),
 
-    stock: Number(variantStock),
+      stock: Number(variantStock),
 
-    price: Number(variantPrice),
+      price: Number(variantPrice),
 
-    sku: variantSku.trim(),
+      sku: variantSku.trim(),
+    };
+
+    // ==============================
+    // ADD VARIANT
+    // ==============================
+    setFormData((prev) => ({
+      ...prev,
+      variants: [...prev.variants, newVariant],
+    }));
+
+    // ==============================
+    // CLEAR VARIANT FORM
+    // ==============================
+    setVariantColorName("");
+    setVariantRam("");
+    setVariantStorage("");
+    setVariantStock("");
+    setVariantPrice("");
+    setVariantSku("");
   };
-
-  // ==============================
-  // ADD VARIANT
-  // ==============================
-  setFormData((prev) => ({
-    ...prev,
-    variants: [
-      ...prev.variants,
-      newVariant,
-    ],
-  }));
-
-  // ==============================
-  // CLEAR VARIANT FORM
-  // ==============================
-  setVariantColorName("");
-  setVariantRam("");
-  setVariantStorage("");
-  setVariantStock("");
-  setVariantPrice("");
-  setVariantSku("");
-};
 
   const removeVariant = (index) => {
     setFormData((prev) => ({
@@ -590,13 +568,12 @@ const addVariant = () => {
     }));
   };
 
-  
   // ==============================
   // RESET FORM
   // ==============================
   const resetForm = () => {
     setFormData(initialFormData);
-   setImagePreviews([]);
+    setImagePreviews([]);
     setSubCategories([]);
     setChildCategories([]);
     setColorName("");
@@ -605,7 +582,7 @@ const addVariant = () => {
     setSpecKey("");
     setSpecValue("");
     setColorImage(null);
-setColorImagePreview("");
+    setColorImagePreview("");
     setVariantColorName("");
     setVariantRam("");
     setVariantStorage("");
@@ -622,9 +599,9 @@ setColorImagePreview("");
     e.preventDefault();
 
     if (!formData.images || formData.images.length === 0) {
-  alert("Choose at least one product image");
-  return;
-}
+      alert("Choose at least one product image");
+      return;
+    }
 
     const rating = parseFloat(formData.rating);
     if (Number.isNaN(rating) || rating < 0 || rating > 5) {
@@ -659,63 +636,40 @@ setColorImagePreview("");
       data.append("discountPercentage", formData.discountPercentage || "");
       data.append("stock", formData.stock);
       data.append("sku", formData.sku);
-    // ==============================
-// COLORS DATA
-// ==============================
-data.append(
-  "additionalCategories",
-  JSON.stringify(
-    formData.additionalCategories || []
-  )
-);
-const colorsWithoutFiles = formData.colors.map(
-  (color) => ({
-    name: color.name,
-    code: color.code,
-  })
-);
+      // ==============================
+      // COLORS DATA
+      // ==============================
+      data.append(
+        "additionalCategories",
+        JSON.stringify(formData.additionalCategories || []),
+      );
+      const colorsWithoutFiles = formData.colors.map((color) => ({
+        name: color.name,
+        code: color.code,
+      }));
 
-data.append(
-  "colors",
-  JSON.stringify(colorsWithoutFiles)
-);
+      data.append("colors", JSON.stringify(colorsWithoutFiles));
 
+      // ==============================
+      // COLOR IMAGES
+      // ==============================
 
-// ==============================
-// COLOR IMAGES
-// ==============================
+      formData.colors.forEach((color) => {
+        if (color.imageFile) {
+          data.append("colorImages", color.imageFile);
+        }
+      });
 
-formData.colors.forEach((color) => {
-  if (color.imageFile) {
-    data.append(
-      "colorImages",
-      color.imageFile
-    );
-  }
-});
+      data.append("sizes", JSON.stringify(formData.sizes));
 
-data.append(
-  "sizes",
-  JSON.stringify(formData.sizes)
-);
+      data.append("ram", JSON.stringify(formData.ram));
 
-data.append(
-  "ram",
-  JSON.stringify(formData.ram)
-);
+      data.append("specifications", JSON.stringify(formData.specifications));
 
-data.append(
-  "specifications",
-  JSON.stringify(formData.specifications)
-);
-
-// ==============================
-// VARIANTS DATA
-// ==============================
-data.append(
-  "variants",
-  JSON.stringify(formData.variants)
-);
+      // ==============================
+      // VARIANTS DATA
+      // ==============================
+      data.append("variants", JSON.stringify(formData.variants));
 
       data.append("rating", String(rating));
       data.append("isActive", String(formData.isActive));
@@ -724,9 +678,9 @@ data.append(
       data.append("isBestSeller", String(formData.isBestSeller));
       data.append("metaTitle", formData.metaTitle);
       data.append("metaDescription", formData.metaDescription);
-   formData.images.forEach((image) => {
-  data.append("images", image);
-});
+      formData.images.forEach((image) => {
+        data.append("images", image);
+      });
 
       const response = await fetch(`${API_BASE}/products/addproduct`, {
         method: "POST",
@@ -854,8 +808,8 @@ data.append(
                   newSubCategory,
                 ],
               }
-            : mainCategory
-        )
+            : mainCategory,
+        ),
       );
 
       setFormData((prev) => ({
@@ -928,10 +882,10 @@ data.append(
                         newChildCategory,
                       ],
                     }
-                  : subCategory
+                  : subCategory,
             ),
           };
-        })
+        }),
       );
 
       setFormData((prev) => ({
@@ -979,9 +933,7 @@ data.append(
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          data?.message || "Could not add sub child category"
-        );
+        throw new Error(data?.message || "Could not add sub child category");
       }
 
       const created = data?.category;
@@ -1005,23 +957,22 @@ data.append(
 
                 return {
                   ...subCategory,
-                  children: (subCategory.children || []).map(
-                    (childCategory) =>
-                      childCategory._id === formData.childCategory
-                        ? {
-                            ...childCategory,
-                            subChildren: [
-                              ...(childCategory.subChildren || []),
-                              newSubChildCategory,
-                            ],
-                          }
-                        : childCategory
+                  children: (subCategory.children || []).map((childCategory) =>
+                    childCategory._id === formData.childCategory
+                      ? {
+                          ...childCategory,
+                          subChildren: [
+                            ...(childCategory.subChildren || []),
+                            newSubChildCategory,
+                          ],
+                        }
+                      : childCategory,
                   ),
                 };
-              }
+              },
             ),
           };
-        })
+        }),
       );
 
       setFormData((prev) => ({
@@ -1043,8 +994,10 @@ data.append(
     categories.find((c) => c._id === formData.category)?.name || "—";
   const selectedSubCategoryName =
     subCategories.find((s) => s._id === formData.subCategory)?.name || "—";
-const selectedChildCategoryName =
-  childCategories.find( (childCategory) => childCategory._id === formData.childCategory)?.name || "";
+  const selectedChildCategoryName =
+    childCategories.find(
+      (childCategory) => childCategory._id === formData.childCategory,
+    )?.name || "";
   return (
     <div className="min-h-screen bg-slate-100 p-4 md:p-8">
       <div className="mx-auto max-w-6xl">
@@ -1114,256 +1067,234 @@ const selectedChildCategoryName =
           </section>
 
           {/* ================= CATEGORY ================= */}
-        {/* ================= CATEGORY & BRAND ================= */}
-<section className="rounded-2xl bg-white p-6 shadow-sm">
-  <h2 className="mb-5 text-xl font-semibold text-slate-900">
-    Category &amp; Brand
-  </h2>
+          {/* ================= CATEGORY & BRAND ================= */}
+          <section className="rounded-2xl bg-white p-6 shadow-sm">
+            <h2 className="mb-5 text-xl font-semibold text-slate-900">
+              Category &amp; Brand
+            </h2>
 
-  {/* ================= MAIN CATEGORY TREE ================= */}
-  <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+            {/* ================= MAIN CATEGORY TREE ================= */}
+            <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+              {/* ================= CATEGORY ================= */}
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <label className="block text-sm font-medium text-slate-700">
+                    Category
+                  </label>
 
-    {/* ================= CATEGORY ================= */}
-    <div>
-      <div className="mb-2 flex items-center justify-between">
-        <label className="block text-sm font-medium text-slate-700">
-          Category
-        </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowCategoryModal(true)}
+                    className="text-sm font-semibold text-blue-600 hover:text-blue-700"
+                  >
+                    + Add
+                  </button>
+                </div>
 
-        <button
-          type="button"
-          onClick={() => setShowCategoryModal(true)}
-          className="text-sm font-semibold text-blue-600 hover:text-blue-700"
-        >
-          + Add
-        </button>
-      </div>
+                <select
+                  name="category"
+                  value={formData.category}
+                  onChange={handleChange}
+                  required
+                  disabled={categoriesLoading}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+                >
+                  <option value="">
+                    {categoriesLoading
+                      ? "Loading categories..."
+                      : categories.length === 0
+                        ? "No category yet"
+                        : "Select category"}
+                  </option>
 
-      <select
-        name="category"
-        value={formData.category}
-        onChange={handleChange}
-        required
-        disabled={categoriesLoading}
-        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
-      >
-        <option value="">
-          {categoriesLoading
-            ? "Loading categories..."
-            : categories.length === 0
-            ? "No category yet"
-            : "Select category"}
-        </option>
+                  {categories.map((category) => (
+                    <option key={category._id} value={category._id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
 
-        {categories.map((category) => (
-          <option
-            key={category._id}
-            value={category._id}
-          >
-            {category.name}
-          </option>
-        ))}
-      </select>
+                {categoriesError && (
+                  <p className="mt-2 text-sm text-red-600">
+                    {categoriesError}{" "}
+                    <button
+                      type="button"
+                      onClick={loadCategories}
+                      className="font-semibold underline"
+                    >
+                      Try again
+                    </button>
+                  </p>
+                )}
+              </div>
 
-      {categoriesError && (
-        <p className="mt-2 text-sm text-red-600">
-          {categoriesError}{" "}
+              {/* ================= SUB CATEGORY ================= */}
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <label className="block text-sm font-medium text-slate-700">
+                    Sub Category
+                  </label>
 
-          <button
-            type="button"
-            onClick={loadCategories}
-            className="font-semibold underline"
-          >
-            Try again
-          </button>
-        </p>
-      )}
-    </div>
+                  <button
+                    type="button"
+                    disabled={!formData.category}
+                    onClick={() => setShowSubCategoryModal(true)}
+                    className="text-sm font-semibold text-blue-600 hover:text-blue-700 disabled:cursor-not-allowed disabled:text-slate-400"
+                  >
+                    + Add
+                  </button>
+                </div>
 
-    {/* ================= SUB CATEGORY ================= */}
-    <div>
-      <div className="mb-2 flex items-center justify-between">
-        <label className="block text-sm font-medium text-slate-700">
-          Sub Category
-        </label>
+                <select
+                  name="subCategory"
+                  value={formData.subCategory}
+                  onChange={handleChange}
+                  disabled={!formData.category}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+                >
+                  <option value="">
+                    {!formData.category
+                      ? "Select a category first"
+                      : subCategories.length === 0
+                        ? "No sub category yet"
+                        : "Select sub category"}
+                  </option>
 
-        <button
-          type="button"
-          disabled={!formData.category}
-          onClick={() => setShowSubCategoryModal(true)}
-          className="text-sm font-semibold text-blue-600 hover:text-blue-700 disabled:cursor-not-allowed disabled:text-slate-400"
-        >
-          + Add
-        </button>
-      </div>
+                  {subCategories.map((subCategory) => (
+                    <option key={subCategory._id} value={subCategory._id}>
+                      {subCategory.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-      <select
-        name="subCategory"
-        value={formData.subCategory}
-        onChange={handleChange}
-        disabled={!formData.category}
-        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
-      >
-        <option value="">
-          {!formData.category
-            ? "Select a category first"
-            : subCategories.length === 0
-            ? "No sub category yet"
-            : "Select sub category"}
-        </option>
+              {/* ================= CHILD CATEGORY ================= */}
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <label className="block text-sm font-medium text-slate-700">
+                    Child Category
+                  </label>
 
-        {subCategories.map((subCategory) => (
-          <option
-            key={subCategory._id}
-            value={subCategory._id}
-          >
-            {subCategory.name}
-          </option>
-        ))}
-      </select>
-    </div>
+                  <button
+                    type="button"
+                    disabled={!formData.subCategory}
+                    onClick={() => setShowChildCategoryModal(true)}
+                    className="text-sm font-semibold text-blue-600 hover:text-blue-700 disabled:cursor-not-allowed disabled:text-slate-400"
+                  >
+                    + Add
+                  </button>
+                </div>
 
-    {/* ================= CHILD CATEGORY ================= */}
-    <div>
-      <div className="mb-2 flex items-center justify-between">
-        <label className="block text-sm font-medium text-slate-700">
-          Child Category
-        </label>
+                <select
+                  name="childCategory"
+                  value={formData.childCategory}
+                  onChange={handleChange}
+                  disabled={!formData.subCategory}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+                >
+                  <option value="">
+                    {!formData.subCategory
+                      ? "Select a sub category first"
+                      : childCategories.length === 0
+                        ? "No child category yet"
+                        : "Select child category"}
+                  </option>
 
-        <button
-          type="button"
-          disabled={!formData.subCategory}
-          onClick={() => setShowChildCategoryModal(true)}
-          className="text-sm font-semibold text-blue-600 hover:text-blue-700 disabled:cursor-not-allowed disabled:text-slate-400"
-        >
-          + Add
-        </button>
-      </div>
+                  {childCategories.map((childCategory) => (
+                    <option key={childCategory._id} value={childCategory._id}>
+                      {childCategory.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-      <select
-        name="childCategory"
-        value={formData.childCategory}
-        onChange={handleChange}
-        disabled={!formData.subCategory}
-        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
-      >
-        <option value="">
-          {!formData.subCategory
-            ? "Select a sub category first"
-            : childCategories.length === 0
-            ? "No child category yet"
-            : "Select child category"}
-        </option>
+              {/* ================= SUB CHILD CATEGORY ================= */}
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <label className="block text-sm font-medium text-slate-700">
+                    Sub Child Category
+                  </label>
 
-        {childCategories.map((childCategory) => (
-          <option
-            key={childCategory._id}
-            value={childCategory._id}
-          >
-            {childCategory.name}
-          </option>
-        ))}
-      </select>
-    </div>
+                  <button
+                    type="button"
+                    disabled={!formData.childCategory}
+                    onClick={() => setShowSubChildCategoryModal(true)}
+                    className="text-sm font-semibold text-blue-600 hover:text-blue-700 disabled:cursor-not-allowed disabled:text-slate-400"
+                  >
+                    + Add
+                  </button>
+                </div>
 
-    {/* ================= SUB CHILD CATEGORY ================= */}
-    <div>
-      <div className="mb-2 flex items-center justify-between">
-        <label className="block text-sm font-medium text-slate-700">
-          Sub Child Category
-        </label>
+                <select
+                  name="subChildCategory"
+                  value={formData.subChildCategory}
+                  onChange={handleChange}
+                  disabled={!formData.childCategory}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+                >
+                  <option value="">
+                    {!formData.childCategory
+                      ? "Select a child category first"
+                      : subChildCategories.length === 0
+                        ? "No sub child category yet"
+                        : "Select sub child category"}
+                  </option>
 
-        <button
-          type="button"
-          disabled={!formData.childCategory}
-          onClick={() =>
-            setShowSubChildCategoryModal(true)
-          }
-          className="text-sm font-semibold text-blue-600 hover:text-blue-700 disabled:cursor-not-allowed disabled:text-slate-400"
-        >
-          + Add
-        </button>
-      </div>
+                  {subChildCategories.map((subChildCategory) => (
+                    <option
+                      key={subChildCategory._id}
+                      value={subChildCategory._id}
+                    >
+                      {subChildCategory.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
 
-      <select
-        name="subChildCategory"
-        value={formData.subChildCategory}
-        onChange={handleChange}
-        disabled={!formData.childCategory}
-        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
-      >
-        <option value="">
-          {!formData.childCategory
-            ? "Select a child category first"
-            : subChildCategories.length === 0
-            ? "No sub child category yet"
-            : "Select sub child category"}
-        </option>
+            {/* ================= BRAND ================= */}
+            <div className="mt-5 max-w-md">
+              <Input
+                label="Brand"
+                name="brand"
+                value={formData.brand}
+                onChange={handleChange}
+                placeholder="Apple"
+              />
+            </div>
 
-        {subChildCategories.map(
-          (subChildCategory) => (
-            <option
-              key={subChildCategory._id}
-              value={subChildCategory._id}
-            >
-              {subChildCategory.name}
-            </option>
-          )
-        )}
-      </select>
-    </div>
-  </div>
-
-  {/* ================= BRAND ================= */}
-  <div className="mt-5 max-w-md">
-    <Input
-      label="Brand"
-      name="brand"
-      value={formData.brand}
-      onChange={handleChange}
-      placeholder="Apple"
-    />
-  </div>
-
-  {/* =====================================================
+            {/* =====================================================
       ADDITIONAL CATEGORIES
       ===================================================== */}
-  <div className="mt-6 border-t border-slate-200 pt-6">
+            <div className="mt-6 border-t border-slate-200 pt-6">
+              <div className="mb-4">
+                <h3 className="text-base font-semibold text-slate-900">
+                  Additional Categories
+                </h3>
 
-    <div className="mb-4">
-      <h3 className="text-base font-semibold text-slate-900">
-        Additional Categories
-      </h3>
+                <p className="mt-1 text-sm text-slate-500">
+                  Select other main categories where this product should also
+                  appear.
+                </p>
+              </div>
 
-      <p className="mt-1 text-sm text-slate-500">
-        Select other main categories where this product
-        should also appear.
-      </p>
-    </div>
+              {categories.length === 0 ? (
+                <p className="text-sm text-slate-500">
+                  No categories available.
+                </p>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                  {categories
+                    .filter((category) => category._id !== formData.category)
+                    .map((category) => {
+                      const checked = (
+                        formData.additionalCategories || []
+                      ).includes(category._id);
 
-    {categories.length === 0 ? (
-      <p className="text-sm text-slate-500">
-        No categories available.
-      </p>
-    ) : (
-      <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-
-        {categories
-          .filter(
-            (category) =>
-              category._id !== formData.category
-          )
-          .map((category) => {
-
-            const checked =
-              (
-                formData.additionalCategories || []
-              ).includes(category._id);
-
-            return (
-              <label
-                key={category._id}
-                className={`
+                      return (
+                        <label
+                          key={category._id}
+                          className={`
                   flex cursor-pointer items-center gap-3
                   rounded-xl border px-4 py-3
                   transition
@@ -1373,101 +1304,81 @@ const selectedChildCategoryName =
                       : "border-slate-300 bg-white hover:border-blue-300"
                   }
                 `}
-              >
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => {
+                              setFormData((prev) => {
+                                const current = prev.additionalCategories || [];
 
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={(e) => {
+                                if (e.target.checked) {
+                                  // duplicate prevent
+                                  if (current.includes(category._id)) {
+                                    return prev;
+                                  }
 
-                    setFormData((prev) => {
+                                  return {
+                                    ...prev,
 
-                      const current =
-                        prev.additionalCategories || [];
+                                    additionalCategories: [
+                                      ...current,
+                                      category._id,
+                                    ],
+                                  };
+                                }
 
-                      if (e.target.checked) {
+                                // uncheck
+                                return {
+                                  ...prev,
 
-                        // duplicate prevent
-                        if (
-                          current.includes(
-                            category._id
-                          )
-                        ) {
-                          return prev;
-                        }
+                                  additionalCategories: current.filter(
+                                    (id) => id !== category._id,
+                                  ),
+                                };
+                              });
+                            }}
+                            className="h-4 w-4 accent-blue-600"
+                          />
 
-                        return {
-                          ...prev,
+                          <span className="text-sm font-medium text-slate-700">
+                            {category.name}
+                          </span>
+                        </label>
+                      );
+                    })}
+                </div>
+              )}
 
-                          additionalCategories: [
-                            ...current,
-                            category._id,
-                          ],
-                        };
-                      }
+              {/* Selected category preview */}
+              {formData.additionalCategories?.length > 0 && (
+                <div className="mt-4 rounded-xl bg-slate-50 p-4">
+                  <p className="mb-2 text-sm font-semibold text-slate-700">
+                    Selected additional categories:
+                  </p>
 
-                      // uncheck
-                      return {
-                        ...prev,
+                  <div className="flex flex-wrap gap-2">
+                    {formData.additionalCategories.map((categoryId) => {
+                      const category = categories.find(
+                        (item) => item._id === categoryId,
+                      );
 
-                        additionalCategories:
-                          current.filter(
-                            (id) =>
-                              id !== category._id
-                          ),
-                      };
-                    });
-                  }}
-                  className="h-4 w-4 accent-blue-600"
-                />
+                      if (!category) return null;
 
-                <span className="text-sm font-medium text-slate-700">
-                  {category.name}
-                </span>
-
-              </label>
-            );
-          })}
-      </div>
-    )}
-
-    {/* Selected category preview */}
-    {formData.additionalCategories?.length > 0 && (
-      <div className="mt-4 rounded-xl bg-slate-50 p-4">
-
-        <p className="mb-2 text-sm font-semibold text-slate-700">
-          Selected additional categories:
-        </p>
-
-        <div className="flex flex-wrap gap-2">
-
-          {formData.additionalCategories.map(
-            (categoryId) => {
-
-              const category =
-                categories.find(
-                  (item) =>
-                    item._id === categoryId
-                );
-
-              if (!category) return null;
-
-              return (
-                <span
-                  key={categoryId}
-                  className="rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-700"
-                >
-                  {category.name}
-                </span>
-              );
-            }
-          )}
-
-        </div>
-      </div>
-    )}
-  </div>
-</section>
+                      return (
+                        <span
+                          key={categoryId}
+                          className="rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-700"
+                        >
+                          {category.name}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
 
           {/* ================= PRICE ================= */}
           <section className="rounded-2xl bg-white p-6 shadow-sm">
@@ -1527,105 +1438,100 @@ const selectedChildCategoryName =
           </section>
 
           {/* ================= IMAGE ================= */}
-   {/* ================= PRODUCT GALLERY ================= */}
-<section className="rounded-2xl bg-white p-6 shadow-sm">
-  <h2 className="mb-2 text-xl font-semibold text-slate-900">
-    Product Gallery
-  </h2>
+          {/* ================= PRODUCT GALLERY ================= */}
+          <section className="rounded-2xl bg-white p-6 shadow-sm">
+            <h2 className="mb-2 text-xl font-semibold text-slate-900">
+              Product Gallery
+            </h2>
 
-  <p className="mb-5 text-sm text-slate-500">
-    Select multiple product images. You can add as many images as needed.
-  </p>
-
-  <input
-    ref={imageInputRef}
-    type="file"
-    accept="image/*"
-    multiple
-    onChange={handleImageChange}
-    className="w-full cursor-pointer rounded-xl border border-dashed border-slate-400 bg-slate-50 p-4"
-  />
-
-  {/* Gallery Preview */}
-  {imagePreviews.length > 0 && (
-    <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-      {imagePreviews.map((image, index) => (
-        <div
-          key={`${image.file.name}-${index}`}
-          className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white"
-        >
-          <img
-            src={image.url}
-            alt={`Product image ${index + 1}`}
-            className="h-40 w-full object-cover"
-          />
-
-          {/* Main image badge */}
-          {index === 0 && (
-            <span className="absolute left-2 top-2 rounded-full bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white">
-              Main Image
-            </span>
-          )}
-
-          {/* Remove */}
-          <button
-            type="button"
-            onClick={() => removeImage(index)}
-            className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-red-500 text-lg font-bold text-white opacity-90 transition hover:bg-red-600"
-          >
-            ×
-          </button>
-
-          <div className="p-2">
-            <p className="truncate text-xs text-slate-500">
-              {image.file.name}
+            <p className="mb-5 text-sm text-slate-500">
+              Select multiple product images. You can add as many images as
+              needed.
             </p>
-          </div>
-        </div>
-      ))}
-    </div>
-  )}
 
-  {imagePreviews.length === 0 && (
-    <div className="mt-5 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
-      <p className="text-sm font-medium text-slate-600">
-        No images selected
-      </p>
-      <p className="mt-1 text-xs text-slate-400">
-        Select multiple images to create your product gallery
-      </p>
-    </div>
-  )}
-</section>
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleImageChange}
+              className="w-full cursor-pointer rounded-xl border border-dashed border-slate-400 bg-slate-50 p-4"
+            />
+
+            {/* Gallery Preview */}
+            {imagePreviews.length > 0 && (
+              <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                {imagePreviews.map((image, index) => (
+                  <div
+                    key={`${image.file.name}-${index}`}
+                    className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white"
+                  >
+                    <img
+                      src={image.url}
+                      alt={`Product image ${index + 1}`}
+                      className="h-40 w-full object-cover"
+                    />
+
+                    {/* Main image badge */}
+                    {index === 0 && (
+                      <span className="absolute left-2 top-2 rounded-full bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white">
+                        Main Image
+                      </span>
+                    )}
+
+                    {/* Remove */}
+                    <button
+                      type="button"
+                      onClick={() => removeImage(index)}
+                      className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-red-500 text-lg font-bold text-white opacity-90 transition hover:bg-red-600"
+                    >
+                      ×
+                    </button>
+
+                    <div className="p-2">
+                      <p className="truncate text-xs text-slate-500">
+                        {image.file.name}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {imagePreviews.length === 0 && (
+              <div className="mt-5 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
+                <p className="text-sm font-medium text-slate-600">
+                  No images selected
+                </p>
+                <p className="mt-1 text-xs text-slate-400">
+                  Select multiple images to create your product gallery
+                </p>
+              </div>
+            )}
+          </section>
 
           {/* ================= COLORS ================= */}
-        {/* ================= COLORS ================= */}
+          {/* ================= COLORS ================= */}
 
-<section className="rounded-2xl bg-white p-6 shadow-sm">
+          <section className="rounded-2xl bg-white p-6 shadow-sm">
+            <h2 className="mb-5 text-xl font-semibold">Colors</h2>
 
-  <h2 className="mb-5 text-xl font-semibold">
-    Colors
-  </h2>
+            {/* ================= ADD COLOR ================= */}
 
-  {/* ================= ADD COLOR ================= */}
+            <div className="grid gap-4 md:grid-cols-2">
+              {/* COLOR NAME */}
 
-  <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Color Name
+                </label>
 
-    {/* COLOR NAME */}
-
-    <div>
-      <label className="mb-2 block text-sm font-medium text-slate-700">
-        Color Name
-      </label>
-
-      <input
-        type="text"
-        value={colorName}
-        onChange={(e) =>
-          setColorName(e.target.value)
-        }
-        placeholder="Example: Burgundy"
-        className="
+                <input
+                  type="text"
+                  value={colorName}
+                  onChange={(e) => setColorName(e.target.value)}
+                  placeholder="Example: Burgundy"
+                  className="
           w-full
           rounded-xl
           border
@@ -1635,25 +1541,22 @@ const selectedChildCategoryName =
           outline-none
           focus:border-blue-500
         "
-      />
-    </div>
+                />
+              </div>
 
-    {/* COLOR CODE */}
+              {/* COLOR CODE */}
 
-    <div>
-      <label className="mb-2 block text-sm font-medium text-slate-700">
-        Color Code
-      </label>
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Color Code
+                </label>
 
-      <div className="flex gap-3">
-
-        <input
-          type="color"
-          value={colorCode}
-          onChange={(e) =>
-            setColorCode(e.target.value)
-          }
-          className="
+                <div className="flex gap-3">
+                  <input
+                    type="color"
+                    value={colorCode}
+                    onChange={(e) => setColorCode(e.target.value)}
+                    className="
             h-[48px]
             w-[70px]
             cursor-pointer
@@ -1661,15 +1564,13 @@ const selectedChildCategoryName =
             border
             border-slate-300
           "
-        />
+                  />
 
-        <input
-          type="text"
-          value={colorCode}
-          onChange={(e) =>
-            setColorCode(e.target.value)
-          }
-          className="
+                  <input
+                    type="text"
+                    value={colorCode}
+                    onChange={(e) => setColorCode(e.target.value)}
+                    className="
             flex-1
             rounded-xl
             border
@@ -1680,28 +1581,23 @@ const selectedChildCategoryName =
             outline-none
             focus:border-blue-500
           "
-        />
+                  />
+                </div>
+              </div>
+            </div>
 
-      </div>
-    </div>
+            {/* ================= COLOR IMAGE ================= */}
 
-  </div>
+            <div className="mt-5">
+              <label className="mb-2 block text-sm font-medium text-slate-700">
+                Color Image
+              </label>
 
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                {/* Upload */}
 
-  {/* ================= COLOR IMAGE ================= */}
-
-  <div className="mt-5">
-
-    <label className="mb-2 block text-sm font-medium text-slate-700">
-      Color Image
-    </label>
-
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-
-      {/* Upload */}
-
-      <label
-        className="
+                <label
+                  className="
           flex
           h-32
           w-32
@@ -1717,68 +1613,59 @@ const selectedChildCategoryName =
           bg-slate-50
           hover:border-blue-500
         "
-      >
+                >
+                  {colorImagePreview ? (
+                    <img
+                      src={colorImagePreview}
+                      alt="Color preview"
+                      className="h-full w-full object-contain p-2"
+                    />
+                  ) : (
+                    <>
+                      <span className="text-3xl text-slate-400">+</span>
 
-        {colorImagePreview ? (
-          <img
-            src={colorImagePreview}
-            alt="Color preview"
-            className="h-full w-full object-contain p-2"
-          />
-        ) : (
-          <>
-            <span className="text-3xl text-slate-400">
-              +
-            </span>
+                      <span className="mt-1 text-xs text-slate-500">
+                        Choose Image
+                      </span>
+                    </>
+                  )}
 
-            <span className="mt-1 text-xs text-slate-500">
-              Choose Image
-            </span>
-          </>
-        )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleColorImageChange}
+                    className="hidden"
+                  />
+                </label>
 
-        <input
-          type="file"
-          accept="image/*"
-          onChange={handleColorImageChange}
-          className="hidden"
-        />
+                {/* File information */}
 
-      </label>
+                <div>
+                  {colorImage ? (
+                    <>
+                      <p className="text-sm font-medium text-slate-700">
+                        {colorImage.name}
+                      </p>
 
-      {/* File information */}
+                      <p className="mt-1 text-xs text-green-600">
+                        Image selected
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-sm text-slate-500">
+                      Upload the phone image for this color
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
 
-      <div>
+            {/* ================= ADD BUTTON ================= */}
 
-        {colorImage ? (
-          <>
-            <p className="text-sm font-medium text-slate-700">
-              {colorImage.name}
-            </p>
-
-            <p className="mt-1 text-xs text-green-600">
-              Image selected
-            </p>
-          </>
-        ) : (
-          <p className="text-sm text-slate-500">
-            Upload the phone image for this color
-          </p>
-        )}
-
-      </div>
-
-    </div>
-
-  </div>
-
-
-  {/* ================= ADD BUTTON ================= */}
-
-  <button
-    type="button"
-    onClick={addColor}
-    className="
+            <button
+              type="button"
+              onClick={addColor}
+              className="
       mt-5
       rounded-xl
       bg-blue-600
@@ -1789,24 +1676,22 @@ const selectedChildCategoryName =
       transition
       hover:bg-blue-700
     "
-  >
-    + Add Color
-  </button>
+            >
+              + Add Color
+            </button>
 
+            {/* ================= ADDED COLORS ================= */}
 
-  {/* ================= ADDED COLORS ================= */}
+            {formData.colors.length > 0 && (
+              <div className="mt-6 space-y-3">
+                <h3 className="text-sm font-semibold text-slate-700">
+                  Added Colors
+                </h3>
 
-  {formData.colors.length > 0 && (
-    <div className="mt-6 space-y-3">
-
-      <h3 className="text-sm font-semibold text-slate-700">
-        Added Colors
-      </h3>
-
-      {formData.colors.map((color, index) => (
-        <div
-          key={`${color.name}-${index}`}
-          className="
+                {formData.colors.map((color, index) => (
+                  <div
+                    key={`${color.name}-${index}`}
+                    className="
             flex
             items-center
             justify-between
@@ -1817,17 +1702,15 @@ const selectedChildCategoryName =
             bg-slate-50
             p-3
           "
-        >
+                  >
+                    <div className="flex items-center gap-4">
+                      {/* IMAGE */}
 
-          <div className="flex items-center gap-4">
-
-            {/* IMAGE */}
-
-            {color.imagePreview ? (
-              <img
-                src={color.imagePreview}
-                alt={color.name}
-                className="
+                      {color.imagePreview ? (
+                        <img
+                          src={color.imagePreview}
+                          alt={color.name}
+                          className="
                   h-16
                   w-16
                   rounded-lg
@@ -1837,61 +1720,50 @@ const selectedChildCategoryName =
                   object-contain
                   p-1
                 "
-              />
-            ) : (
-              <div
-                className="
+                        />
+                      ) : (
+                        <div
+                          className="
                   h-16
                   w-16
                   rounded-lg
                   border
                   bg-white
                 "
-              />
-            )}
+                        />
+                      )}
 
-            {/* COLOR */}
+                      {/* COLOR */}
 
-            <div>
-
-              <div className="flex items-center gap-2">
-
-                <span
-                  className="
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="
                     h-5
                     w-5
                     rounded-full
                     border
                   "
-                  style={{
-                    backgroundColor:
-                      color.code,
-                  }}
-                />
+                            style={{
+                              backgroundColor: color.code,
+                            }}
+                          />
 
-                <span className="font-medium">
-                  {color.name}
-                </span>
+                          <span className="font-medium">{color.name}</span>
+                        </div>
 
-              </div>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {color.code}
+                        </p>
+                      </div>
+                    </div>
 
-              <p className="mt-1 text-xs text-slate-500">
-                {color.code}
-              </p>
+                    {/* REMOVE */}
 
-            </div>
-
-          </div>
-
-
-          {/* REMOVE */}
-
-          <button
-            type="button"
-            onClick={() =>
-              removeColor(index)
-            }
-            className="
+                    <button
+                      type="button"
+                      onClick={() => removeColor(index)}
+                      className="
               flex
               h-8
               w-8
@@ -1902,17 +1774,14 @@ const selectedChildCategoryName =
               text-red-500
               hover:bg-red-100
             "
-          >
-            ×
-          </button>
-
-        </div>
-      ))}
-
-    </div>
-  )}
-
-</section>
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
 
           {/* ================= SIZES ================= */}
           <section className="rounded-2xl bg-white p-6 shadow-sm">
@@ -1955,176 +1824,176 @@ const selectedChildCategoryName =
           </section>
 
           {/* ================= SPECIFICATIONS ================= */}
-     {/* ================= SPECIFICATIONS ================= */}
-<section className="rounded-2xl bg-white p-6 shadow-sm">
-  <div className="mb-6">
-    <h2 className="text-xl font-semibold text-slate-900">
-      Specifications
-    </h2>
+          {/* ================= SPECIFICATIONS ================= */}
+          <section className="rounded-2xl bg-white p-6 shadow-sm">
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold text-slate-900">
+                Specifications
+              </h2>
 
-    <p className="mt-1 text-sm text-slate-500">
-      Add product technical specifications
-    </p>
-  </div>
+              <p className="mt-1 text-sm text-slate-500">
+                Add product technical specifications
+              </p>
+            </div>
 
-  {/* Add Specification */}
-  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-    <h3 className="mb-4 text-base font-semibold text-slate-800">
-      Add Specification
-    </h3>
+            {/* Add Specification */}
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+              <h3 className="mb-4 text-base font-semibold text-slate-800">
+                Add Specification
+              </h3>
 
-    <div className="grid gap-4 md:grid-cols-2">
-      {/* Specification Name */}
-      <div>
-        <label className="mb-2 block text-sm font-medium text-slate-700">
-          Specification Name
-        </label>
+              <div className="grid gap-4 md:grid-cols-2">
+                {/* Specification Name */}
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    Specification Name
+                  </label>
 
-        <input
-          value={specKey}
-          onChange={(e) => setSpecKey(e.target.value)}
-          placeholder="e.g. Display Type"
-          className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-        />
-      </div>
+                  <input
+                    value={specKey}
+                    onChange={(e) => setSpecKey(e.target.value)}
+                    placeholder="e.g. Display Type"
+                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  />
+                </div>
 
-      {/* Specification Value */}
-      <div>
-        <label className="mb-2 block text-sm font-medium text-slate-700">
-          Specification Value
-        </label>
+                {/* Specification Value */}
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    Specification Value
+                  </label>
 
-        <input
-          value={specValue}
-          onChange={(e) => setSpecValue(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              addSpecification();
-            }
-          }}
-          placeholder="e.g. LTPO Super Retina XDR OLED, 120Hz"
-          className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-        />
-      </div>
-    </div>
-
-    <button
-      type="button"
-      onClick={addSpecification}
-      className="mt-4 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white transition hover:bg-blue-700"
-    >
-      + Add Specification
-    </button>
-  </div>
-
-  {/* RAM / MEMORY */}
-  <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
-    <div className="mb-4">
-      <h3 className="text-base font-semibold text-slate-800">
-        Memory / RAM
-      </h3>
-
-      <p className="mt-1 text-sm text-slate-500">
-        You can add multiple memory variants
-      </p>
-    </div>
-
-    <div className="flex flex-col gap-3 md:flex-row">
-      <input
-        value={ramValue}
-        onChange={(e) => setRamValue(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            addRam();
-          }
-        }}
-        placeholder="e.g. 256GB / 12GB RAM"
-        className="flex-1 rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-      />
-
-      <button
-        type="button"
-        onClick={addRam}
-        className="rounded-xl bg-slate-900 px-6 py-3 font-semibold text-white transition hover:bg-slate-800"
-      >
-        + Add Memory
-      </button>
-    </div>
-
-    {/* RAM Array */}
-    {formData.ram.length > 0 && (
-      <div className="mt-4 flex flex-wrap gap-3">
-        {formData.ram.map((item, index) => (
-          <div
-            key={`${item}-${index}`}
-            className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3"
-          >
-            <span className="text-sm font-medium text-slate-700">
-              {item}
-            </span>
-
-            <button
-              type="button"
-              onClick={() => removeRam(index)}
-              className="font-bold text-red-500 hover:text-red-700"
-            >
-              ×
-            </button>
-          </div>
-        ))}
-      </div>
-    )}
-  </div>
-
-  {/* ADDED SPECIFICATIONS */}
-  {formData.specifications.length > 0 && (
-    <div className="mt-6">
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-base font-semibold text-slate-800">
-          Added Specifications
-        </h3>
-
-        <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-600">
-          {formData.specifications.length} items
-        </span>
-      </div>
-
-      <div className="overflow-hidden rounded-2xl border border-slate-200">
-        <div className="divide-y divide-slate-200">
-          {formData.specifications.map((item, index) => (
-            <div
-              key={`${item.key}-${index}`}
-              className="grid grid-cols-1 md:grid-cols-[220px_1fr_auto] md:items-center"
-            >
-              {/* Key */}
-              <div className="bg-slate-50 px-4 py-4 font-medium text-slate-700">
-                {item.key}
+                  <input
+                    value={specValue}
+                    onChange={(e) => setSpecValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addSpecification();
+                      }
+                    }}
+                    placeholder="e.g. LTPO Super Retina XDR OLED, 120Hz"
+                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  />
+                </div>
               </div>
 
-              {/* Value */}
-              <div className="px-4 py-4 text-sm text-slate-600">
-                {item.value}
+              <button
+                type="button"
+                onClick={addSpecification}
+                className="mt-4 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white transition hover:bg-blue-700"
+              >
+                + Add Specification
+              </button>
+            </div>
+
+            {/* RAM / MEMORY */}
+            <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+              <div className="mb-4">
+                <h3 className="text-base font-semibold text-slate-800">
+                  Memory / RAM
+                </h3>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  You can add multiple memory variants
+                </p>
               </div>
 
-              {/* Remove */}
-              <div className="px-4 py-3">
+              <div className="flex flex-col gap-3 md:flex-row">
+                <input
+                  value={ramValue}
+                  onChange={(e) => setRamValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addRam();
+                    }
+                  }}
+                  placeholder="e.g. 256GB / 12GB RAM"
+                  className="flex-1 rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                />
+
                 <button
                   type="button"
-                  onClick={() => removeSpecification(index)}
-                  className="rounded-lg px-3 py-2 text-sm font-medium text-red-500 transition hover:bg-red-50 hover:text-red-700"
+                  onClick={addRam}
+                  className="rounded-xl bg-slate-900 px-6 py-3 font-semibold text-white transition hover:bg-slate-800"
                 >
-                  Remove
+                  + Add Memory
                 </button>
               </div>
+
+              {/* RAM Array */}
+              {formData.ram.length > 0 && (
+                <div className="mt-4 flex flex-wrap gap-3">
+                  {formData.ram.map((item, index) => (
+                    <div
+                      key={`${item}-${index}`}
+                      className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3"
+                    >
+                      <span className="text-sm font-medium text-slate-700">
+                        {item}
+                      </span>
+
+                      <button
+                        type="button"
+                        onClick={() => removeRam(index)}
+                        className="font-bold text-red-500 hover:text-red-700"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  )}
-</section>
+
+            {/* ADDED SPECIFICATIONS */}
+            {formData.specifications.length > 0 && (
+              <div className="mt-6">
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="text-base font-semibold text-slate-800">
+                    Added Specifications
+                  </h3>
+
+                  <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-600">
+                    {formData.specifications.length} items
+                  </span>
+                </div>
+
+                <div className="overflow-hidden rounded-2xl border border-slate-200">
+                  <div className="divide-y divide-slate-200">
+                    {formData.specifications.map((item, index) => (
+                      <div
+                        key={`${item.key}-${index}`}
+                        className="grid grid-cols-1 md:grid-cols-[220px_1fr_auto] md:items-center"
+                      >
+                        {/* Key */}
+                        <div className="bg-slate-50 px-4 py-4 font-medium text-slate-700">
+                          {item.key}
+                        </div>
+
+                        {/* Value */}
+                        <div className="px-4 py-4 text-sm text-slate-600">
+                          {item.value}
+                        </div>
+
+                        {/* Remove */}
+                        <div className="px-4 py-3">
+                          <button
+                            type="button"
+                            onClick={() => removeSpecification(index)}
+                            className="rounded-lg px-3 py-2 text-sm font-medium text-red-500 transition hover:bg-red-50 hover:text-red-700"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
 
           {/* ================= VARIANTS ================= */}
           <section className="rounded-2xl bg-white p-6 shadow-sm">
@@ -2134,8 +2003,8 @@ const selectedChildCategoryName =
               </h2>
 
               <p className="mt-1 text-sm text-slate-500">
-                Combine a color, RAM and storage to create a purchasable
-                variant with its own stock, price and SKU.
+                Combine a color, RAM and storage to create a purchasable variant
+                with its own stock, price and SKU.
               </p>
             </div>
 
@@ -2589,65 +2458,58 @@ const selectedChildCategoryName =
         </div>
       </Modal>
 
-
-
-
       <Modal
-  open={showSubChildCategoryModal}
-  title="Add sub child category"
-  onClose={() => {
-    setShowSubChildCategoryModal(false);
-    setNewSubChildCategoryName("");
-  }}
->
-  <p className="mb-3 text-sm text-slate-500">
-    Under{" "}
-    <span className="font-semibold text-slate-700">
-      {selectedCategoryName} › {selectedSubCategoryName} ›{" "}
-      {selectedChildCategoryName}
-    </span>
-  </p>
+        open={showSubChildCategoryModal}
+        title="Add sub child category"
+        onClose={() => {
+          setShowSubChildCategoryModal(false);
+          setNewSubChildCategoryName("");
+        }}
+      >
+        <p className="mb-3 text-sm text-slate-500">
+          Under{" "}
+          <span className="font-semibold text-slate-700">
+            {selectedCategoryName} › {selectedSubCategoryName} ›{" "}
+            {selectedChildCategoryName}
+          </span>
+        </p>
 
-  <input
-    autoFocus
-    value={newSubChildCategoryName}
-    onChange={(e) =>
-      setNewSubChildCategoryName(e.target.value)
-    }
-    onKeyDown={(e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        handleAddSubChildCategory();
-      }
-    }}
-    placeholder="Sub child category name"
-    className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
-  />
+        <input
+          autoFocus
+          value={newSubChildCategoryName}
+          onChange={(e) => setNewSubChildCategoryName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              handleAddSubChildCategory();
+            }
+          }}
+          placeholder="Sub child category name"
+          className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
+        />
 
-  <div className="mt-5 flex justify-end gap-3">
-    <button
-      type="button"
-      onClick={() => {
-        setShowSubChildCategoryModal(false);
-        setNewSubChildCategoryName("");
-      }}
-      className="rounded-xl border border-slate-300 px-5 py-2.5 font-medium text-slate-700 hover:bg-slate-50"
-    >
-      Cancel
-    </button>
+        <div className="mt-5 flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              setShowSubChildCategoryModal(false);
+              setNewSubChildCategoryName("");
+            }}
+            className="rounded-xl border border-slate-300 px-5 py-2.5 font-medium text-slate-700 hover:bg-slate-50"
+          >
+            Cancel
+          </button>
 
-    <button
-      type="button"
-      onClick={handleAddSubChildCategory}
-      disabled={subChildCategoryAdding}
-      className="rounded-xl bg-blue-600 px-5 py-2.5 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-    >
-      {subChildCategoryAdding
-        ? "Saving..."
-        : "Save sub child category"}
-    </button>
-  </div>
-</Modal>
+          <button
+            type="button"
+            onClick={handleAddSubChildCategory}
+            disabled={subChildCategoryAdding}
+            className="rounded-xl bg-blue-600 px-5 py-2.5 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            {subChildCategoryAdding ? "Saving..." : "Save sub child category"}
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useMemo, useState } from "react";
 import {
   LayoutDashboard,
@@ -45,7 +44,7 @@ const getToday = () => {
   }).formatToParts(new Date());
 
   const values = Object.fromEntries(
-    parts.map(({ type, value }) => [type, value])
+    parts.map(({ type, value }) => [type, value]),
   );
 
   return `${values.year}-${values.month}-${values.day}`;
@@ -59,8 +58,7 @@ const isValidDate = (value) => {
   const date = new Date(`${value}T00:00:00Z`);
 
   return (
-    !Number.isNaN(date.getTime()) &&
-    date.toISOString().slice(0, 10) === value
+    !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value
   );
 };
 
@@ -71,19 +69,15 @@ const formatDate = (dateStr) => {
 
   const [year, month, day] = dateStr.split("-").map(Number);
 
-  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString(
-    "en-GB",
-    {
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
-      timeZone: "UTC",
-    }
-  );
+  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
 };
 
-const taka = (value) =>
-  `৳ ${Number(value || 0).toLocaleString("en-US")}`;
+const taka = (value) => `৳ ${Number(value || 0).toLocaleString("en-US")}`;
 
 const getDateFromItem = (item) => {
   const value = item?.date ?? item?._id ?? item?.day ?? "";
@@ -184,14 +178,14 @@ export default function DeshbordUI() {
       try {
         const response = await fetch(
           `${API}/api/dashboard/summary?date=${encodeURIComponent(
-            selectedDate
+            selectedDate,
           )}`,
           {
             signal: controller.signal,
             headers: {
               Accept: "application/json",
             },
-          }
+          },
         );
 
         if (!response.ok) {
@@ -201,9 +195,7 @@ export default function DeshbordUI() {
         const result = await response.json();
 
         if (!result.success) {
-          throw new Error(
-            result.message || "Dashboard data load failed"
-          );
+          throw new Error(result.message || "Dashboard data load failed");
         }
 
         setDashboard(result);
@@ -280,7 +272,7 @@ export default function DeshbordUI() {
         d.availableDates
           .filter((date) => typeof date === "string")
           .map((date) => date.slice(0, 10))
-          .filter(isValidDate)
+          .filter(isValidDate),
       ),
     ].sort((a, b) => b.localeCompare(a));
   }, [d.availableDates]);
@@ -462,9 +454,7 @@ export default function DeshbordUI() {
       return (
         <Notice>
           <div className="mx-auto max-w-md">
-            <p className="font-semibold text-red-600">
-              Dashboard load failed
-            </p>
+            <p className="font-semibold text-red-600">Dashboard load failed</p>
 
             <p className="mt-2 break-words text-xs">{error}</p>
 
@@ -482,16 +472,16 @@ export default function DeshbordUI() {
     }
 
     const totalOrders = Number(
-      d.summary.find((item) => item.key === "orders")?.value || 0
+      d.summary.find((item) => item.key === "orders")?.value || 0,
     );
 
     const totalSales = Number(
-      d.summary.find((item) => item.key === "sales")?.value || 0
+      d.summary.find((item) => item.key === "sales")?.value || 0,
     );
 
     const maxArea = Math.max(
       1,
-      ...d.areas.map((area) => Number(area.count || 0))
+      ...d.areas.map((area) => Number(area.count || 0)),
     );
 
     let offset = 0;
@@ -501,9 +491,7 @@ export default function DeshbordUI() {
         {/* PAGE TITLE */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-xl font-bold text-gray-800">
-              Dashboard
-            </h1>
+            <h1 className="text-xl font-bold text-gray-800">Dashboard</h1>
 
             <p className="mt-1 text-xs text-gray-500">
               {selectedDate === "all"
@@ -611,9 +599,7 @@ export default function DeshbordUI() {
 
                   <tbody className="divide-y divide-gray-50">
                     {d.topProducts.map((product) => (
-                      <tr
-                        key={product.id || product._id || product.name}
-                      >
+                      <tr key={product.id || product._id || product.name}>
                         <td className="py-2.5 pr-2">
                           <img
                             src={product.image || "/images.png"}
@@ -656,10 +642,7 @@ export default function DeshbordUI() {
             <div className="flex flex-col items-center justify-around gap-6 py-4 sm:flex-row">
               {/* DONUT CHART */}
               <div className="relative flex h-36 w-36 shrink-0 items-center justify-center">
-                <svg
-                  className="h-full w-full -rotate-90"
-                  viewBox="0 0 36 36"
-                >
+                <svg className="h-full w-full -rotate-90" viewBox="0 0 36 36">
                   <circle
                     cx="18"
                     cy="18"
@@ -845,23 +828,17 @@ export default function DeshbordUI() {
                   <tbody className="divide-y divide-gray-100">
                     {[...d.activity]
                       .sort((a, b) =>
-                        getDateFromItem(b).localeCompare(getDateFromItem(a))
+                        getDateFromItem(b).localeCompare(getDateFromItem(a)),
                       )
                       .map((item, index) => {
                         const date = getDateFromItem(item);
 
                         const count = Number(
-                          item.orders ??
-                            item.count ??
-                            item.totalOrders ??
-                            0
+                          item.orders ?? item.count ?? item.totalOrders ?? 0,
                         );
 
                         const sales = Number(
-                          item.sales ??
-                            item.total ??
-                            item.revenue ??
-                            0
+                          item.sales ?? item.total ?? item.revenue ?? 0,
                         );
 
                         return (
@@ -902,9 +879,7 @@ export default function DeshbordUI() {
   const OrdersView = () => (
     <div className="min-h-[calc(100vh-65px)] bg-slate-50 p-4 sm:p-6">
       <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-        <h2 className="text-lg font-bold text-gray-800">
-          Orders Management
-        </h2>
+        <h2 className="text-lg font-bold text-gray-800">Orders Management</h2>
 
         <p className="mt-1 text-xs text-gray-500">
           Orders API can be connected here later.
@@ -927,9 +902,7 @@ export default function DeshbordUI() {
           <Icon className="h-8 w-8" />
         </div>
 
-        <h2 className="mb-2 text-2xl font-bold text-gray-800">
-          {activeTab}
-        </h2>
+        <h2 className="mb-2 text-2xl font-bold text-gray-800">{activeTab}</h2>
 
         <p className="mb-6 max-w-md text-sm text-gray-500">
           This page is not built yet.

@@ -24,8 +24,6 @@ const API_BASE = "https://apple-gadgets-ui-backend.vercel.app";
    BANGLADESH GEO DATA
 ========================================================= */
 
-
-
 /* =========================================================
    CREATE ORDER MODAL
 ========================================================= */
@@ -134,7 +132,9 @@ export default function CreateOrderModal({ open, onClose, onSuccess }) {
     try {
       setSearchLoading(true);
 
-      const response = await fetch(`${API_BASE}/api/dashboard/products?search=${encodeURIComponent(value)}`);
+      const response = await fetch(
+        `${API_BASE}/api/dashboard/products?search=${encodeURIComponent(value)}`,
+      );
       const data = await response.json();
 
       if (!response.ok) {
@@ -148,7 +148,7 @@ export default function CreateOrderModal({ open, onClose, onSuccess }) {
       const keyword = value.trim().toLowerCase();
 
       const filteredProducts = productList.filter((product) =>
-        product?.name?.toLowerCase().includes(keyword)
+        product?.name?.toLowerCase().includes(keyword),
       );
 
       setProducts(filteredProducts);
@@ -188,7 +188,7 @@ export default function CreateOrderModal({ open, onClose, onSuccess }) {
     if (!productId) return;
 
     const alreadyExists = selectedProducts.find(
-      (item) => String(item.product) === String(productId)
+      (item) => String(item.product) === String(productId),
     );
 
     if (alreadyExists) {
@@ -196,8 +196,8 @@ export default function CreateOrderModal({ open, onClose, onSuccess }) {
         prev.map((item) =>
           String(item.product) === String(productId)
             ? { ...item, quantity: item.quantity + 1 }
-            : item
-        )
+            : item,
+        ),
       );
       setSearch("");
       setProducts([]);
@@ -226,7 +226,7 @@ export default function CreateOrderModal({ open, onClose, onSuccess }) {
 
   const removeProduct = (productId) => {
     setSelectedProducts((prev) =>
-      prev.filter((item) => String(item.product) !== String(productId))
+      prev.filter((item) => String(item.product) !== String(productId)),
     );
   };
 
@@ -239,8 +239,8 @@ export default function CreateOrderModal({ open, onClose, onSuccess }) {
       prev.map((item) =>
         String(item.product) === String(productId)
           ? { ...item, quantity: item.quantity + 1 }
-          : item
-      )
+          : item,
+      ),
     );
   };
 
@@ -254,9 +254,9 @@ export default function CreateOrderModal({ open, onClose, onSuccess }) {
         .map((item) =>
           String(item.product) === String(productId)
             ? { ...item, quantity: item.quantity - 1 }
-            : item
+            : item,
         )
-        .filter((item) => item.quantity > 0)
+        .filter((item) => item.quantity > 0),
     );
   };
 
@@ -267,7 +267,7 @@ export default function CreateOrderModal({ open, onClose, onSuccess }) {
   const totalItems = useMemo(() => {
     return selectedProducts.reduce(
       (total, item) => total + Number(item.quantity || 0),
-      0
+      0,
     );
   }, [selectedProducts]);
 
@@ -279,7 +279,7 @@ export default function CreateOrderModal({ open, onClose, onSuccess }) {
     return selectedProducts.reduce(
       (total, item) =>
         total + Number(item.price || 0) * Number(item.quantity || 0),
-      0
+      0,
     );
   }, [selectedProducts]);
 
@@ -429,7 +429,7 @@ export default function CreateOrderModal({ open, onClose, onSuccess }) {
         alert(
           `Order created successfully!\nOrder ID: ${
             data?.data?.orderId || data?.orderId || "Created"
-          }`
+          }`,
         );
 
         resetForm();

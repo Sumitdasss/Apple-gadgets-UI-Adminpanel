@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useMemo } from "react";
@@ -65,26 +64,18 @@ export default function OrderActivityChart({
 
     return data
       .map((item) => ({
-        date: String(
-          item.date || item._id || item.day || ""
-        ),
-        count: Number(
-          item.count ?? item.orders ?? item.totalOrders ?? 0
-        ),
+        date: String(item.date || item._id || item.day || ""),
+        count: Number(item.count ?? item.orders ?? item.totalOrders ?? 0),
       }))
       .filter(
         (item) =>
-          /^\d{4}-\d{2}-\d{2}$/.test(item.date) &&
-          Number.isFinite(item.count)
+          /^\d{4}-\d{2}-\d{2}$/.test(item.date) && Number.isFinite(item.count),
       )
       .sort((a, b) => a.date.localeCompare(b.date));
   }, [data]);
 
   const yAxisMax = useMemo(() => {
-    const highest = Math.max(
-      0,
-      ...chartData.map((item) => item.count)
-    );
+    const highest = Math.max(0, ...chartData.map((item) => item.count));
 
     // Y-axis will start at 30 and expand when necessary.
     return Math.max(30, Math.ceil(highest / 5) * 5);
@@ -103,13 +94,9 @@ export default function OrderActivityChart({
   return (
     <div className="w-full min-w-0 rounded-xl border border-gray-200/80 bg-white p-5 shadow-sm sm:p-6">
       <div className="mb-5">
-        <h2 className="text-base font-bold text-gray-900">
-          {title}
-        </h2>
+        <h2 className="text-base font-bold text-gray-900">{title}</h2>
 
-        <p className="mt-1 text-xs text-gray-500">
-          {subtitle}
-        </p>
+        <p className="mt-1 text-xs text-gray-500">{subtitle}</p>
       </div>
 
       {chartData.length === 0 ? (
@@ -136,20 +123,20 @@ export default function OrderActivityChart({
               />
 
               <XAxis
-  dataKey="date"
-  tickFormatter={formatShortDate}
-  interval={0}
-  angle={chartData.length > 5 ? -45 : 0}
-  textAnchor={chartData.length > 5 ? "end" : "middle"}
-  height={chartData.length > 5 ? 70 : 35}
-  tick={{
-    fontSize: 10,
-    fill: "#64748b",
-  }}
-  axisLine={false}
-  tickLine={false}
-  minTickGap={0}
-/>
+                dataKey="date"
+                tickFormatter={formatShortDate}
+                interval={0}
+                angle={chartData.length > 5 ? -45 : 0}
+                textAnchor={chartData.length > 5 ? "end" : "middle"}
+                height={chartData.length > 5 ? 70 : 35}
+                tick={{
+                  fontSize: 10,
+                  fill: "#64748b",
+                }}
+                axisLine={false}
+                tickLine={false}
+                minTickGap={0}
+              />
               <YAxis
                 domain={[0, yAxisMax]}
                 ticks={yTicks}
@@ -180,9 +167,7 @@ export default function OrderActivityChart({
                 <LabelList
                   dataKey="count"
                   position="top"
-                  formatter={(value) =>
-                    Number(value).toLocaleString("en-US")
-                  }
+                  formatter={(value) => Number(value).toLocaleString("en-US")}
                   style={{
                     fontSize: 11,
                     fill: "#334155",

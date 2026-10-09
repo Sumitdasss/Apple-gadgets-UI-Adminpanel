@@ -1,6 +1,3 @@
-
-
-
 import React, { useState, useRef, useEffect, useCallback } from "react";
 
 const API_BASE = "https://apple-gadgets-ui-backend.vercel.app"; // বা তোমার live URL
@@ -47,7 +44,7 @@ const initialFormData = {
 
 export default function UpdateProductPage({ productId: propProductId }) {
   const [selectedProductId, setSelectedProductId] = useState(
-    propProductId || null
+    propProductId || null,
   );
 
   const [loading, setLoading] = useState(false);
@@ -161,35 +158,34 @@ export default function UpdateProductPage({ productId: propProductId }) {
       try {
         setFetching(true);
 
-   
-const response = await fetch(
-  `${API_BASE}/products/${selectedProductId}`,
-  {
-    method: "GET",
-    headers: {
-      Accept: "application/json",
-    },
-    cache: "no-store",
-  }
-);
+        const response = await fetch(
+          `${API_BASE}/products/${selectedProductId}`,
+          {
+            method: "GET",
+            headers: {
+              Accept: "application/json",
+            },
+            cache: "no-store",
+          },
+        );
 
-const contentType = response.headers.get("content-type") || "";
+        const contentType = response.headers.get("content-type") || "";
 
-if (!contentType.includes("application/json")) {
-  const body = await response.text();
+        if (!contentType.includes("application/json")) {
+          const body = await response.text();
 
-  throw new Error(
-    `API JSON ফেরত দেয়নি। HTTP ${response.status}: ${body.slice(0, 150)}`
-  );
-}
+          throw new Error(
+            `API JSON ফেরত দেয়নি। HTTP ${response.status}: ${body.slice(0, 150)}`,
+          );
+        }
 
-const data = await response.json();
+        const data = await response.json();
 
-if (!response.ok) {
-  throw new Error(data?.message || "Product not found");
-}
+        if (!response.ok) {
+          throw new Error(data?.message || "Product not found");
+        }
 
-const product = data?.product || data?.data || data;
+        const product = data?.product || data?.data || data;
 
         setFormData({
           name: product.name || "",
@@ -206,8 +202,8 @@ const product = data?.product || data?.data || data;
           price: product.price || "",
           discountPrice: product.discountPrice || "",
           discountPercentage: product.discountPercentage || "",
-          additionalCategories: (product.additionalCategories || []).map(
-            (c) => (typeof c === "object" ? c._id : c)
+          additionalCategories: (product.additionalCategories || []).map((c) =>
+            typeof c === "object" ? c._id : c,
           ),
           stock: product.stock || "",
           sku: product.sku || "",
@@ -262,9 +258,7 @@ const product = data?.product || data?.data || data;
       setChildCategories([]);
       return;
     }
-    const selected = subCategories.find(
-      (s) => s._id === formData.subCategory
-    );
+    const selected = subCategories.find((s) => s._id === formData.subCategory);
     setChildCategories(selected?.children || []);
   }, [formData.subCategory, subCategories]);
 
@@ -274,7 +268,7 @@ const product = data?.product || data?.data || data;
       return;
     }
     const selected = childCategories.find(
-      (c) => c._id === formData.childCategory
+      (c) => c._id === formData.childCategory,
     );
     setSubChildCategories(selected?.subChildren || []);
   }, [formData.childCategory, childCategories]);
@@ -406,7 +400,7 @@ const product = data?.product || data?.data || data;
     }
     if (
       formData.colors.some(
-        (c) => c.name.toLowerCase() === colorName.trim().toLowerCase()
+        (c) => c.name.toLowerCase() === colorName.trim().toLowerCase(),
       )
     ) {
       alert("This color is already added");
@@ -446,9 +440,7 @@ const product = data?.product || data?.data || data;
   const addSize = () => {
     if (!size.trim()) return;
     if (
-      formData.sizes.some(
-        (s) => s.toLowerCase() === size.trim().toLowerCase()
-      )
+      formData.sizes.some((s) => s.toLowerCase() === size.trim().toLowerCase())
     ) {
       alert("This size is already added");
       return;
@@ -479,7 +471,7 @@ const product = data?.product || data?.data || data;
     }
     if (
       formData.specifications.some(
-        (item) => item.key.toLowerCase() === key.toLowerCase()
+        (item) => item.key.toLowerCase() === key.toLowerCase(),
       )
     ) {
       alert("This specification already exists");
@@ -510,7 +502,7 @@ const product = data?.product || data?.data || data;
     }
     if (
       formData.ram.some(
-        (item) => item.toLowerCase() === ramValue.trim().toLowerCase()
+        (item) => item.toLowerCase() === ramValue.trim().toLowerCase(),
       )
     ) {
       alert("This RAM / Memory is already added");
@@ -556,7 +548,7 @@ const product = data?.product || data?.data || data;
     }
 
     const skuTaken = formData.variants.some(
-      (v) => v.sku?.trim().toLowerCase() === variantSku.trim().toLowerCase()
+      (v) => v.sku?.trim().toLowerCase() === variantSku.trim().toLowerCase(),
     );
     if (skuTaken) {
       alert("This SKU is already used");
@@ -565,7 +557,7 @@ const product = data?.product || data?.data || data;
 
     const selectedColor = formData.colors.find(
       (c) =>
-        c.name.trim().toLowerCase() === variantColorName.trim().toLowerCase()
+        c.name.trim().toLowerCase() === variantColorName.trim().toLowerCase(),
     );
     if (!selectedColor) {
       alert("Selected color not found");
@@ -653,7 +645,7 @@ const product = data?.product || data?.data || data;
       data.append("sku", formData.sku);
       data.append(
         "additionalCategories",
-        JSON.stringify(formData.additionalCategories || [])
+        JSON.stringify(formData.additionalCategories || []),
       );
 
       const colorsWithoutFiles = formData.colors.map((c) => ({
@@ -691,7 +683,7 @@ const product = data?.product || data?.data || data;
         {
           method: "PUT",
           body: data,
-        }
+        },
       );
 
       const text = await response.text();
@@ -782,9 +774,7 @@ const product = data?.product || data?.data || data;
                     <td className="px-4 py-3">
                       <img
                         src={
-                          product.images?.[0] ||
-                          product.image ||
-                          "/images.png"
+                          product.images?.[0] || product.image || "/images.png"
                         }
                         alt={product.name}
                         className="h-12 w-12 rounded-lg border border-slate-200 object-contain"
@@ -799,7 +789,7 @@ const product = data?.product || data?.data || data;
                     <td className="px-4 py-3 font-semibold text-slate-800">
                       ৳{" "}
                       {Number(
-                        product.discountPrice || product.price || 0
+                        product.discountPrice || product.price || 0,
                       ).toLocaleString()}
                     </td>
                     <td className="px-4 py-3">
@@ -952,8 +942,8 @@ const product = data?.product || data?.data || data;
                     {categoriesLoading
                       ? "Loading..."
                       : categories.length === 0
-                      ? "No category"
-                      : "Select category"}
+                        ? "No category"
+                        : "Select category"}
                   </option>
                   {categories.map((category) => (
                     <option key={category._id} value={category._id}>
@@ -982,8 +972,8 @@ const product = data?.product || data?.data || data;
                     {!formData.category
                       ? "Select category first"
                       : subCategories.length === 0
-                      ? "No sub category"
-                      : "Select sub category"}
+                        ? "No sub category"
+                        : "Select sub category"}
                   </option>
                   {subCategories.map((sub) => (
                     <option key={sub._id} value={sub._id}>
@@ -1009,8 +999,8 @@ const product = data?.product || data?.data || data;
                     {!formData.subCategory
                       ? "Select sub category first"
                       : childCategories.length === 0
-                      ? "No child category"
-                      : "Select child category"}
+                        ? "No child category"
+                        : "Select child category"}
                   </option>
                   {childCategories.map((child) => (
                     <option key={child._id} value={child._id}>
@@ -1036,8 +1026,8 @@ const product = data?.product || data?.data || data;
                     {!formData.childCategory
                       ? "Select child category first"
                       : subChildCategories.length === 0
-                      ? "No sub child category"
-                      : "Select sub child category"}
+                        ? "No sub child category"
+                        : "Select sub child category"}
                   </option>
                   {subChildCategories.map((sc) => (
                     <option key={sc._id} value={sc._id}>
@@ -1090,11 +1080,9 @@ const product = data?.product || data?.data || data;
                           checked={checked}
                           onChange={(e) => {
                             setFormData((prev) => {
-                              const current =
-                                prev.additionalCategories || [];
+                              const current = prev.additionalCategories || [];
                               if (e.target.checked) {
-                                if (current.includes(category._id))
-                                  return prev;
+                                if (current.includes(category._id)) return prev;
                                 return {
                                   ...prev,
                                   additionalCategories: [
@@ -1106,7 +1094,7 @@ const product = data?.product || data?.data || data;
                               return {
                                 ...prev,
                                 additionalCategories: current.filter(
-                                  (id) => id !== category._id
+                                  (id) => id !== category._id,
                                 ),
                               };
                             });
@@ -1591,8 +1579,8 @@ const product = data?.product || data?.data || data;
                 Product Variants
               </h2>
               <p className="mt-1 text-sm text-slate-500">
-                Combine a color, RAM and storage to create a purchasable
-                variant with its own stock, price and SKU.
+                Combine a color, RAM and storage to create a purchasable variant
+                with its own stock, price and SKU.
               </p>
             </div>
 
