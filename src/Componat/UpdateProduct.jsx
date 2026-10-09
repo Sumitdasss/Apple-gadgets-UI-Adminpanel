@@ -161,16 +161,35 @@ export default function UpdateProductPage({ productId: propProductId }) {
       try {
         setFetching(true);
 
-        const response = await fetch(
-          `${API_BASE}/products/${selectedProductId}`
-        );
-        const data = await response.json();
+   
+const response = await fetch(
+  `${API_BASE}/products/${selectedProductId}`,
+  {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+    },
+    cache: "no-store",
+  }
+);
 
-        if (!response.ok) {
-          throw new Error(data?.message || "Product not found");
-        }
+const contentType = response.headers.get("content-type") || "";
 
-        const product = data?.product || data?.data || data;
+if (!contentType.includes("application/json")) {
+  const body = await response.text();
+
+  throw new Error(
+    `API JSON ফেরত দেয়নি। HTTP ${response.status}: ${body.slice(0, 150)}`
+  );
+}
+
+const data = await response.json();
+
+if (!response.ok) {
+  throw new Error(data?.message || "Product not found");
+}
+
+const product = data?.product || data?.data || data;
 
         setFormData({
           name: product.name || "",
