@@ -572,96 +572,108 @@ export default function DeshbordUI() {
         {/* ORDER STATUS + AREAS */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* ORDER STATUS */}
-          <div className="rounded-2xl border border-gray-200/60 bg-white p-5 shadow-sm lg:col-span-2">
-            <h3 className="mb-5 text-xs font-bold uppercase tracking-wider text-gray-800">
-              Order Status
-            </h3>
+         {/* ORDER STATUS */}
+<div className="rounded-2xl border border-gray-200/60 bg-white p-5 shadow-sm lg:col-span-2">
+  <h3 className="mb-5 text-xs font-bold uppercase tracking-wider text-gray-800">
+    Order Status
+  </h3>
 
-            <div className="flex flex-col items-center justify-around gap-8 py-2 sm:flex-row">
-              {/* DONUT */}
-              <div className="relative flex h-40 w-40 shrink-0 items-center justify-center">
-                <svg className="h-full w-full -rotate-90 drop-shadow-sm" viewBox="0 0 36 36">
-                  <circle
-                    cx="18"
-                    cy="18"
-                    r="15.9155"
-                    fill="none"
-                    stroke="#f1f5f9"
-                    strokeWidth="3.5"
-                  />
-                  {(() => {
-                    let offset = 0;
-                    return d.status.map((item) => {
-                      const count = Number(item.count || 0);
-                      const length = totalOrders ? (count / totalOrders) * 100 : 0;
-                      const circle = (
-                        <circle
-                          key={item.status}
-                          cx="18"
-                          cy="18"
-                          r="15.9155"
-                          fill="none"
-                          strokeWidth="4"
-                          stroke={donutColors[item.status] || "#cbd5e1"}
-                          strokeDasharray={`${length} ${100 - length}`}
-                          strokeDashoffset={-offset}
-                          strokeLinecap="round"
-                        />
-                      );
-                      offset += length;
-                      return circle;
-                    });
-                  })()}
-                </svg>
-                <div className="absolute flex flex-col items-center">
-                  <span className="text-3xl font-extrabold tracking-tight text-gray-900">
-                    {totalOrders.toLocaleString("en-US")}
-                  </span>
-                  <span className="text-[10px] font-medium uppercase tracking-wide text-gray-400">
-                    Orders
-                  </span>
-                </div>
-              </div>
+  <div className="flex flex-col items-center justify-around gap-8 py-2 sm:flex-row">
+    {/* DONUT */}
+    <div className="relative flex h-40 w-40 shrink-0 items-center justify-center">
+      <svg className="h-full w-full -rotate-90 drop-shadow-sm" viewBox="0 0 36 36">
+        {/* Background circle */}
+        <circle
+          cx="18"
+          cy="18"
+          r="15.9155"
+          fill="none"
+          stroke="#f1f5f9"
+          strokeWidth="3.5"
+        />
 
-              {/* STATUS LIST */}
-              <div className="w-full max-w-sm space-y-2">
-                {d.status.length === 0 ? (
-                  <p className="text-xs text-gray-400">No orders in this period.</p>
-                ) : (
-                  d.status.map((item) => (
-                    <div
-                      key={item.status}
-                      className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/80 px-3.5 py-2.5 text-xs transition hover:bg-slate-50"
-                    >
-                      <div className="flex min-w-0 items-center gap-2.5">
-                        <span
-                          className={`h-2.5 w-2.5 shrink-0 rounded-full ${
-                            statusColor[item.status] || "bg-slate-300"
-                          }`}
-                        />
-                        <span className="font-semibold text-slate-700">
-                          {formatStatusLabel(item.status)}
-                        </span>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-4">
-                        <span className="font-bold text-gray-800">
-                          {Number(item.count || 0).toLocaleString("en-US")}
-                        </span>
-                        <span className="min-w-[70px] text-right font-bold text-gray-900">
-                          {taka(item.total)}
-                        </span>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
+        {(() => {
+          let offset = 0;
+
+          return d.status.map((item) => {
+            const count = Number(item.count || 0);
+
+            // 0 হলে segment আঁকা হবে না (red dot চলে যাবে)
+            if (count <= 0) return null;
+
+            const length = totalOrders ? (count / totalOrders) * 100 : 0;
+
+            const circle = (
+              <circle
+                key={item.status}
+                cx="18"
+                cy="18"
+                r="15.9155"
+                fill="none"
+                strokeWidth="4"
+                stroke={donutColors[item.status] || "#cbd5e1"}
+                strokeDasharray={`${length} ${100 - length}`}
+                strokeDashoffset={-offset}
+                strokeLinecap="round"
+              />
+            );
+
+            offset += length;
+            return circle;
+          });
+        })()}
+      </svg>
+
+      <div className="absolute flex flex-col items-center">
+        <span className="text-3xl font-extrabold tracking-tight text-gray-900">
+          {totalOrders.toLocaleString("en-US")}
+        </span>
+        <span className="text-[10px] font-medium uppercase tracking-wide text-gray-400">
+          Orders
+        </span>
+      </div>
+    </div>
+
+    {/* STATUS LIST */}
+    <div className="w-full max-w-sm space-y-2">
+      {d.status.length === 0 ? (
+        <p className="text-xs text-gray-400">No orders in this period.</p>
+      ) : (
+        d.status.map((item) => (
+          <div
+            key={item.status}
+            className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/80 px-3.5 py-2.5 text-xs transition hover:bg-slate-50"
+          >
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span
+                className={`h-2.5 w-2.5 shrink-0 rounded-full ${
+                  statusColor[item.status] || "bg-slate-300"
+                }`}
+              />
+              <span className="font-semibold text-slate-700">
+                {formatStatusLabel(item.status)}
+              </span>
             </div>
 
-            <div className="mt-4 border-t border-gray-100 pt-4 text-right text-sm font-semibold text-gray-600">
-              Total Sales:{" "}
-              <span className="text-base font-bold text-gray-900">{taka(totalSales)}</span>
+            <div className="flex shrink-0 items-center gap-4">
+              <span className="font-bold text-gray-800">
+                {Number(item.count || 0).toLocaleString("en-US")}
+              </span>
+              <span className="min-w-[70px] text-right font-bold text-gray-900">
+                {taka(item.total)}
+              </span>
             </div>
           </div>
+        ))
+      )}
+    </div>
+  </div>
+
+  <div className="mt-4 border-t border-gray-100 pt-4 text-right text-sm font-semibold text-gray-600">
+    Total Sales:{" "}
+    <span className="text-base font-bold text-gray-900">{taka(totalSales)}</span>
+  </div>
+</div>
 
           {/* ORDER AREAS */}
           <div className="flex flex-col justify-between rounded-2xl border border-gray-200/60 bg-white p-5 shadow-sm">
