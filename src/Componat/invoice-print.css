@@ -1,0 +1,236 @@
+
+/* =========================================
+   A4 INVOICE PRINT & PDF STYLES
+   File: invoice-print.css
+========================================= */
+
+/* Invoice screen layout */
+.invoice-modal {
+  width: 100%;
+  background: #f1f5f9;
+}
+
+.invoice-list {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  width: 100%;
+}
+
+.invoice-sheet {
+  width: 100%;
+  max-width: 210mm;
+  min-height: 297mm;
+  margin: 0 auto;
+  padding: 16mm;
+  background: #ffffff;
+  color: #111827;
+  box-sizing: border-box;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgb(0 0 0 / 8%);
+  overflow-wrap: anywhere;
+}
+
+/* Invoice table */
+.invoice-sheet table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: auto;
+}
+
+.invoice-sheet th,
+.invoice-sheet td {
+  padding: 9px 8px;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.invoice-sheet thead th {
+  background: #f8fafc;
+  color: #334155;
+  font-weight: 700;
+  border-bottom: 2px solid #cbd5e1;
+}
+
+.invoice-sheet img {
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.invoice-sheet h1,
+.invoice-sheet h2,
+.invoice-sheet h3 {
+  color: #111827;
+}
+
+.invoice-sheet tr {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* =========================================
+   PRINT / SAVE AS PDF
+========================================= */
+
+@media print {
+  /* A4 page setup */
+  @page {
+    size: A4 portrait;
+    margin: 8mm;
+  }
+
+  html,
+  body {
+    width: 100%;
+    min-height: 0;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #111827 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Hide the rest of the application */
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* Show only invoice content */
+  .invoice-modal,
+  .invoice-modal * {
+    visibility: visible !important;
+  }
+
+  .invoice-modal {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Remove modal header, footer and action buttons */
+  .invoice-controls {
+    display: none !important;
+  }
+
+  /* Stack invoices vertically */
+  .invoice-list {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    gap: 0 !important;
+  }
+
+  /* A4 invoice page */
+  .invoice-sheet {
+    display: block !important;
+    position: relative !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 4mm !important;
+    box-sizing: border-box !important;
+    overflow: visible !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    color: #111827 !important;
+
+    break-after: page;
+    page-break-after: always;
+  }
+
+  /* Do not create an unnecessary blank last page */
+  .invoice-sheet:last-child {
+    break-after: auto !important;
+    page-break-after: auto !important;
+  }
+
+  /* Print tables clearly */
+  .invoice-sheet table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 10pt !important;
+  }
+
+  .invoice-sheet thead {
+    display: table-header-group;
+  }
+
+  .invoice-sheet tfoot {
+    display: table-footer-group;
+  }
+
+  .invoice-sheet th,
+  .invoice-sheet td {
+    padding: 6px !important;
+    border-bottom: 1px solid #d1d5db !important;
+    color: #111827 !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .invoice-sheet thead th {
+    background: #f1f5f9 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .invoice-sheet tr,
+  .invoice-sheet img,
+  .invoice-sheet h1,
+  .invoice-sheet h2,
+  .invoice-sheet h3 {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .invoice-sheet img {
+    max-width: 60px !important;
+    max-height: 60px !important;
+  }
+
+  /* Avoid links displaying their URLs */
+  .invoice-sheet a {
+    color: inherit !important;
+    text-decoration: none !important;
+  }
+
+  /* Hide scrollbars */
+  ::-webkit-scrollbar {
+    display: none !important;
+  }
+}
+
+/* Small screen preview */
+@media screen and (max-width: 640px) {
+  .invoice-sheet {
+    min-height: auto;
+    padding: 16px;
+    border-radius: 0;
+  }
+
+  .invoice-sheet table {
+    font-size: 12px;
+  }
+
+  .invoice-sheet th,
+  .invoice-sheet td {
+    padding: 6px 4px;
+  }
+}
