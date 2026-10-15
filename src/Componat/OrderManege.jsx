@@ -1017,318 +1017,309 @@ export default function OrderManege() {
 
             {/* Body */}
             <div className="flex-1 overflow-y-auto p-5">
-              {detailsLoading && !d ? (
-                <div className="flex flex-col items-center justify-center py-24">
-                  <RefreshCw
-                    className="animate-spin text-slate-400"
-                    size={36}
-                  />
-                  <p className="mt-4 text-sm font-medium text-slate-500">
-                    Loading order details...
+          {detailsLoading && !d ? (
+  <div className="flex flex-col items-center justify-center py-28">
+    <div className="relative">
+      <div className="absolute inset-0 animate-ping rounded-full bg-slate-200/60" />
+      <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-lg ring-1 ring-slate-200">
+        <RefreshCw className="animate-spin text-slate-500" size={24} />
+      </div>
+    </div>
+    <p className="mt-5 text-sm font-medium text-slate-500">
+      Loading order details...
+    </p>
+  </div>
+) : !d ? (
+  <div className="flex flex-col items-center justify-center py-28">
+    <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100">
+      <Package size={28} className="text-slate-400" />
+    </div>
+    <p className="mt-4 text-sm font-medium text-slate-500">
+      Order not found.
+    </p>
+  </div>
+) : (
+  <div className="space-y-5">
+    {/* ── Hero Summary ── */}
+    <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 text-white shadow-xl shadow-slate-900/20">
+      <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/5 blur-2xl" />
+      <div className="pointer-events-none absolute -bottom-8 -left-8 h-32 w-32 rounded-full bg-indigo-500/10 blur-2xl" />
+
+      <div className="relative flex flex-wrap items-start justify-between gap-5">
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+            Order Number
+          </p>
+          <h3 className="mt-1.5 break-all text-2xl font-black tracking-tight">
+            {d.orderId ?? d._id}
+          </h3>
+          <div className="mt-4 flex flex-wrap items-center gap-2.5">
+            <StatusBadge status={dStatus} />
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs text-slate-300 backdrop-blur-sm">
+              <CalendarDays size={12} />
+              {formatDate(d.createdAt ?? d.orderDate)}
+            </span>
+          </div>
+        </div>
+
+        <div className="rounded-2xl bg-white/10 px-6 py-4 text-right backdrop-blur-md ring-1 ring-white/10">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+            Grand Total
+          </p>
+          <p className="mt-1 text-3xl font-black tracking-tight">
+            {formatMoney(dTotal)}
+          </p>
+          <p className="mt-1 text-xs text-slate-400">
+            {dProducts.length} product type{dProducts.length !== 1 ? "s" : ""}
+          </p>
+        </div>
+      </div>
+    </section>
+
+    {/* ── Customer ── */}
+    <SectionCard title="Customer Information" icon={UserRound}>
+      <div className="grid grid-cols-1 gap-x-2 sm:grid-cols-2">
+        <InfoRow label="Customer Name" value={dCustomerName} icon={UserRound} />
+        <InfoRow label="Phone Number" value={dPhone} icon={Phone} />
+        <InfoRow label="Email Address" value={dEmail} icon={Mail} />
+        <InfoRow
+          label="Customer ID"
+          value={
+            typeof d.customer === "object" ? d.customer?._id : d.customerId
+          }
+          icon={Hash}
+        />
+      </div>
+    </SectionCard>
+
+    {/* ── Delivery ── */}
+    <SectionCard title="Delivery Information" icon={Truck}>
+      <div className="grid grid-cols-1 gap-x-2 sm:grid-cols-2">
+        <InfoRow label="Delivery Address" value={dAddress} icon={MapPin} />
+        <InfoRow label="Division" value={d.division ?? d.selectDivision} />
+        <InfoRow label="District" value={d.district ?? d.selectDistrict} />
+        <InfoRow
+          label="Area / Upazila"
+          value={d.selectArea ?? d.upazila ?? d.area}
+        />
+        <InfoRow label="Courier" value={dCourier} icon={Truck} />
+        <InfoRow label="Tracking Number" value={dTracking} icon={Hash} />
+      </div>
+      {d.notes && (
+        <div className="mt-4 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 p-4 ring-1 ring-amber-200/60">
+          <div className="flex items-center gap-2">
+            <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-100">
+              <span className="text-xs">📝</span>
+            </div>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-amber-700/80">
+              Order Notes
+            </p>
+          </div>
+          <p className="mt-2 text-sm leading-relaxed text-slate-700">
+            {d.notes}
+          </p>
+        </div>
+      )}
+    </SectionCard>
+
+    {/* ── Products ── */}
+    <SectionCard title="Ordered Products" icon={ShoppingBag}>
+      {dProducts.length === 0 ? (
+        <div className="py-12 text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">
+            <Package size={26} className="text-slate-350 text-slate-400" />
+          </div>
+          <p className="mt-3 text-sm font-medium text-slate-500">
+            No product items found.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {dProducts.map((product, index) => {
+            const info = getProductInfo(product);
+            const qty = Number(info.quantity || 1);
+            const price = Number(info.price || 0);
+            const lineTotal = Number(
+              product.subtotal ?? product.total ?? price * qty
+            );
+            return (
+              <div
+                key={product._id ?? product.productId ?? index}
+                className="group flex flex-col gap-3.5 rounded-2xl border border-slate-100 bg-gradient-to-br from-slate-50/80 to-white p-4 transition hover:border-slate-200 hover:shadow-md sm:flex-row sm:items-center"
+              >
+                <div className="flex h-[72px] w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200/70">
+                  {info.image ? (
+                    <img
+                      src={info.image}
+                      alt={info.name}
+                      className="h-full w-full object-contain p-1.5 transition group-hover:scale-105"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <Package size={26} className="text-slate-300" />
+                  )}
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <h4 className="text-[15px] font-bold leading-snug text-slate-900">
+                    {info.name}
+                  </h4>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {info.color && (
+                      <span className="rounded-lg bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 shadow-sm ring-1 ring-slate-200/80">
+                        {info.color}
+                      </span>
+                    )}
+                    {info.ram && (
+                      <span className="rounded-lg bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 shadow-sm ring-1 ring-slate-200/80">
+                        {info.ram}
+                      </span>
+                    )}
+                    {info.storage && (
+                      <span className="rounded-lg bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 shadow-sm ring-1 ring-slate-200/80">
+                        {info.storage}
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-2 text-xs font-medium text-slate-400">
+                    {formatMoney(price)}
+                    <span className="mx-1.5 text-slate-300">×</span>
+                    {qty}
                   </p>
                 </div>
-              ) : !d ? (
-                <p className="py-24 text-center text-sm text-slate-500">
-                  Order not found.
-                </p>
-              ) : (
-                <div className="space-y-4">
-                  {/* Summary */}
-                  <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
-                    <div className="flex flex-wrap items-center justify-between gap-4 p-5">
-                      <div>
-                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-                          Order Number
-                        </p>
-                        <h3 className="mt-1 break-all text-xl font-extrabold tracking-tight text-slate-900">
-                          {d.orderId ?? d._id}
-                        </h3>
-                        <div className="mt-3 flex flex-wrap items-center gap-2.5">
-                          <StatusBadge status={dStatus} />
-                          <span className="inline-flex items-center gap-1.5 text-xs text-slate-500">
-                            <CalendarDays size={13} />
-                            {formatDate(d.createdAt ?? d.orderDate)}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="rounded-2xl bg-gradient-to-br from-slate-900 to-slate-700 px-6 py-4 text-right text-white shadow-md">
-                        <p className="text-xs font-medium text-slate-300">
-                          Order Total
-                        </p>
-                        <p className="mt-1 text-2xl font-extrabold tracking-tight">
-                          {formatMoney(dTotal)}
-                        </p>
-                        <p className="mt-1 text-[11px] text-slate-400">
-                          {dProducts.length} product type(s)
-                        </p>
-                      </div>
-                    </div>
-                  </section>
 
-                  <SectionCard title="Customer Information" icon={UserRound}>
-                    <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
-                      <InfoRow
-                        label="Customer Name"
-                        value={dCustomerName}
-                        icon={UserRound}
-                      />
-                      <InfoRow
-                        label="Phone Number"
-                        value={dPhone}
-                        icon={Phone}
-                      />
-                      <InfoRow
-                        label="Email Address"
-                        value={dEmail}
-                        icon={Mail}
-                      />
-                      <InfoRow
-                        label="Customer ID"
-                        value={
-                          typeof d.customer === "object"
-                            ? d.customer?._id
-                            : d.customerId
-                        }
-                        icon={Hash}
-                      />
-                    </div>
-                  </SectionCard>
-
-                  <SectionCard title="Delivery Information" icon={Truck}>
-                    <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
-                      <InfoRow
-                        label="Delivery Address"
-                        value={dAddress}
-                        icon={MapPin}
-                      />
-                      <InfoRow
-                        label="Division"
-                        value={d.division ?? d.selectDivision}
-                      />
-                      <InfoRow
-                        label="District"
-                        value={d.district ?? d.selectDistrict}
-                      />
-                      <InfoRow
-                        label="Area / Upazila"
-                        value={d.selectArea ?? d.upazila ?? d.area}
-                      />
-                      <InfoRow
-                        label="Courier"
-                        value={dCourier}
-                        icon={Truck}
-                      />
-                      <InfoRow
-                        label="Tracking Number"
-                        value={dTracking}
-                        icon={Hash}
-                      />
-                    </div>
-                    {d.notes && (
-                      <div className="mt-3 rounded-xl bg-amber-50/80 p-3.5 ring-1 ring-amber-100">
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-700/70">
-                          Order Notes
-                        </p>
-                        <p className="mt-1 text-sm text-slate-800">{d.notes}</p>
-                      </div>
-                    )}
-                  </SectionCard>
-
-                  <SectionCard title="Ordered Products" icon={ShoppingBag}>
-                    {dProducts.length === 0 ? (
-                      <div className="py-10 text-center">
-                        <Package
-                          size={36}
-                          className="mx-auto text-slate-300"
-                        />
-                        <p className="mt-2 text-sm text-slate-500">
-                          No product items found.
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {dProducts.map((product, index) => {
-                          const info = getProductInfo(product);
-                          const qty = Number(info.quantity || 1);
-                          const price = Number(info.price || 0);
-                          const lineTotal = Number(
-                            product.subtotal ?? product.total ?? price * qty
-                          );
-                          return (
-                            <div
-                              key={
-                                product._id ?? product.productId ?? index
-                              }
-                              className="flex flex-col gap-3 rounded-xl border border-slate-100 bg-slate-50/50 p-3.5 sm:flex-row sm:items-center"
-                            >
-                              <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white ring-1 ring-slate-200/80">
-                                {info.image ? (
-                                  <img
-                                    src={info.image}
-                                    alt={info.name}
-                                    className="h-full w-full object-contain"
-                                    loading="lazy"
-                                  />
-                                ) : (
-                                  <Package
-                                    size={24}
-                                    className="text-slate-300"
-                                  />
-                                )}
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <h4 className="font-bold text-slate-900">
-                                  {info.name}
-                                </h4>
-                                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                                  {info.color && (
-                                    <span className="rounded-md bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600 ring-1 ring-slate-200">
-                                      Color: {info.color}
-                                    </span>
-                                  )}
-                                  {info.ram && (
-                                    <span className="rounded-md bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600 ring-1 ring-slate-200">
-                                      RAM: {info.ram}
-                                    </span>
-                                  )}
-                                  {info.storage && (
-                                    <span className="rounded-md bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600 ring-1 ring-slate-200">
-                                      Storage: {info.storage}
-                                    </span>
-                                  )}
-                                </div>
-                                <p className="mt-1.5 text-xs text-slate-500">
-                                  {formatMoney(price)} × {qty}
-                                </p>
-                              </div>
-                              <div className="sm:text-right">
-                                <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-                                  Item Total
-                                </p>
-                                <p className="mt-0.5 text-base font-extrabold text-slate-900">
-                                  {formatMoney(lineTotal)}
-                                </p>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </SectionCard>
-
-                  <SectionCard title="Payment Information" icon={CreditCard}>
-                    <InfoRow
-                      label="Payment Method"
-                      value={humanize(dPaymentMethod)}
-                      icon={CreditCard}
-                    />
-                    <InfoRow
-                      label="Payment Status"
-                      value={humanize(dPaymentStatus)}
-                    />
-                    <InfoRow
-                      label="Transaction ID"
-                      value={
-                        d.transactionId ??
-                        d.paymentTransactionId ??
-                        d.payment?.transactionId
-                      }
-                      icon={Hash}
-                    />
-                    <div className="my-3 border-t border-slate-100" />
-                    <div className="space-y-2.5 text-sm">
-                      <div className="flex justify-between gap-3">
-                        <span className="text-slate-500">Subtotal</span>
-                        <span className="font-semibold text-slate-800">
-                          {formatMoney(dSubtotal)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between gap-3">
-                        <span className="text-slate-500">Delivery Charge</span>
-                        <span className="font-semibold text-slate-800">
-                          {formatMoney(dDelivery)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between gap-3">
-                        <span className="text-slate-500">Discount</span>
-                        <span className="font-semibold text-emerald-600">
-                          -{formatMoney(dDiscount)}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between gap-3 border-t border-slate-200 pt-3">
-                        <span className="font-bold text-slate-900">
-                          Grand Total
-                        </span>
-                        <span className="text-xl font-extrabold text-slate-900">
-                          {formatMoney(dTotal)}
-                        </span>
-                      </div>
-                    </div>
-                  </SectionCard>
-
-                  <SectionCard title="Order Information" icon={Package}>
-                    <InfoRow
-                      label="Order ID"
-                      value={d.orderId ?? d._id}
-                      icon={Hash}
-                    />
-                    <InfoRow
-                      label="Order Source"
-                      value={humanize(d.orderSource ?? d.source)}
-                    />
-                    <InfoRow
-                      label="Created At"
-                      value={formatDate(d.createdAt ?? d.orderDate)}
-                      icon={CalendarDays}
-                    />
-                    <InfoRow
-                      label="Last Updated"
-                      value={formatDate(d.updatedAt)}
-                      icon={CalendarDays}
-                    />
-                    <InfoRow
-                      label="Shipping Status"
-                      value={humanize(
-                        d.shippingStatus ??
-                          d.shipmentStatus ??
-                          d.courierStatus
-                      )}
-                      icon={Truck}
-                    />
-                  </SectionCard>
-
-                  <div className="rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-5 text-white shadow-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10">
-                        <CheckCircle2 size={18} />
-                      </div>
-                      <h3 className="font-bold">Order Summary</h3>
-                    </div>
-                    <p className="mt-3 text-sm leading-relaxed text-slate-300">
-                      Review customer order, delivery, products and payment
-                      before processing the shipment.
-                    </p>
-                    <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-4">
-                      <div>
-                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-                          Current Status
-                        </p>
-                        <p className="mt-1 text-base font-bold">
-                          {humanize(dStatus)}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-                          Total
-                        </p>
-                        <p className="mt-1 text-lg font-extrabold">
-                          {formatMoney(dTotal)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+                <div className="flex shrink-0 flex-col items-end sm:pl-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                    Item Total
+                  </p>
+                  <p className="mt-0.5 text-lg font-black text-slate-900">
+                    {formatMoney(lineTotal)}
+                  </p>
                 </div>
-              )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </SectionCard>
+
+    {/* ── Payment ── */}
+    <SectionCard title="Payment Information" icon={CreditCard}>
+      <div className="grid grid-cols-1 gap-x-2 sm:grid-cols-2">
+        <InfoRow
+          label="Payment Method"
+          value={humanize(dPaymentMethod)}
+          icon={CreditCard}
+        />
+        <InfoRow
+          label="Payment Status"
+          value={humanize(dPaymentStatus)}
+        />
+        <InfoRow
+          label="Transaction ID"
+          value={
+            d.transactionId ??
+            d.paymentTransactionId ??
+            d.payment?.transactionId
+          }
+          icon={Hash}
+        />
+      </div>
+
+      <div className="mt-4 overflow-hidden rounded-2xl bg-slate-50 ring-1 ring-slate-200/60">
+        <div className="space-y-0 divide-y divide-slate-200/70 px-4 py-1">
+          <div className="flex justify-between gap-3 py-3 text-sm">
+            <span className="text-slate-500">Subtotal</span>
+            <span className="font-semibold text-slate-800">
+              {formatMoney(dSubtotal)}
+            </span>
+          </div>
+          <div className="flex justify-between gap-3 py-3 text-sm">
+            <span className="text-slate-500">Delivery Charge</span>
+            <span className="font-semibold text-slate-800">
+              {formatMoney(dDelivery)}
+            </span>
+          </div>
+          <div className="flex justify-between gap-3 py-3 text-sm">
+            <span className="text-slate-500">Discount</span>
+            <span className="font-semibold text-emerald-600">
+              −{formatMoney(dDiscount)}
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center justify-between gap-3 bg-slate-900 px-4 py-3.5 text-white">
+          <span className="text-sm font-bold">Grand Total</span>
+          <span className="text-xl font-black tracking-tight">
+            {formatMoney(dTotal)}
+          </span>
+        </div>
+      </div>
+    </SectionCard>
+
+    {/* ── Order Info ── */}
+    <SectionCard title="Order Information" icon={Package}>
+      <div className="grid grid-cols-1 gap-x-2 sm:grid-cols-2">
+        <InfoRow label="Order ID" value={d.orderId ?? d._id} icon={Hash} />
+        <InfoRow
+          label="Order Source"
+          value={humanize(d.orderSource ?? d.source)}
+        />
+        <InfoRow
+          label="Created At"
+          value={formatDate(d.createdAt ?? d.orderDate)}
+          icon={CalendarDays}
+        />
+        <InfoRow
+          label="Last Updated"
+          value={formatDate(d.updatedAt)}
+          icon={CalendarDays}
+        />
+        <InfoRow
+          label="Shipping Status"
+          value={humanize(
+            d.shippingStatus ?? d.shipmentStatus ?? d.courierStatus
+          )}
+          icon={Truck}
+        />
+      </div>
+    </SectionCard>
+
+    {/* ── Footer Summary ── */}
+    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-slate-900 p-6 text-white shadow-xl shadow-indigo-900/25">
+      <div className="pointer-events-none absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/10 blur-2xl" />
+      <div className="pointer-events-none absolute -bottom-4 left-10 h-20 w-20 rounded-full bg-indigo-400/20 blur-xl" />
+
+      <div className="relative flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 backdrop-blur-sm">
+          <CheckCircle2 size={20} />
+        </div>
+        <h3 className="text-base font-bold">Order Summary</h3>
+      </div>
+
+      <p className="relative mt-3 text-sm leading-relaxed text-indigo-100/80">
+        Review customer order, delivery, products and payment before
+        processing the shipment.
+      </p>
+
+      <div className="relative mt-5 flex items-end justify-between gap-4 border-t border-white/15 pt-4">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-indigo-200/70">
+            Current Status
+          </p>
+          <p className="mt-1 text-lg font-bold">{humanize(dStatus)}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-indigo-200/70">
+            Total Amount
+          </p>
+          <p className="mt-1 text-2xl font-black tracking-tight">
+            {formatMoney(dTotal)}
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
             </div>
           </aside>
         </div>
