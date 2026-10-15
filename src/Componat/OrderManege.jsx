@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ArrowLeft,
-  ArrowRight,
   RefreshCw,
   Package,
   UserRound,
@@ -101,44 +100,25 @@ const humanize = (value) =>
 const getStatusStyle = (status) => {
   const value = String(status || "pending").toLowerCase();
   if (["delivered", "completed", "paid"].includes(value)) {
-    return {
-      className: "bg-green-50 text-green-700 border-green-200",
-      icon: CheckCircle2,
-    };
+    return { className: "bg-green-50 text-green-700 border-green-200", icon: CheckCircle2 };
   }
   if (["cancelled", "canceled", "returned", "failed"].includes(value)) {
-    return {
-      className: "bg-red-50 text-red-700 border-red-200",
-      icon: XCircle,
-    };
+    return { className: "bg-red-50 text-red-700 border-red-200", icon: XCircle };
   }
-  if (
-    ["shipped", "handed_over_to_courier", "ready_for_shipment"].includes(value)
-  ) {
-    return {
-      className: "bg-blue-50 text-blue-700 border-blue-200",
-      icon: Truck,
-    };
+  if (["shipped", "handed_over_to_courier", "ready_for_shipment"].includes(value)) {
+    return { className: "bg-blue-50 text-blue-700 border-blue-200", icon: Truck };
   }
   if (["confirmed", "processing"].includes(value)) {
-    return {
-      className: "bg-purple-50 text-purple-700 border-purple-200",
-      icon: RefreshCw,
-    };
+    return { className: "bg-purple-50 text-purple-700 border-purple-200", icon: RefreshCw };
   }
-  return {
-    className: "bg-amber-50 text-amber-700 border-amber-200",
-    icon: Clock3,
-  };
+  return { className: "bg-amber-50 text-amber-700 border-amber-200", icon: Clock3 };
 };
 
 const StatusBadge = ({ status }) => {
   const style = getStatusStyle(status);
   const Icon = style.icon;
   return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold ${style.className}`}
-    >
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold ${style.className}`}>
       <Icon size={14} />
       {humanize(status)}
     </span>
@@ -146,31 +126,15 @@ const StatusBadge = ({ status }) => {
 };
 
 const InfoRow = ({ label, value, icon: Icon }) => (
-  <div className="flex items-start gap-3 py-2.5">
-    {Icon && <Icon size={16} className="mt-0.5 shrink-0 text-slate-400" />}
+  <div className="flex items-start gap-3 py-2">
+    {Icon && <Icon size={16} className="mt-0.5 shrink-0 text-gray-400" />}
     <div className="min-w-0 flex-1">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-        {label}
-      </p>
-      <p className="mt-0.5 break-words text-sm font-semibold text-slate-800">
-        {value === undefined || value === null || value === ""
-          ? "Not available"
-          : String(value)}
+      <p className="text-xs text-gray-500">{label}</p>
+      <p className="mt-0.5 break-words text-sm font-semibold text-gray-800">
+        {value === undefined || value === null || value === "" ? "Not available" : String(value)}
       </p>
     </div>
   </div>
-);
-
-const SectionCard = ({ title, icon: Icon, children }) => (
-  <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
-    <div className="flex items-center gap-2.5 border-b border-slate-100 bg-slate-50/80 px-5 py-3.5">
-      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white shadow-sm ring-1 ring-slate-200/60">
-        <Icon size={16} className="text-slate-600" />
-      </div>
-      <h3 className="text-sm font-bold text-slate-800">{title}</h3>
-    </div>
-    <div className="px-5 py-4">{children}</div>
-  </section>
 );
 
 async function apiRequest(url, options = {}) {
@@ -186,9 +150,7 @@ async function apiRequest(url, options = {}) {
     });
   } catch (error) {
     console.error("Network/API connection error:", error);
-    throw new Error(
-      "Backend server-এর সঙ্গে সংযোগ হচ্ছে না। Server চালু আছে কি না দেখো।"
-    );
+    throw new Error("Backend server-এর সঙ্গে সংযোগ হচ্ছে না। Server চালু আছে কি না দেখো।");
   }
 
   const responseText = await response.text();
@@ -203,9 +165,7 @@ async function apiRequest(url, options = {}) {
 
   if (!response.ok || result.success === false) {
     throw new Error(
-      result.message ||
-        result.error ||
-        `API request failed with status ${response.status}`
+      result.message || result.error || `API request failed with status ${response.status}`
     );
   }
   return result;
@@ -221,6 +181,7 @@ export default function OrderManege() {
   const [showInvoices, setShowInvoices] = useState(false);
   const [invoiceOrders, setInvoiceOrders] = useState([]);
 
+  // ===== Details Panel =====
   const [showDetails, setShowDetails] = useState(false);
   const [detailsOrder, setDetailsOrder] = useState(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
@@ -242,8 +203,7 @@ export default function OrderManege() {
       });
       if (search.trim()) params.set("search", search.trim());
       if (status !== "all") params.set("status", status);
-      if (courierProvider.trim())
-        params.set("courierProvider", courierProvider.trim());
+      if (courierProvider.trim()) params.set("courierProvider", courierProvider.trim());
       if (source) params.set("source", source);
 
       const result = await apiRequest(`${ORDERS_API}?${params.toString()}`);
@@ -280,8 +240,7 @@ export default function OrderManege() {
 
   const visibleIds = orders.map(getOrderId).filter(Boolean);
   const allVisibleSelected =
-    visibleIds.length > 0 &&
-    visibleIds.every((id) => selectedIds.includes(id));
+    visibleIds.length > 0 && visibleIds.every((id) => selectedIds.includes(id));
 
   const toggleSelectAll = () => {
     setSelectedIds((prev) =>
@@ -292,9 +251,7 @@ export default function OrderManege() {
   };
 
   const openSelectedInvoices = () => {
-    const selected = orders.filter((order) =>
-      selectedIds.includes(getOrderId(order))
-    );
+    const selected = orders.filter((order) => selectedIds.includes(getOrderId(order)));
     if (!selected.length) {
       setError("প্রথমে অন্তত একটি অর্ডার নির্বাচন করো।");
       return;
@@ -315,6 +272,7 @@ export default function OrderManege() {
     window.print();
   };
 
+  // ===== Open Full Details on Right Side =====
   const openOrderDetails = async (order) => {
     const id = getOrderId(order);
     if (!id) return;
@@ -325,9 +283,7 @@ export default function OrderManege() {
     setError("");
 
     try {
-      const result = await apiRequest(
-        `${SINGLE_ORDER_API}/${encodeURIComponent(id)}`
-      );
+      const result = await apiRequest(`${SINGLE_ORDER_API}/${encodeURIComponent(id)}`);
       const data =
         result?.data?.order ??
         result?.data?.data ??
@@ -338,7 +294,7 @@ export default function OrderManege() {
       if (data && typeof data === "object" && !Array.isArray(data)) {
         setDetailsOrder(data);
       }
-    } catch {
+    } catch (err) {
       // list data already shown
     } finally {
       setDetailsLoading(false);
@@ -349,20 +305,6 @@ export default function OrderManege() {
     setShowDetails(false);
     setDetailsOrder(null);
     setDetailsLoading(false);
-  };
-
-  const getDetailsIndex = () => {
-    if (!detailsOrder || !orders.length) return -1;
-    const currentId = getOrderId(detailsOrder);
-    return orders.findIndex((o) => getOrderId(o) === currentId);
-  };
-
-  const goToAdjacentDetails = (direction) => {
-    const index = getDetailsIndex();
-    if (index < 0) return;
-    const nextIndex = direction === "previous" ? index - 1 : index + 1;
-    if (nextIndex < 0 || nextIndex >= orders.length) return;
-    openOrderDetails(orders[nextIndex]);
   };
 
   const updateSingleOrder = async (id, newStatus) => {
@@ -378,9 +320,7 @@ export default function OrderManege() {
       setNotice("অর্ডারের স্ট্যাটাস আপডেট হয়েছে।");
       await loadOrders();
       if (detailsOrder && getOrderId(detailsOrder) === id) {
-        setDetailsOrder((prev) =>
-          prev ? { ...prev, status: newStatus } : prev
-        );
+        setDetailsOrder((prev) => (prev ? { ...prev, status: newStatus } : prev));
       }
     } catch (err) {
       setError(err.message || "স্ট্যাটাস আপডেট করা যায়নি।");
@@ -444,10 +384,9 @@ export default function OrderManege() {
     setError("");
     setNotice("");
     try {
-      const result = await apiRequest(
-        `${SINGLE_ORDER_API}/${encodeURIComponent(id)}`,
-        { method: "DELETE" }
-      );
+      const result = await apiRequest(`${SINGLE_ORDER_API}/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+      });
       setNotice(result.message || "অর্ডার ডিলিট হয়েছে।");
       setSelectedIds((prev) => prev.filter((item) => item !== id));
       if (detailsOrder && getOrderId(detailsOrder) === id) closeOrderDetails();
@@ -471,7 +410,7 @@ export default function OrderManege() {
     setNotice("");
   };
 
-  // Details derived values
+  // ===== Details derived values =====
   const d = detailsOrder;
   const dProducts = Array.isArray(d?.products) ? d.products : [];
   const dCustomer = typeof d?.customer === "object" ? d.customer : {};
@@ -480,34 +419,18 @@ export default function OrderManege() {
   const dEmail = d?.email ?? d?.customerEmail ?? dCustomer?.email;
   const dAddress = d?.deliveryAddress ?? d?.address ?? dCustomer?.address;
   const dStatus = d?.orderStatus ?? d?.status ?? "pending";
-  const dPaymentMethod =
-    d?.paymentMethod ?? d?.paymentType ?? d?.payment?.method;
-  const dPaymentStatus =
-    d?.paymentStatus ?? d?.payment?.status ?? "Not available";
+  const dPaymentMethod = d?.paymentMethod ?? d?.paymentType ?? d?.payment?.method;
+  const dPaymentStatus = d?.paymentStatus ?? d?.payment?.status ?? "Not available";
   const dSubtotal = Number(d?.subtotal ?? d?.subTotal ?? d?.totalAmount ?? 0);
   const dDelivery = Number(d?.deliveryCharge ?? d?.shippingCost ?? 0);
   const dDiscount = Number(d?.discount ?? d?.discountAmount ?? 0);
   const dTotal = Number(
-    d?.grandTotal ??
-      d?.finalAmount ??
-      d?.total ??
-      d?.totalAmount ??
-      dSubtotal + dDelivery - dDiscount
+    d?.grandTotal ?? d?.finalAmount ?? d?.total ?? d?.totalAmount ?? dSubtotal + dDelivery - dDiscount
   );
   const dCourier =
-    d?.courierDetails?.provider ??
-    d?.courier ??
-    d?.courierName ??
-    d?.courierProvider;
+    d?.courierDetails?.provider ?? d?.courier ?? d?.courierName ?? d?.courierProvider;
   const dTracking =
-    d?.courierDetails?.trackingCode ??
-    d?.trackingNumber ??
-    d?.trackingId ??
-    d?.consignmentId;
-
-  const detailsIndex = getDetailsIndex();
-  const hasPrev = detailsIndex > 0;
-  const hasNext = detailsIndex >= 0 && detailsIndex < orders.length - 1;
+    d?.courierDetails?.trackingCode ?? d?.trackingNumber ?? d?.trackingId ?? d?.consignmentId;
 
   return (
     <main className="min-h-screen bg-slate-50 p-4 text-slate-800 md:p-6">
@@ -515,9 +438,7 @@ export default function OrderManege() {
         <header className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
           <div>
             <h1 className="text-2xl font-bold">Order Management</h1>
-            <p className="mt-1 text-sm text-slate-500">
-              মোট অর্ডার: {pagination.total}
-            </p>
+            <p className="mt-1 text-sm text-slate-500">মোট অর্ডার: {pagination.total}</p>
           </div>
           <button
             type="button"
@@ -530,36 +451,16 @@ export default function OrderManege() {
         </header>
 
         {error && (
-          <div
-            role="alert"
-            className="flex items-start justify-between gap-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700"
-          >
+          <div role="alert" className="flex items-start justify-between gap-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
             <span>{error}</span>
-            <button
-              type="button"
-              onClick={() => setError("")}
-              className="font-bold"
-              aria-label="Dismiss error"
-            >
-              ×
-            </button>
+            <button type="button" onClick={() => setError("")} className="font-bold" aria-label="Dismiss error">×</button>
           </div>
         )}
 
         {notice && (
-          <div
-            role="status"
-            className="flex items-start justify-between gap-3 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700"
-          >
+          <div role="status" className="flex items-start justify-between gap-3 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700">
             <span>{notice}</span>
-            <button
-              type="button"
-              onClick={() => setNotice("")}
-              className="font-bold"
-              aria-label="Dismiss notice"
-            >
-              ×
-            </button>
+            <button type="button" onClick={() => setNotice("")} className="font-bold" aria-label="Dismiss notice">×</button>
           </div>
         )}
 
@@ -577,9 +478,7 @@ export default function OrderManege() {
           >
             <option value="all">All statuses</option>
             {STATUSES.map((item) => (
-              <option key={item} value={item}>
-                {formatStatus(item)}
-              </option>
+              <option key={item} value={item}>{formatStatus(item)}</option>
             ))}
           </select>
           <input
@@ -601,9 +500,7 @@ export default function OrderManege() {
         </section>
 
         <section className="flex flex-col gap-3 rounded-xl border bg-white p-4 shadow-sm sm:flex-row sm:flex-wrap sm:items-center">
-          <span className="text-sm font-semibold">
-            Selected: {selectedIds.length}
-          </span>
+          <span className="text-sm font-semibold">Selected: {selectedIds.length}</span>
           <button
             type="button"
             onClick={openSelectedInvoices}
@@ -625,69 +522,37 @@ export default function OrderManege() {
           >
             <option value="">Bulk: change status</option>
             {STATUSES.map((item) => (
-              <option key={item} value={item}>
-                {formatStatus(item)}
-              </option>
+              <option key={item} value={item}>{formatStatus(item)}</option>
             ))}
           </select>
           <form
             className="flex flex-wrap gap-2"
             onSubmit={(e) => {
               e.preventDefault();
-              const value = new FormData(e.currentTarget)
-                .get("courier")
-                ?.toString()
-                .trim();
+              const value = new FormData(e.currentTarget).get("courier")?.toString().trim();
               if (value) bulkUpdate("courierProvider", value);
               else setError("Courier name লিখো।");
             }}
           >
-            <input
-              name="courier"
-              placeholder="Courier name"
-              disabled={busy || !selectedIds.length}
-              className="min-w-0 rounded-lg border px-3 py-2 text-sm disabled:opacity-50"
-            />
-            <button
-              type="submit"
-              disabled={busy || !selectedIds.length}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-            >
-              Update Courier
-            </button>
+            <input name="courier" placeholder="Courier name" disabled={busy || !selectedIds.length} className="min-w-0 rounded-lg border px-3 py-2 text-sm disabled:opacity-50" />
+            <button type="submit" disabled={busy || !selectedIds.length} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Update Courier</button>
           </form>
           <form
             className="flex flex-wrap gap-2"
             onSubmit={(e) => {
               e.preventDefault();
-              const value = new FormData(e.currentTarget)
-                .get("source")
-                ?.toString()
-                .trim();
+              const value = new FormData(e.currentTarget).get("source")?.toString().trim();
               if (value) bulkUpdate("source", value);
               else setError("Order source নির্বাচন করো।");
             }}
           >
-            <select
-              name="source"
-              defaultValue=""
-              disabled={busy || !selectedIds.length}
-              className="rounded-lg border px-3 py-2 text-sm disabled:opacity-50"
-            >
+            <select name="source" defaultValue="" disabled={busy || !selectedIds.length} className="rounded-lg border px-3 py-2 text-sm disabled:opacity-50">
               <option value="">Select source</option>
               {SOURCES.map((item) => (
-                <option key={item} value={item}>
-                  {formatStatus(item)}
-                </option>
+                <option key={item} value={item}>{formatStatus(item)}</option>
               ))}
             </select>
-            <button
-              type="submit"
-              disabled={busy || !selectedIds.length}
-              className="rounded-lg border px-4 py-2 text-sm font-semibold disabled:opacity-50"
-            >
-              Update Source
-            </button>
+            <button type="submit" disabled={busy || !selectedIds.length} className="rounded-lg border px-4 py-2 text-sm font-semibold disabled:opacity-50">Update Source</button>
           </form>
         </section>
 
@@ -697,12 +562,7 @@ export default function OrderManege() {
               <thead className="bg-slate-100 text-xs uppercase text-slate-600">
                 <tr>
                   <th className="p-3">
-                    <input
-                      type="checkbox"
-                      checked={allVisibleSelected}
-                      onChange={toggleSelectAll}
-                      aria-label="Select all visible orders"
-                    />
+                    <input type="checkbox" checked={allVisibleSelected} onChange={toggleSelectAll} aria-label="Select all visible orders" />
                   </th>
                   <th className="p-3">Order</th>
                   <th className="p-3">Customer</th>
@@ -716,68 +576,28 @@ export default function OrderManege() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {loading ? (
-                  <tr>
-                    <td
-                      colSpan={9}
-                      className="p-10 text-center text-slate-500"
-                    >
-                      অর্ডার লোড হচ্ছে...
-                    </td>
-                  </tr>
+                  <tr><td colSpan={9} className="p-10 text-center text-slate-500">অর্ডার লোড হচ্ছে...</td></tr>
                 ) : orders.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={9}
-                      className="p-10 text-center text-slate-500"
-                    >
-                      কোনো অর্ডার পাওয়া যায়নি।
-                    </td>
-                  </tr>
+                  <tr><td colSpan={9} className="p-10 text-center text-slate-500">কোনো অর্ডার পাওয়া যায়নি।</td></tr>
                 ) : (
                   orders.map((order) => {
                     const id = getOrderId(order);
-                    const products = Array.isArray(order.products)
-                      ? order.products
-                      : [];
+                    const products = Array.isArray(order.products) ? order.products : [];
                     return (
                       <tr key={id} className="align-top hover:bg-slate-50">
                         <td className="p-3">
-                          <input
-                            type="checkbox"
-                            checked={selectedIds.includes(id)}
-                            onChange={() => toggleSelect(id)}
-                            aria-label={`Select order ${order.orderId || id}`}
-                          />
+                          <input type="checkbox" checked={selectedIds.includes(id)} onChange={() => toggleSelect(id)} aria-label={`Select order ${order.orderId || id}`} />
                         </td>
                         <td className="p-3">
-                          <p className="font-semibold">
-                            {order.orderId || id || "—"}
-                          </p>
-                          <p className="mt-1 text-xs text-slate-500">
-                            {formatStatus(order.paymentMethod || "—")}
-                          </p>
-                          <p className="mt-1 text-xs text-slate-500">
-                            Payment:{" "}
-                            {formatStatus(order.paymentStatus || "unpaid")}
-                          </p>
+                          <p className="font-semibold">{order.orderId || id || "—"}</p>
+                          <p className="mt-1 text-xs text-slate-500">{formatStatus(order.paymentMethod || "—")}</p>
+                          <p className="mt-1 text-xs text-slate-500">Payment: {formatStatus(order.paymentStatus || "unpaid")}</p>
                         </td>
                         <td className="max-w-48 p-3">
-                          <p className="font-medium">
-                            {order.customerName ||
-                              order.customer?.name ||
-                              "—"}
-                          </p>
-                          <p className="text-xs text-slate-500">
-                            {order.phone || order.customer?.phone || "—"}
-                          </p>
-                          {order.email && (
-                            <p className="break-all text-xs text-slate-500">
-                              {order.email}
-                            </p>
-                          )}
-                          <p className="mt-1 break-words text-xs text-slate-500">
-                            {order.deliveryAddress || "—"}
-                          </p>
+                          <p className="font-medium">{order.customerName || order.customer?.name || "—"}</p>
+                          <p className="text-xs text-slate-500">{order.phone || order.customer?.phone || "—"}</p>
+                          {order.email && <p className="break-all text-xs text-slate-500">{order.email}</p>}
+                          <p className="mt-1 break-words text-xs text-slate-500">{order.deliveryAddress || "—"}</p>
                         </td>
                         <td className="max-w-64 p-3">
                           {products.length ? (
@@ -785,112 +605,51 @@ export default function OrderManege() {
                               {products.map((item, index) => {
                                 const product = getProductInfo(item);
                                 return (
-                                  <li
-                                    key={
-                                      item._id || item.product?._id || index
-                                    }
-                                    className="flex gap-2"
-                                  >
+                                  <li key={item._id || item.product?._id || index} className="flex gap-2">
                                     {product.image ? (
-                                      <img
-                                        src={product.image}
-                                        alt={product.name}
-                                        loading="lazy"
-                                        className="h-12 w-12 shrink-0 rounded-lg border object-cover"
-                                        onError={(e) => {
-                                          e.currentTarget.style.display =
-                                            "none";
-                                        }}
-                                      />
+                                      <img src={product.image} alt={product.name} loading="lazy" className="h-12 w-12 shrink-0 rounded-lg border object-cover" onError={(e) => { e.currentTarget.style.display = "none"; }} />
                                     ) : null}
                                     <div className="min-w-0">
-                                      <p className="break-words font-medium">
-                                        {product.name}
-                                      </p>
-                                      <p className="text-xs text-slate-500">
-                                        Qty: {product.quantity} ·{" "}
-                                        {formatMoney(product.price)}
-                                      </p>
-                                      {(product.color ||
-                                        product.ram ||
-                                        product.storage) && (
-                                        <p className="mt-1 text-xs text-slate-500">
-                                          {[
-                                            product.color,
-                                            product.ram,
-                                            product.storage,
-                                          ]
-                                            .filter(Boolean)
-                                            .join(" / ")}
-                                        </p>
+                                      <p className="break-words font-medium">{product.name}</p>
+                                      <p className="text-xs text-slate-500">Qty: {product.quantity} · {formatMoney(product.price)}</p>
+                                      {(product.color || product.ram || product.storage) && (
+                                        <p className="mt-1 text-xs text-slate-500">{[product.color, product.ram, product.storage].filter(Boolean).join(" / ")}</p>
                                       )}
                                     </div>
                                   </li>
                                 );
                               })}
                             </ul>
-                          ) : (
-                            "—"
-                          )}
+                          ) : "—"}
                         </td>
                         <td className="p-3">
-                          <p className="font-semibold">
-                            {formatMoney(order.totalAmount)}
-                          </p>
-                          {Number(order.subTotal) > 0 && (
-                            <p className="text-xs text-slate-500">
-                              Subtotal: {formatMoney(order.subTotal)}
-                            </p>
-                          )}
-                          {Number(order.discountAmount) > 0 && (
-                            <p className="text-xs text-green-700">
-                              Discount: {formatMoney(order.discountAmount)}
-                            </p>
-                          )}
-                          {Number(order.deliveryCharge) > 0 && (
-                            <p className="text-xs text-slate-500">
-                              Delivery: {formatMoney(order.deliveryCharge)}
-                            </p>
-                          )}
+                          <p className="font-semibold">{formatMoney(order.totalAmount)}</p>
+                          {Number(order.subTotal) > 0 && <p className="text-xs text-slate-500">Subtotal: {formatMoney(order.subTotal)}</p>}
+                          {Number(order.discountAmount) > 0 && <p className="text-xs text-green-700">Discount: {formatMoney(order.discountAmount)}</p>}
+                          {Number(order.deliveryCharge) > 0 && <p className="text-xs text-slate-500">Delivery: {formatMoney(order.deliveryCharge)}</p>}
                         </td>
                         <td className="p-3">
                           <p>{order.courierDetails?.provider || "—"}</p>
-                          {order.courierDetails?.trackingCode && (
-                            <p className="mt-1 text-xs text-slate-500">
-                              Tracking: {order.courierDetails.trackingCode}
-                            </p>
-                          )}
-                          <p className="mt-1 text-xs text-slate-500">
-                            {formatStatus(order.source || "—")}
-                          </p>
+                          {order.courierDetails?.trackingCode && <p className="mt-1 text-xs text-slate-500">Tracking: {order.courierDetails.trackingCode}</p>}
+                          <p className="mt-1 text-xs text-slate-500">{formatStatus(order.source || "—")}</p>
                         </td>
                         <td className="p-3">
-                          <span
-                            className={`mb-2 inline-block rounded-full border px-2 py-1 text-xs font-medium ${getStatusClass(
-                              order.status
-                            )}`}
-                          >
+                          <span className={`mb-2 inline-block rounded-full border px-2 py-1 text-xs font-medium ${getStatusClass(order.status)}`}>
                             {formatStatus(order.status || "pending")}
                           </span>
                           <select
                             value={order.status || "pending"}
                             disabled={busy}
-                            onChange={(e) =>
-                              updateSingleOrder(id, e.target.value)
-                            }
+                            onChange={(e) => updateSingleOrder(id, e.target.value)}
                             className="block max-w-44 rounded-lg border px-2 py-2 text-xs disabled:opacity-50"
                             aria-label={`Update status for ${order.orderId || id}`}
                           >
                             {STATUSES.map((item) => (
-                              <option key={item} value={item}>
-                                {formatStatus(item)}
-                              </option>
+                              <option key={item} value={item}>{formatStatus(item)}</option>
                             ))}
                           </select>
                         </td>
-                        <td className="whitespace-nowrap p-3 text-xs text-slate-500">
-                          {formatDate(order.createdAt)}
-                        </td>
+                        <td className="whitespace-nowrap p-3 text-xs text-slate-500">{formatDate(order.createdAt)}</td>
                         <td className="p-3">
                           <div className="flex flex-col items-start gap-2">
                             <button
@@ -925,28 +684,10 @@ export default function OrderManege() {
             </table>
           </div>
           <footer className="flex flex-col justify-between gap-3 border-t p-4 sm:flex-row sm:items-center">
-            <p className="text-sm text-slate-500">
-              Total: {pagination.total} · Page {page} of {pagination.pages}
-            </p>
+            <p className="text-sm text-slate-500">Total: {pagination.total} · Page {page} of {pagination.pages}</p>
             <div className="flex gap-2">
-              <button
-                type="button"
-                disabled={page <= 1 || loading || busy}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="rounded-lg border px-4 py-2 text-sm disabled:opacity-40"
-              >
-                Previous
-              </button>
-              <button
-                type="button"
-                disabled={page >= pagination.pages || loading || busy}
-                onClick={() =>
-                  setPage((p) => Math.min(pagination.pages, p + 1))
-                }
-                className="rounded-lg border px-4 py-2 text-sm disabled:opacity-40"
-              >
-                Next
-              </button>
+              <button type="button" disabled={page <= 1 || loading || busy} onClick={() => setPage((p) => Math.max(1, p - 1))} className="rounded-lg border px-4 py-2 text-sm disabled:opacity-40">Previous</button>
+              <button type="button" disabled={page >= pagination.pages || loading || busy} onClick={() => setPage((p) => Math.min(pagination.pages, p + 1))} className="rounded-lg border px-4 py-2 text-sm disabled:opacity-40">Next</button>
             </div>
           </footer>
         </section>
@@ -955,371 +696,228 @@ export default function OrderManege() {
       {/* ========== FULL ORDER DETAILS – RIGHT SIDE PANEL ========== */}
       {showDetails && (
         <div className="fixed inset-0 z-[90] flex justify-end">
-          <div
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]"
-            onClick={closeOrderDetails}
-          />
+          <div className="absolute inset-0 bg-slate-900/50" onClick={closeOrderDetails} />
 
-          <aside className="relative z-10 flex h-full w-full max-w-2xl flex-col bg-slate-50 shadow-2xl">
-            {/* Header */}
-            <div className="shrink-0 border-b border-slate-200 bg-white px-5 py-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm">
-                    <Receipt size={20} />
-                  </div>
-                  <div className="min-w-0">
-                    <h2 className="text-lg font-bold text-slate-900">
-                      Order Details
-                    </h2>
-                    <p className="mt-0.5 truncate text-sm text-slate-500">
-                      {d?.orderId ?? d?._id ?? "—"}
-                    </p>
-                  </div>
+          <aside className="relative z-10 flex h-full w-full max-w-2xl flex-col bg-gray-50 shadow-2xl">
+            {/* Panel Header */}
+            <div className="flex items-center justify-between border-b bg-white px-5 py-4">
+              <div className="flex items-center gap-3">
+                <div className="rounded-xl bg-gray-100 p-2.5">
+                  <Receipt size={20} className="text-gray-800" />
                 </div>
-                <button
-                  type="button"
-                  onClick={closeOrderDetails}
-                  className="shrink-0 rounded-xl border border-slate-200 p-2.5 text-slate-500 transition hover:bg-slate-50 hover:text-slate-800"
-                  aria-label="Close"
-                >
-                  <X size={18} />
-                </button>
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900">Order Details</h2>
+                  <p className="text-sm text-gray-500">
+                    {d?.orderId ?? d?._id ?? "—"}
+                  </p>
+                </div>
               </div>
-
-              {/* Prev / Next nav */}
-              <div className="mt-4 flex items-center gap-2">
-                <button
-                  type="button"
-                  disabled={!hasPrev || detailsLoading}
-                  onClick={() => goToAdjacentDetails("previous")}
-                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-35"
-                >
-                  <ArrowLeft size={15} />
-                  Previous Order
-                </button>
-                <span className="shrink-0 px-2 text-xs font-medium text-slate-400">
-                  {detailsIndex >= 0
-                    ? `${detailsIndex + 1} / ${orders.length}`
-                    : "—"}
-                </span>
-                <button
-                  type="button"
-                  disabled={!hasNext || detailsLoading}
-                  onClick={() => goToAdjacentDetails("next")}
-                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-35"
-                >
-                  Next Order
-                  <ArrowRight size={15} />
-                </button>
-              </div>
-            </div>
-
-            {/* Body */}
-            <div className="flex-1 overflow-y-auto p-5">
-          {detailsLoading && !d ? (
-  <div className="flex flex-col items-center justify-center py-28">
-    <div className="relative">
-      <div className="absolute inset-0 animate-ping rounded-full bg-slate-200/60" />
-      <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-lg ring-1 ring-slate-200">
-        <RefreshCw className="animate-spin text-slate-500" size={24} />
-      </div>
-    </div>
-    <p className="mt-5 text-sm font-medium text-slate-500">
-      Loading order details...
-    </p>
-  </div>
-) : !d ? (
-  <div className="flex flex-col items-center justify-center py-28">
-    <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100">
-      <Package size={28} className="text-slate-400" />
-    </div>
-    <p className="mt-4 text-sm font-medium text-slate-500">
-      Order not found.
-    </p>
-  </div>
-) : (
-  <div className="space-y-5">
-    {/* ── Hero Summary ── */}
-    <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 text-white shadow-xl shadow-slate-900/20">
-      <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/5 blur-2xl" />
-      <div className="pointer-events-none absolute -bottom-8 -left-8 h-32 w-32 rounded-full bg-indigo-500/10 blur-2xl" />
-
-      <div className="relative flex flex-wrap items-start justify-between gap-5">
-        <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-            Order Number
-          </p>
-          <h3 className="mt-1.5 break-all text-2xl font-black tracking-tight">
-            {d.orderId ?? d._id}
-          </h3>
-          <div className="mt-4 flex flex-wrap items-center gap-2.5">
-            <StatusBadge status={dStatus} />
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs text-slate-300 backdrop-blur-sm">
-              <CalendarDays size={12} />
-              {formatDate(d.createdAt ?? d.orderDate)}
-            </span>
-          </div>
-        </div>
-
-        <div className="rounded-2xl bg-white/10 px-6 py-4 text-right backdrop-blur-md ring-1 ring-white/10">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-            Grand Total
-          </p>
-          <p className="mt-1 text-3xl font-black tracking-tight">
-            {formatMoney(dTotal)}
-          </p>
-          <p className="mt-1 text-xs text-slate-400">
-            {dProducts.length} product type{dProducts.length !== 1 ? "s" : ""}
-          </p>
-        </div>
-      </div>
-    </section>
-
-    {/* ── Customer ── */}
-    <SectionCard title="Customer Information" icon={UserRound}>
-      <div className="grid grid-cols-1 gap-x-2 sm:grid-cols-2">
-        <InfoRow label="Customer Name" value={dCustomerName} icon={UserRound} />
-        <InfoRow label="Phone Number" value={dPhone} icon={Phone} />
-        <InfoRow label="Email Address" value={dEmail} icon={Mail} />
-        <InfoRow
-          label="Customer ID"
-          value={
-            typeof d.customer === "object" ? d.customer?._id : d.customerId
-          }
-          icon={Hash}
-        />
-      </div>
-    </SectionCard>
-
-    {/* ── Delivery ── */}
-    <SectionCard title="Delivery Information" icon={Truck}>
-      <div className="grid grid-cols-1 gap-x-2 sm:grid-cols-2">
-        <InfoRow label="Delivery Address" value={dAddress} icon={MapPin} />
-        <InfoRow label="Division" value={d.division ?? d.selectDivision} />
-        <InfoRow label="District" value={d.district ?? d.selectDistrict} />
-        <InfoRow
-          label="Area / Upazila"
-          value={d.selectArea ?? d.upazila ?? d.area}
-        />
-        <InfoRow label="Courier" value={dCourier} icon={Truck} />
-        <InfoRow label="Tracking Number" value={dTracking} icon={Hash} />
-      </div>
-      {d.notes && (
-        <div className="mt-4 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 p-4 ring-1 ring-amber-200/60">
-          <div className="flex items-center gap-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-100">
-              <span className="text-xs">📝</span>
-            </div>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-amber-700/80">
-              Order Notes
-            </p>
-          </div>
-          <p className="mt-2 text-sm leading-relaxed text-slate-700">
-            {d.notes}
-          </p>
-        </div>
-      )}
-    </SectionCard>
-
-    {/* ── Products ── */}
-    <SectionCard title="Ordered Products" icon={ShoppingBag}>
-      {dProducts.length === 0 ? (
-        <div className="py-12 text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">
-            <Package size={26} className="text-slate-350 text-slate-400" />
-          </div>
-          <p className="mt-3 text-sm font-medium text-slate-500">
-            No product items found.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {dProducts.map((product, index) => {
-            const info = getProductInfo(product);
-            const qty = Number(info.quantity || 1);
-            const price = Number(info.price || 0);
-            const lineTotal = Number(
-              product.subtotal ?? product.total ?? price * qty
-            );
-            return (
-              <div
-                key={product._id ?? product.productId ?? index}
-                className="group flex flex-col gap-3.5 rounded-2xl border border-slate-100 bg-gradient-to-br from-slate-50/80 to-white p-4 transition hover:border-slate-200 hover:shadow-md sm:flex-row sm:items-center"
+              <button
+                type="button"
+                onClick={closeOrderDetails}
+                className="rounded-lg border p-2 hover:bg-gray-50"
+                aria-label="Close"
               >
-                <div className="flex h-[72px] w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200/70">
-                  {info.image ? (
-                    <img
-                      src={info.image}
-                      alt={info.name}
-                      className="h-full w-full object-contain p-1.5 transition group-hover:scale-105"
-                      loading="lazy"
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Panel Body */}
+            <div className="flex-1 overflow-y-auto p-5">
+              {detailsLoading && !d ? (
+                <div className="flex flex-col items-center justify-center py-20">
+                  <RefreshCw className="animate-spin text-gray-500" size={32} />
+                  <p className="mt-3 text-sm text-gray-500">Loading order details...</p>
+                </div>
+              ) : !d ? (
+                <p className="py-20 text-center text-sm text-gray-500">Order not found.</p>
+              ) : (
+                <div className="space-y-5">
+                  {/* Summary card */}
+                  <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                      <div>
+                        <p className="text-xs font-medium text-gray-500">Order Number</p>
+                        <h3 className="mt-1 break-all text-xl font-extrabold text-gray-900">
+                          {d.orderId ?? d._id}
+                        </h3>
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                          <StatusBadge status={dStatus} />
+                          <span className="inline-flex items-center gap-1 text-xs text-gray-500">
+                            <CalendarDays size={13} />
+                            {formatDate(d.createdAt ?? d.orderDate)}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="rounded-xl bg-gray-50 px-5 py-4 text-right">
+                        <p className="text-sm text-gray-500">Order Total</p>
+                        <p className="mt-1 text-2xl font-extrabold text-gray-900">
+                          {formatMoney(dTotal)}
+                        </p>
+                        <p className="mt-1 text-xs text-gray-500">
+                          {dProducts.length} product item type(s)
+                        </p>
+                      </div>
+                    </div>
+                  </section>
+
+                  {/* Customer */}
+                  <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                    <div className="mb-3 flex items-center gap-2 border-b border-gray-100 pb-3">
+                      <div className="rounded-lg bg-gray-100 p-2"><UserRound size={18} className="text-gray-700" /></div>
+                      <h3 className="font-bold text-gray-900">Customer Information</h3>
+                    </div>
+                    <div className="grid grid-cols-1 gap-x-6 sm:grid-cols-2">
+                      <InfoRow label="Customer Name" value={dCustomerName} icon={UserRound} />
+                      <InfoRow label="Phone Number" value={dPhone} icon={Phone} />
+                      <InfoRow label="Email Address" value={dEmail} icon={Mail} />
+                      <InfoRow
+                        label="Customer ID"
+                        value={typeof d.customer === "object" ? d.customer?._id : d.customerId}
+                        icon={Hash}
+                      />
+                    </div>
+                  </section>
+
+                  {/* Delivery */}
+                  <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                    <div className="mb-3 flex items-center gap-2 border-b border-gray-100 pb-3">
+                      <div className="rounded-lg bg-gray-100 p-2"><Truck size={18} className="text-gray-700" /></div>
+                      <h3 className="font-bold text-gray-900">Delivery Information</h3>
+                    </div>
+                    <div className="grid grid-cols-1 gap-x-6 sm:grid-cols-2">
+                      <InfoRow label="Delivery Address" value={dAddress} icon={MapPin} />
+                      <InfoRow label="Division" value={d.division ?? d.selectDivision} />
+                      <InfoRow label="District" value={d.district ?? d.selectDistrict} />
+                      <InfoRow label="Area / Upazila" value={d.selectArea ?? d.upazila ?? d.area} />
+                      <InfoRow label="Courier" value={dCourier} icon={Truck} />
+                      <InfoRow label="Tracking Number" value={dTracking} icon={Hash} />
+                    </div>
+                    {d.notes && (
+                      <div className="mt-3 rounded-xl bg-gray-50 p-3">
+                        <p className="text-xs font-semibold text-gray-500">Order Notes</p>
+                        <p className="mt-1 text-sm text-gray-800">{d.notes}</p>
+                      </div>
+                    )}
+                  </section>
+
+                  {/* Products */}
+                  <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                    <div className="mb-3 flex items-center gap-2 border-b border-gray-100 pb-3">
+                      <div className="rounded-lg bg-gray-100 p-2"><ShoppingBag size={18} className="text-gray-700" /></div>
+                      <h3 className="font-bold text-gray-900">Ordered Products</h3>
+                    </div>
+                    {dProducts.length === 0 ? (
+                      <div className="py-8 text-center">
+                        <Package size={32} className="mx-auto text-gray-300" />
+                        <p className="mt-2 text-sm text-gray-500">No product items found.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {dProducts.map((product, index) => {
+                          const info = getProductInfo(product);
+                          const qty = Number(info.quantity || 1);
+                          const price = Number(info.price || 0);
+                          const lineTotal = Number(product.subtotal ?? product.total ?? price * qty);
+                          return (
+                            <div
+                              key={product._id ?? product.productId ?? index}
+                              className="flex flex-col gap-3 rounded-xl border border-gray-100 p-3 sm:flex-row sm:items-center"
+                            >
+                              <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gray-100">
+                                {info.image ? (
+                                  <img src={info.image} alt={info.name} className="h-full w-full object-contain" loading="lazy" />
+                                ) : (
+                                  <Package size={24} className="text-gray-400" />
+                                )}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <h4 className="font-bold text-gray-900">{info.name}</h4>
+                                <div className="mt-1 flex flex-wrap gap-1.5 text-xs text-gray-500">
+                                  {info.color && <span className="rounded-md bg-gray-100 px-2 py-0.5">Color: {info.color}</span>}
+                                  {info.ram && <span className="rounded-md bg-gray-100 px-2 py-0.5">RAM: {info.ram}</span>}
+                                  {info.storage && <span className="rounded-md bg-gray-100 px-2 py-0.5">Storage: {info.storage}</span>}
+                                </div>
+                                <p className="mt-1 text-xs text-gray-500">{formatMoney(price)} × {qty}</p>
+                              </div>
+                              <div className="sm:text-right">
+                                <p className="text-xs text-gray-500">Item Total</p>
+                                <p className="font-extrabold text-gray-900">{formatMoney(lineTotal)}</p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </section>
+
+                  {/* Payment */}
+                  <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                    <div className="mb-3 flex items-center gap-2 border-b border-gray-100 pb-3">
+                      <div className="rounded-lg bg-gray-100 p-2"><CreditCard size={18} className="text-gray-700" /></div>
+                      <h3 className="font-bold text-gray-900">Payment Information</h3>
+                    </div>
+                    <InfoRow label="Payment Method" value={humanize(dPaymentMethod)} icon={CreditCard} />
+                    <InfoRow label="Payment Status" value={humanize(dPaymentStatus)} />
+                    <InfoRow
+                      label="Transaction ID"
+                      value={d.transactionId ?? d.paymentTransactionId ?? d.payment?.transactionId}
+                      icon={Hash}
                     />
-                  ) : (
-                    <Package size={26} className="text-slate-300" />
-                  )}
-                </div>
+                    <div className="my-3 border-t border-gray-100" />
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between gap-3">
+                        <span className="text-gray-500">Subtotal</span>
+                        <span className="font-semibold text-gray-800">{formatMoney(dSubtotal)}</span>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <span className="text-gray-500">Delivery Charge</span>
+                        <span className="font-semibold text-gray-800">{formatMoney(dDelivery)}</span>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <span className="text-gray-500">Discount</span>
+                        <span className="font-semibold text-green-600">-{formatMoney(dDiscount)}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 border-t border-gray-200 pt-3">
+                        <span className="font-bold text-gray-900">Grand Total</span>
+                        <span className="text-xl font-extrabold text-gray-900">{formatMoney(dTotal)}</span>
+                      </div>
+                    </div>
+                  </section>
 
-                <div className="min-w-0 flex-1">
-                  <h4 className="text-[15px] font-bold leading-snug text-slate-900">
-                    {info.name}
-                  </h4>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {info.color && (
-                      <span className="rounded-lg bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 shadow-sm ring-1 ring-slate-200/80">
-                        {info.color}
-                      </span>
-                    )}
-                    {info.ram && (
-                      <span className="rounded-lg bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 shadow-sm ring-1 ring-slate-200/80">
-                        {info.ram}
-                      </span>
-                    )}
-                    {info.storage && (
-                      <span className="rounded-lg bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600 shadow-sm ring-1 ring-slate-200/80">
-                        {info.storage}
-                      </span>
-                    )}
+                  {/* Order Info */}
+                  <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                    <div className="mb-3 flex items-center gap-2 border-b border-gray-100 pb-3">
+                      <div className="rounded-lg bg-gray-100 p-2"><Package size={18} className="text-gray-700" /></div>
+                      <h3 className="font-bold text-gray-900">Order Information</h3>
+                    </div>
+                    <InfoRow label="Order ID" value={d.orderId ?? d._id} icon={Hash} />
+                    <InfoRow label="Order Source" value={humanize(d.orderSource ?? d.source)} />
+                    <InfoRow label="Created At" value={formatDate(d.createdAt ?? d.orderDate)} icon={CalendarDays} />
+                    <InfoRow label="Last Updated" value={formatDate(d.updatedAt)} icon={CalendarDays} />
+                    <InfoRow
+                      label="Shipping Status"
+                      value={humanize(d.shippingStatus ?? d.shipmentStatus ?? d.courierStatus)}
+                      icon={Truck}
+                    />
+                  </section>
+
+                  {/* Status summary box */}
+                  <div className="rounded-2xl bg-gray-900 p-5 text-white">
+                    <div className="flex items-center gap-3">
+                      <CheckCircle2 size={22} />
+                      <h3 className="font-bold">Order Summary</h3>
+                    </div>
+                    <p className="mt-2 text-sm leading-6 text-gray-300">
+                      Review customer order, delivery, products and payment before processing.
+                    </p>
+                    <div className="mt-3 border-t border-gray-700 pt-3">
+                      <p className="text-xs text-gray-400">Current Status</p>
+                      <p className="mt-1 font-bold">{humanize(dStatus)}</p>
+                    </div>
                   </div>
-                  <p className="mt-2 text-xs font-medium text-slate-400">
-                    {formatMoney(price)}
-                    <span className="mx-1.5 text-slate-300">×</span>
-                    {qty}
-                  </p>
                 </div>
-
-                <div className="flex shrink-0 flex-col items-end sm:pl-2">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                    Item Total
-                  </p>
-                  <p className="mt-0.5 text-lg font-black text-slate-900">
-                    {formatMoney(lineTotal)}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </SectionCard>
-
-    {/* ── Payment ── */}
-    <SectionCard title="Payment Information" icon={CreditCard}>
-      <div className="grid grid-cols-1 gap-x-2 sm:grid-cols-2">
-        <InfoRow
-          label="Payment Method"
-          value={humanize(dPaymentMethod)}
-          icon={CreditCard}
-        />
-        <InfoRow
-          label="Payment Status"
-          value={humanize(dPaymentStatus)}
-        />
-        <InfoRow
-          label="Transaction ID"
-          value={
-            d.transactionId ??
-            d.paymentTransactionId ??
-            d.payment?.transactionId
-          }
-          icon={Hash}
-        />
-      </div>
-
-      <div className="mt-4 overflow-hidden rounded-2xl bg-slate-50 ring-1 ring-slate-200/60">
-        <div className="space-y-0 divide-y divide-slate-200/70 px-4 py-1">
-          <div className="flex justify-between gap-3 py-3 text-sm">
-            <span className="text-slate-500">Subtotal</span>
-            <span className="font-semibold text-slate-800">
-              {formatMoney(dSubtotal)}
-            </span>
-          </div>
-          <div className="flex justify-between gap-3 py-3 text-sm">
-            <span className="text-slate-500">Delivery Charge</span>
-            <span className="font-semibold text-slate-800">
-              {formatMoney(dDelivery)}
-            </span>
-          </div>
-          <div className="flex justify-between gap-3 py-3 text-sm">
-            <span className="text-slate-500">Discount</span>
-            <span className="font-semibold text-emerald-600">
-              −{formatMoney(dDiscount)}
-            </span>
-          </div>
-        </div>
-        <div className="flex items-center justify-between gap-3 bg-slate-900 px-4 py-3.5 text-white">
-          <span className="text-sm font-bold">Grand Total</span>
-          <span className="text-xl font-black tracking-tight">
-            {formatMoney(dTotal)}
-          </span>
-        </div>
-      </div>
-    </SectionCard>
-
-    {/* ── Order Info ── */}
-    <SectionCard title="Order Information" icon={Package}>
-      <div className="grid grid-cols-1 gap-x-2 sm:grid-cols-2">
-        <InfoRow label="Order ID" value={d.orderId ?? d._id} icon={Hash} />
-        <InfoRow
-          label="Order Source"
-          value={humanize(d.orderSource ?? d.source)}
-        />
-        <InfoRow
-          label="Created At"
-          value={formatDate(d.createdAt ?? d.orderDate)}
-          icon={CalendarDays}
-        />
-        <InfoRow
-          label="Last Updated"
-          value={formatDate(d.updatedAt)}
-          icon={CalendarDays}
-        />
-        <InfoRow
-          label="Shipping Status"
-          value={humanize(
-            d.shippingStatus ?? d.shipmentStatus ?? d.courierStatus
-          )}
-          icon={Truck}
-        />
-      </div>
-    </SectionCard>
-
-    {/* ── Footer Summary ── */}
-    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-slate-900 p-6 text-white shadow-xl shadow-indigo-900/25">
-      <div className="pointer-events-none absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/10 blur-2xl" />
-      <div className="pointer-events-none absolute -bottom-4 left-10 h-20 w-20 rounded-full bg-indigo-400/20 blur-xl" />
-
-      <div className="relative flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 backdrop-blur-sm">
-          <CheckCircle2 size={20} />
-        </div>
-        <h3 className="text-base font-bold">Order Summary</h3>
-      </div>
-
-      <p className="relative mt-3 text-sm leading-relaxed text-indigo-100/80">
-        Review customer order, delivery, products and payment before
-        processing the shipment.
-      </p>
-
-      <div className="relative mt-5 flex items-end justify-between gap-4 border-t border-white/15 pt-4">
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-indigo-200/70">
-            Current Status
-          </p>
-          <p className="mt-1 text-lg font-bold">{humanize(dStatus)}</p>
-        </div>
-        <div className="text-right">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-indigo-200/70">
-            Total Amount
-          </p>
-          <p className="mt-1 text-2xl font-black tracking-tight">
-            {formatMoney(dTotal)}
-          </p>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
+              )}
             </div>
           </aside>
         </div>
@@ -1331,26 +929,14 @@ export default function OrderManege() {
           <div className="mx-auto max-w-5xl rounded-xl bg-white p-4 shadow-2xl sm:p-8">
             <div className="invoice-controls mb-6 flex flex-wrap items-center justify-between gap-3 border-b pb-4">
               <div>
-                <h2 className="text-xl font-bold text-slate-900">
-                  Invoice Preview
-                </h2>
-                <p className="text-sm text-slate-500">
-                  {invoiceOrders.length} invoice(s)
-                </p>
+                <h2 className="text-xl font-bold text-slate-900">Invoice Preview</h2>
+                <p className="text-sm text-slate-500">{invoiceOrders.length} invoice(s)</p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={printInvoices}
-                  className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
-                >
+                <button type="button" onClick={printInvoices} className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
                   Print / Save PDF
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setShowInvoices(false)}
-                  className="rounded-lg border px-4 py-2 text-sm font-semibold hover:bg-slate-50"
-                >
+                <button type="button" onClick={() => setShowInvoices(false)} className="rounded-lg border px-4 py-2 text-sm font-semibold hover:bg-slate-50">
                   Close
                 </button>
               </div>
@@ -1358,84 +944,42 @@ export default function OrderManege() {
 
             <div className="invoice-list space-y-8">
               {invoiceOrders.map((order) => {
-                const products = Array.isArray(order.products)
-                  ? order.products
-                  : [];
+                const products = Array.isArray(order.products) ? order.products : [];
                 const subtotal =
                   order.subTotal ??
                   products.reduce((sum, item) => {
                     const product = getProductInfo(item);
-                    return (
-                      sum +
-                      Number(product.price) * Number(product.quantity)
-                    );
+                    return sum + Number(product.price) * Number(product.quantity);
                   }, 0);
 
                 return (
-                  <article
-                    key={getOrderId(order)}
-                    className="invoice-sheet mx-auto max-w-3xl border border-slate-200 p-5 sm:p-8"
-                  >
+                  <article key={getOrderId(order)} className="invoice-sheet mx-auto max-w-3xl border border-slate-200 p-5 sm:p-8">
                     <header className="flex flex-wrap justify-between gap-4 border-b-2 border-slate-900 pb-5">
                       <div>
-                        <h1 className="text-2xl font-black tracking-wide">
-                          APPLE GADGETS
-                        </h1>
-                        <p className="mt-1 text-sm text-slate-500">
-                          Customer Invoice
-                        </p>
+                        <h1 className="text-2xl font-black tracking-wide">APPLE GADGETS</h1>
+                        <p className="mt-1 text-sm text-slate-500">Customer Invoice</p>
                       </div>
                       <div className="text-right">
                         <h2 className="text-xl font-bold">INVOICE</h2>
-                        <p className="mt-2 text-sm">
-                          Order ID: {order.orderId || getOrderId(order)}
-                        </p>
-                        <p className="mt-1 text-sm">
-                          Date: {formatDate(order.createdAt)}
-                        </p>
-                        <p className="mt-1 text-sm">
-                          Status: {formatStatus(order.status || "pending")}
-                        </p>
+                        <p className="mt-2 text-sm">Order ID: {order.orderId || getOrderId(order)}</p>
+                        <p className="mt-1 text-sm">Date: {formatDate(order.createdAt)}</p>
+                        <p className="mt-1 text-sm">Status: {formatStatus(order.status || "pending")}</p>
                       </div>
                     </header>
 
                     <section className="grid grid-cols-1 gap-5 py-6 sm:grid-cols-2">
                       <div>
-                        <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
-                          Bill To
-                        </h3>
-                        <p className="font-semibold">
-                          {order.customerName ||
-                            order.customer?.name ||
-                            "—"}
-                        </p>
-                        <p className="mt-1 text-sm">
-                          Phone:{" "}
-                          {order.phone || order.customer?.phone || "—"}
-                        </p>
-                        {order.email && (
-                          <p className="mt-1 break-all text-sm">
-                            Email: {order.email}
-                          </p>
-                        )}
-                        <p className="mt-2 text-sm">
-                          Address: {order.deliveryAddress || "—"}
-                        </p>
+                        <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">Bill To</h3>
+                        <p className="font-semibold">{order.customerName || order.customer?.name || "—"}</p>
+                        <p className="mt-1 text-sm">Phone: {order.phone || order.customer?.phone || "—"}</p>
+                        {order.email && <p className="mt-1 break-all text-sm">Email: {order.email}</p>}
+                        <p className="mt-2 text-sm">Address: {order.deliveryAddress || "—"}</p>
                       </div>
                       <div className="sm:text-right">
-                        <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
-                          Payment Information
-                        </h3>
-                        <p className="text-sm">
-                          Method: {formatStatus(order.paymentMethod || "—")}
-                        </p>
-                        <p className="mt-1 text-sm">
-                          Payment status:{" "}
-                          {formatStatus(order.paymentStatus || "unpaid")}
-                        </p>
-                        <p className="mt-1 text-sm">
-                          Source: {formatStatus(order.source || "website")}
-                        </p>
+                        <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">Payment Information</h3>
+                        <p className="text-sm">Method: {formatStatus(order.paymentMethod || "—")}</p>
+                        <p className="mt-1 text-sm">Payment status: {formatStatus(order.paymentStatus || "unpaid")}</p>
+                        <p className="mt-1 text-sm">Source: {formatStatus(order.source || "website")}</p>
                       </div>
                     </section>
 
@@ -1452,41 +996,20 @@ export default function OrderManege() {
                         <tbody>
                           {products.map((item, index) => {
                             const product = getProductInfo(item);
-                            const lineTotal =
-                              Number(product.price) *
-                              Number(product.quantity);
+                            const lineTotal = Number(product.price) * Number(product.quantity);
                             return (
-                              <tr
-                                key={item._id || index}
-                                className="border-b"
-                              >
+                              <tr key={item._id || index} className="border-b">
                                 <td className="p-3">
-                                  <p className="font-medium">
-                                    {product.name}
-                                  </p>
-                                  {(product.color ||
-                                    product.ram ||
-                                    product.storage) && (
+                                  <p className="font-medium">{product.name}</p>
+                                  {(product.color || product.ram || product.storage) && (
                                     <p className="mt-1 text-xs text-slate-500">
-                                      {[
-                                        product.color,
-                                        product.ram,
-                                        product.storage,
-                                      ]
-                                        .filter(Boolean)
-                                        .join(" / ")}
+                                      {[product.color, product.ram, product.storage].filter(Boolean).join(" / ")}
                                     </p>
                                   )}
                                 </td>
-                                <td className="p-3 text-center">
-                                  {product.quantity}
-                                </td>
-                                <td className="p-3 text-right">
-                                  {formatMoney(product.price)}
-                                </td>
-                                <td className="p-3 text-right font-medium">
-                                  {formatMoney(lineTotal)}
-                                </td>
+                                <td className="p-3 text-center">{product.quantity}</td>
+                                <td className="p-3 text-right">{formatMoney(product.price)}</td>
+                                <td className="p-3 text-right font-medium">{formatMoney(lineTotal)}</td>
                               </tr>
                             );
                           })}
@@ -1495,33 +1018,21 @@ export default function OrderManege() {
                     </div>
 
                     <div className="ml-auto mt-6 max-w-sm space-y-2 text-sm">
-                      <div className="flex justify-between gap-4">
-                        <span>Subtotal</span>
-                        <span>{formatMoney(subtotal)}</span>
-                      </div>
+                      <div className="flex justify-between gap-4"><span>Subtotal</span><span>{formatMoney(subtotal)}</span></div>
                       {Number(order.discountAmount) > 0 && (
                         <div className="flex justify-between gap-4 text-green-700">
-                          <span>Discount</span>
-                          <span>-{formatMoney(order.discountAmount)}</span>
+                          <span>Discount</span><span>-{formatMoney(order.discountAmount)}</span>
                         </div>
                       )}
-                      <div className="flex justify-between gap-4">
-                        <span>Delivery Charge</span>
-                        <span>{formatMoney(order.deliveryCharge)}</span>
-                      </div>
+                      <div className="flex justify-between gap-4"><span>Delivery Charge</span><span>{formatMoney(order.deliveryCharge)}</span></div>
                       <div className="flex justify-between gap-4 border-t-2 border-slate-900 pt-3 text-lg font-black">
-                        <span>Grand Total</span>
-                        <span>{formatMoney(order.totalAmount)}</span>
+                        <span>Grand Total</span><span>{formatMoney(order.totalAmount)}</span>
                       </div>
                     </div>
 
                     <footer className="mt-10 border-t pt-5 text-center text-sm text-slate-500">
-                      <p className="font-semibold text-slate-800">
-                        Thank you for shopping with Apple Gadgets!
-                      </p>
-                      <p className="mt-1">
-                        Please keep this invoice for your records.
-                      </p>
+                      <p className="font-semibold text-slate-800">Thank you for shopping with Apple Gadgets!</p>
+                      <p className="mt-1">Please keep this invoice for your records.</p>
                     </footer>
                   </article>
                 );
