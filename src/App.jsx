@@ -1,7 +1,7 @@
 
 import { Routes, Route } from "react-router-dom";
-import DeshbordUI from "./DeshbordUI";
-import AdminAuthGuard from "./AdminAuthGuard";
+import DeshbordUI from "./Componat/DeshbordUI";
+import AdminAuthGuard from "./Componat/AdminAuthGuard";
 
 import "./App.css";
 

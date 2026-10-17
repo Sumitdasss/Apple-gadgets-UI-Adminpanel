@@ -154,34 +154,58 @@ export default function DeshbordUI() {
   useEffect(() => {
     const controller = new AbortController();
 
-    const loadDashboard = async () => {
-      setLoading(true);
-      setError("");
 
-      try {
-        const response = await fetch(
-          `${API}/api/dashboard/summary?date=${encodeURIComponent(selectedDate)}`,
-          {
-            signal: controller.signal,
-            headers: { Accept: "application/json" },
-          },
-        );
+const loadDashboard = async () => {
+  setLoading(true);
+  setError("");
 
-        if (!response.ok) throw new Error(`Server error: ${response.status}`);
+  try {
+    const token = localStorage.getItem("token");
 
-        const result = await response.json();
-        if (!result.success) throw new Error(result.message || "Dashboard data load failed");
+    if (!token) {
+      throw new Error(
+        "Login token পাওয়া যায়নি। আবার login করো।"
+      );
+    }
 
-        setDashboard(result);
-      } catch (err) {
-        if (err.name === "AbortError") return;
-        console.error("Dashboard error:", err);
-        setError(err.message || "Unable to load dashboard");
-        setDashboard(null);
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
+    const response = await fetch(
+      `${API}/api/dashboard/summary?date=${encodeURIComponent(
+        selectedDate
+      )}`,
+      {
+        method: "GET",
+        signal: controller.signal,
+        credentials: "include",
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
       }
-    };
+    );
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(
+        result.message ||
+          `Dashboard data load failed: ${response.status}`
+      );
+    }
+
+    setDashboard(result);
+  } catch (err) {
+    if (err.name === "AbortError") return;
+
+    console.error("Dashboard error:", err);
+    setError(err.message || "Unable to load dashboard");
+    setDashboard(null);
+  } finally {
+    if (!controller.signal.aborted) {
+      setLoading(false);
+    }
+  }
+};
+
 
     loadDashboard();
     return () => controller.abort();
