@@ -1,21 +1,25 @@
 
 import { Routes, Route } from "react-router-dom";
-import DeshbordUI from "./Componat/DeshbordUI";
+import DeshbordUI from "./DeshbordUI";
+import AdminAuthGuard from "./AdminAuthGuard";
 
 import "./App.css";
 
 function App() {
   return (
-    <Routes>
-      {/* Order details page */}
-    
+   
+<Routes>
 
-      {/* Dashboard and other dashboard routes */}
-      <Route
-        path="/*"
-        element={<DeshbordUI />}
-      />
-    </Routes>
+  <Route
+    path="/*"
+    element={
+      <AdminAuthGuard>
+        <DeshbordUI />
+      </AdminAuthGuard>
+    }
+  />
+</Routes>
+
   );
 }
 
