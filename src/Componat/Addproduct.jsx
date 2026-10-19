@@ -32,6 +32,7 @@ const initialFormData = {
   colors: [],
   sizes: [],
   specifications: [],
+  keyFeatures: [],
   ram: [],
   variants: [],
   rating: 0,
@@ -49,7 +50,7 @@ export default function AddProductPage() {
   const imageInputRef = useRef(null);
   const [subChildCategories, setSubChildCategories] = useState([]);
   const [formData, setFormData] = useState(initialFormData);
-
+const [keyFeatureInput, setKeyFeatureInput] = useState("");
   const [colorName, setColorName] = useState("");
   const [colorCode, setColorCode] = useState("#000000");
   const [colorImage, setColorImage] = useState(null);
@@ -198,6 +199,46 @@ export default function AddProductPage() {
 
     setSubChildCategories(selected?.subChildren || []);
   }, [formData.childCategory, childCategories]);
+
+
+// ==============================
+// KEY FEATURES
+// ==============================
+const addKeyFeature = () => {
+  const feature = keyFeatureInput.trim();
+
+  if (!feature) {
+    alert("Please enter a key feature");
+    return;
+  }
+
+  if (
+    formData.keyFeatures.some(
+      (item) => item.toLowerCase() === feature.toLowerCase()
+    )
+  ) {
+    alert("This key feature already exists");
+    return;
+  }
+
+  setFormData((prev) => ({
+    ...prev,
+    keyFeatures: [...prev.keyFeatures, feature],
+  }));
+
+  setKeyFeatureInput("");
+};
+
+const removeKeyFeature = (index) => {
+  setFormData((prev) => ({
+    ...prev,
+    keyFeatures: prev.keyFeatures.filter(
+      (_, i) => i !== index
+    ),
+  }));
+};
+
+
 
   // ==============================
   // INPUT CHANGE
@@ -680,7 +721,10 @@ export default function AddProductPage() {
       data.append("isBestSeller", String(formData.isBestSeller));
       data.append("metaTitle", formData.metaTitle);
       data.append("metaDescription", formData.metaDescription);
-
+data.append(
+  "keyFeatures",
+  JSON.stringify(formData.keyFeatures)
+);
       formData.images.forEach((image) => {
         data.append("images", image);
       });
@@ -1972,6 +2016,80 @@ export default function AddProductPage() {
           </section>
 
           {/* ================= VARIANTS ================= */}
+
+
+
+
+{/* ================= KEY FEATURES ================= */}
+<section className="rounded-2xl bg-white p-6 shadow-sm">
+  <h2 className="mb-2 text-xl font-semibold text-slate-900">
+    Key Features
+  </h2>
+
+  <p className="mb-5 text-sm text-slate-500">
+    Add the main highlights displayed on the product page.
+  </p>
+
+  <div className="flex flex-col gap-3 sm:flex-row">
+    <input
+      type="text"
+      value={keyFeatureInput}
+      onChange={(e) => setKeyFeatureInput(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          addKeyFeature();
+        }
+      }}
+      placeholder="e.g. AMD Ryzen 5 PRO 5650GE Processor"
+      className="flex-1 rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
+    />
+
+    <button
+      type="button"
+      onClick={addKeyFeature}
+      className="rounded-xl bg-blue-600 px-6 py-3 font-medium text-white hover:bg-blue-700"
+    >
+      + Add Feature
+    </button>
+  </div>
+
+  {formData.keyFeatures.length > 0 && (
+    <div className="mt-5 rounded-xl border border-slate-200 p-4">
+      <h3 className="mb-3 font-semibold text-slate-800">
+        Added Key Features ({formData.keyFeatures.length})
+      </h3>
+
+      <ul className="space-y-3">
+        {formData.keyFeatures.map((feature, index) => (
+          <li
+            key={`${feature}-${index}`}
+            className="flex items-start gap-3"
+          >
+            <span className="mt-1 text-slate-400">•</span>
+
+            <span className="flex-1 text-sm text-slate-700">
+              {feature}
+            </span>
+
+            <button
+              type="button"
+              onClick={() => removeKeyFeature(index)}
+              className="text-sm font-medium text-red-500 hover:text-red-700"
+            >
+              Remove
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )}
+</section>
+
+
+
+
+
           <section className="rounded-2xl bg-white p-6 shadow-sm">
             <div className="mb-6">
               <h2 className="text-xl font-semibold text-slate-900">
