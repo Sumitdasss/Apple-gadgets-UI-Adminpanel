@@ -257,6 +257,9 @@ const removeKeyFeature = (index) => {
           sizes: product.sizes || [],
           specifications: product.specifications || [],
           ram: product.ram || [],
+          keyFeatures: Array.isArray(product.keyFeatures)
+  ? product.keyFeatures
+  : [],
           variants: product.variants || [],
           rating: product.rating || 0,
           isActive: product.isActive ?? true,
