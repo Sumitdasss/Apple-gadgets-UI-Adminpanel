@@ -29,6 +29,7 @@ const initialFormData = {
   colors: [],
   sizes: [],
   specifications: [],
+  keyFeatures: [],
   ram: [],
   variants: [],
   rating: 0,
@@ -66,6 +67,7 @@ export default function UpdateProductPage({ productId: propProductId }) {
   const [size, setSize] = useState("");
   const [specKey, setSpecKey] = useState("");
   const [specValue, setSpecValue] = useState("");
+  const [keyFeatureInput, setKeyFeatureInput] = useState("");
   const [ramValue, setRamValue] = useState("");
 
   const [variantColorName, setVariantColorName] = useState("");
@@ -112,6 +114,44 @@ export default function UpdateProductPage({ productId: propProductId }) {
 
     loadList();
   }, [selectedProductId]);
+
+
+
+const addKeyFeature = () => {
+  const feature = keyFeatureInput.trim();
+
+  if (!feature) {
+    alert("Please enter a key feature");
+    return;
+  }
+
+  const exists = formData.keyFeatures.some(
+    (item) => item.toLowerCase() === feature.toLowerCase()
+  );
+
+  if (exists) {
+    alert("This key feature already exists");
+    return;
+  }
+
+  setFormData((prev) => ({
+    ...prev,
+    keyFeatures: [...prev.keyFeatures, feature],
+  }));
+
+  setKeyFeatureInput("");
+};
+
+const removeKeyFeature = (index) => {
+  setFormData((prev) => ({
+    ...prev,
+    keyFeatures: prev.keyFeatures.filter(
+      (_, i) => i !== index
+    ),
+  }));
+};
+
+
 
   // ==============================
   // LOAD CATEGORIES
@@ -673,7 +713,10 @@ export default function UpdateProductPage({ productId: propProductId }) {
       data.append("metaTitle", formData.metaTitle);
       data.append("metaDescription", formData.metaDescription);
       data.append("existingImages", JSON.stringify(existingImages));
-
+data.append(
+  "keyFeatures",
+  JSON.stringify(formData.keyFeatures)
+);
       formData.images.forEach((image) => {
         data.append("images", image);
       });
@@ -1571,6 +1614,68 @@ export default function UpdateProductPage({ productId: propProductId }) {
               </div>
             )}
           </section>
+
+
+
+
+{/* ================= KEY FEATURES ================= */}
+<section className="rounded-2xl bg-white p-6 shadow-sm">
+  <h2 className="mb-2 text-xl font-semibold text-slate-900">
+    Key Features
+  </h2>
+
+  <p className="mb-4 text-sm text-slate-500">
+    Add the main highlights of this product.
+  </p>
+
+  <div className="flex flex-col gap-3 sm:flex-row">
+    <input
+      type="text"
+      value={keyFeatureInput}
+      onChange={(e) => setKeyFeatureInput(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          addKeyFeature();
+        }
+      }}
+      placeholder="e.g. Ryzen 5 PRO 5650GE Processor"
+      className="flex-1 rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
+    />
+
+    <button
+      type="button"
+      onClick={addKeyFeature}
+      className="rounded-xl bg-blue-600 px-5 py-3 text-white"
+    >
+      + Add Feature
+    </button>
+  </div>
+
+  <ul className="mt-4 space-y-3">
+    {formData.keyFeatures.map((feature, index) => (
+      <li
+        key={`${feature}-${index}`}
+        className="flex items-start gap-3"
+      >
+        <span className="flex-1 text-sm text-slate-700">
+          • {feature}
+        </span>
+
+        <button
+          type="button"
+          onClick={() => removeKeyFeature(index)}
+          className="text-sm text-red-600"
+        >
+          Remove
+        </button>
+      </li>
+    ))}
+  </ul>
+</section>
+
+
+
 
           {/* ================= VARIANTS ================= */}
           <section className="rounded-2xl bg-white p-6 shadow-sm">
