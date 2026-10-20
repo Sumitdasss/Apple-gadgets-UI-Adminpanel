@@ -1,8 +1,7 @@
-/* eslint-disable react-hooks/set-state-in-effect */
-
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import { Toaster } from "react-hot-toast";
 import {
   Users,
   Search,
@@ -25,6 +24,7 @@ import {
   BadgeCheck,
   Save,
 } from "lucide-react";
+import { showReviewToast } from ".//SavedToast";
 
 const API_BASE = "https://apple-gadgets-ui-backend.vercel.app";
 const CUSTOMER_API = `${API_BASE}/api/customers`;
@@ -109,7 +109,9 @@ export default function CustomerManagementPage() {
       const result = await apiRequest("/api/customers/AllCustomers");
       setCustomers(normalizeCustomerResponse(result));
     } catch (err) {
-      setError(err.message || "Unable to load customers.");
+      const msg = err.message || "Unable to load customers.";
+      setError(msg);
+      showReviewToast(msg, 8000, "error");
       setCustomers([]);
     } finally {
       setLoading(false);
@@ -123,6 +125,7 @@ export default function CustomerManagementPage() {
   const showMessage = (text) => {
     setMessage(text);
     setError("");
+    showReviewToast(text, 8000, "success");
   };
 
   const filteredCustomers = customers.filter((customer) => {
@@ -178,7 +181,9 @@ export default function CustomerManagementPage() {
       setSelectedCustomer(details);
     } catch (err) {
       setSelectedCustomer(null);
-      setError(err.message || "Unable to load customer details.");
+      const msg = err.message || "Unable to load customer details.";
+      setError(msg);
+      showReviewToast(msg, 8000, "error");
     } finally {
       setDetailsLoading(false);
     }
@@ -230,7 +235,9 @@ export default function CustomerManagementPage() {
             : "Customer blocked successfully.")
       );
     } catch (err) {
-      setError(err.message || "Unable to update customer status.");
+      const msg = err.message || "Unable to update customer status.";
+      setError(msg);
+      showReviewToast(msg, 8000, "error");
     } finally {
       setActionLoading("");
     }
@@ -283,7 +290,9 @@ export default function CustomerManagementPage() {
       );
     } catch (err) {
       // The dropdown uses customer.role as its value, so it reverts on error.
-      setError(err.message || "Unable to update customer role.");
+      const msg = err.message || "Unable to update customer role.";
+      setError(msg);
+      showReviewToast(msg, 8000, "error");
 
       setCustomers((previous) =>
         previous.map((item) =>
@@ -324,7 +333,9 @@ export default function CustomerManagementPage() {
       setDeleteTarget(null);
       showMessage(result.message || "Customer deleted successfully.");
     } catch (err) {
-      setError(err.message || "Unable to delete customer.");
+      const msg = err.message || "Unable to delete customer.";
+      setError(msg);
+      showReviewToast(msg, 8000, "error");
     } finally {
       setActionLoading("");
     }
@@ -338,6 +349,17 @@ export default function CustomerManagementPage() {
 
   return (
     <main className="min-h-screen bg-slate-50 p-4 text-slate-900 sm:p-6 lg:p-8">
+      <Toaster
+        position="top-center"
+        toastOptions={{
+          duration: 15000,
+          style: {
+            padding: 0,
+            background: "transparent",
+            boxShadow: "none",
+          },
+        }}
+      />
       <div className="mx-auto max-w-7xl space-y-6">
         <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div>
