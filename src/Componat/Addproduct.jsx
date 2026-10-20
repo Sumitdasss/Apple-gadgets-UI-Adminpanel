@@ -4,9 +4,9 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Toaster } from "react-hot-toast";
 import RichTextEditor from "./RichTextEditor";
 import { showReviewToast } from "./SavedToast";
+
 const API_BASE = "https://apple-gadgets-ui-backend.vercel.app";
 
-// New 4-level category API
 const CATEGORY_API = {
   tree: `${API_BASE}/category/tree`,
   main: `${API_BASE}/category/main`,
@@ -20,7 +20,7 @@ const initialFormData = {
   slug: "",
   description: "",
   shortDescription: "",
-    descriptionSections: [],
+  descriptionSections: [],
   category: "",
   subCategory: "",
   childCategory: "",
@@ -53,7 +53,7 @@ export default function AddProductPage() {
   const imageInputRef = useRef(null);
   const [subChildCategories, setSubChildCategories] = useState([]);
   const [formData, setFormData] = useState(initialFormData);
-const [keyFeatureInput, setKeyFeatureInput] = useState("");
+  const [keyFeatureInput, setKeyFeatureInput] = useState("");
   const [colorName, setColorName] = useState("");
   const [colorCode, setColorCode] = useState("#000000");
   const [colorImage, setColorImage] = useState(null);
@@ -64,9 +64,7 @@ const [keyFeatureInput, setKeyFeatureInput] = useState("");
   const [ramValue, setRamValue] = useState("");
   const [imagePreviews, setImagePreviews] = useState([]);
 
-  // ==============================
-  // VARIANTS (color + ram + storage combination)
-  // ==============================
+  // Variants
   const [variantColorName, setVariantColorName] = useState("");
   const [variantRam, setVariantRam] = useState("");
   const [variantStorage, setVariantStorage] = useState("");
@@ -83,31 +81,24 @@ const [keyFeatureInput, setKeyFeatureInput] = useState("");
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showSubCategoryModal, setShowSubCategoryModal] = useState(false);
   const [showChildCategoryModal, setShowChildCategoryModal] = useState(false);
-  const [showSubChildCategoryModal, setShowSubChildCategoryModal] =
-    useState(false);
+  const [showSubChildCategoryModal, setShowSubChildCategoryModal] = useState(false);
 
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newSubCategoryName, setNewSubCategoryName] = useState("");
   const [newChildCategoryName, setNewChildCategoryName] = useState("");
   const [newSubChildCategoryName, setNewSubChildCategoryName] = useState("");
 
-  // ==============================
-  // CATEGORY IMAGE STATES
-  // ==============================
+  // Category images
   const [newCategoryImage, setNewCategoryImage] = useState(null);
   const [newCategoryImagePreview, setNewCategoryImagePreview] = useState("");
   const [newSubCategoryImage, setNewSubCategoryImage] = useState(null);
-  const [newSubCategoryImagePreview, setNewSubCategoryImagePreview] =
-    useState("");
+  const [newSubCategoryImagePreview, setNewSubCategoryImagePreview] = useState("");
   const [newChildCategoryImage, setNewChildCategoryImage] = useState(null);
-  const [newChildCategoryImagePreview, setNewChildCategoryImagePreview] =
-    useState("");
-  const [newSubChildCategoryImage, setNewSubChildCategoryImage] =
-    useState(null);
-  const [newSubChildCategoryImagePreview, setNewSubChildCategoryImagePreview] =
-    useState("");
+  const [newChildCategoryImagePreview, setNewChildCategoryImagePreview] = useState("");
+  const [newSubChildCategoryImage, setNewSubChildCategoryImage] = useState(null);
+  const [newSubChildCategoryImagePreview, setNewSubChildCategoryImagePreview] = useState("");
 
-  // Separate banner files/previews for each category level.
+  // Banner images
   const [newCategoryBannerImage, setNewCategoryBannerImage] = useState(null);
   const [newCategoryBannerPreview, setNewCategoryBannerPreview] = useState("");
   const [newSubCategoryBannerImage, setNewSubCategoryBannerImage] = useState(null);
@@ -122,104 +113,74 @@ const [keyFeatureInput, setKeyFeatureInput] = useState("");
   const [childCategoryAdding, setChildCategoryAdding] = useState(false);
   const [subChildCategoryAdding, setSubChildCategoryAdding] = useState(false);
 
+  // Description sections
+  const [sectionTitle, setSectionTitle] = useState("");
+  const [sectionDescription, setSectionDescription] = useState("");
+  const [sectionImage, setSectionImage] = useState(null);
+  const [sectionImagePreview, setSectionImagePreview] = useState("");
 
-
-const [sectionTitle, setSectionTitle] = useState("");
-const [sectionDescription, setSectionDescription] = useState("");
-const [sectionImage, setSectionImage] = useState(null);
-const [sectionImagePreview, setSectionImagePreview] = useState("");
-
-const handleSectionImageChange = (e) => {
-  const file = e.target.files?.[0];
-
-  if (!file) return;
-
-  if (!file.type.startsWith("image/")) {
-    showReviewToast("Please select a valid image", 8000, "error");
-    e.target.value = "";
-    return;
-  }
-
-  if (sectionImagePreview) {
-    URL.revokeObjectURL(sectionImagePreview);
-  }
-
-  setSectionImage(file);
-  setSectionImagePreview(URL.createObjectURL(file));
-  e.target.value = "";
-};
-
-const addDescriptionSection = () => {
-  if (!sectionTitle.trim()) {
-    showReviewToast("Please enter a heading", 8000, "error");
-    return;
-  }
-
-  if (!sectionDescription.trim()) {
-    showReviewToast("Please enter a description", 8000, "error");
-    return;
-  }
-
-  setFormData((prev) => ({
-    ...prev,
-    descriptionSections: [
-      ...prev.descriptionSections,
-      {
-        title: sectionTitle.trim(),
-        description: sectionDescription.trim(),
-        imageFile: sectionImage,
-        imagePreview: sectionImagePreview,
-      },
-    ],
-  }));
-
-  setSectionTitle("");
-  setSectionDescription("");
-  setSectionImage(null);
-  setSectionImagePreview("");
-};
-
-const removeDescriptionSection = (index) => {
-  setFormData((prev) => {
-    const section = prev.descriptionSections[index];
-
-    if (section?.imagePreview) {
-      URL.revokeObjectURL(section.imagePreview);
+  const handleSectionImageChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      showReviewToast("Please select a valid image", 8000, "error");
+      e.target.value = "";
+      return;
     }
+    if (sectionImagePreview) URL.revokeObjectURL(sectionImagePreview);
+    setSectionImage(file);
+    setSectionImagePreview(URL.createObjectURL(file));
+    e.target.value = "";
+  };
 
-    return {
+  const addDescriptionSection = () => {
+    if (!sectionTitle.trim()) {
+      showReviewToast("Please enter a heading", 8000, "error");
+      return;
+    }
+    if (!sectionDescription.trim()) {
+      showReviewToast("Please enter a description", 8000, "error");
+      return;
+    }
+    setFormData((prev) => ({
       ...prev,
-      descriptionSections: prev.descriptionSections.filter(
-        (_, i) => i !== index
-      ),
-    };
-  });
-};
+      descriptionSections: [
+        ...prev.descriptionSections,
+        {
+          title: sectionTitle.trim(),
+          description: sectionDescription.trim(),
+          imageFile: sectionImage,
+          imagePreview: sectionImagePreview,
+        },
+      ],
+    }));
+    setSectionTitle("");
+    setSectionDescription("");
+    setSectionImage(null);
+    setSectionImagePreview("");
+  };
 
-
-
-
+  const removeDescriptionSection = (index) => {
+    setFormData((prev) => {
+      const section = prev.descriptionSections[index];
+      if (section?.imagePreview) URL.revokeObjectURL(section.imagePreview);
+      return {
+        ...prev,
+        descriptionSections: prev.descriptionSections.filter((_, i) => i !== index),
+      };
+    });
+  };
 
   // ==============================
-  // LOAD 4-LEVEL CATEGORY TREE
-  // Main → Sub → Child → Sub Child
+  // LOAD CATEGORIES
   // ==============================
   const loadCategories = useCallback(async () => {
     try {
       setCategoriesLoading(true);
       setCategoriesError("");
-
-      const response = await fetch(CATEGORY_API.tree, {
-        method: "GET",
-        cache: "no-store",
-      });
-
+      const response = await fetch(CATEGORY_API.tree, { method: "GET", cache: "no-store" });
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data?.message || "Could not load categories");
-      }
-
+      if (!response.ok) throw new Error(data?.message || "Could not load categories");
       setCategories(Array.isArray(data?.categories) ? data.categories : []);
     } catch (error) {
       console.error("Load categories error:", error);
@@ -233,107 +194,65 @@ const removeDescriptionSection = (index) => {
     loadCategories();
   }, [loadCategories]);
 
-  // ==============================
-  // MAIN → SUB
-  // ==============================
   useEffect(() => {
     if (!formData.category) {
       setSubCategories([]);
       return;
     }
-
-    const selected = categories.find(
-      (category) => category._id === formData.category,
-    );
-
+    const selected = categories.find((c) => c._id === formData.category);
     setSubCategories(selected?.subCategories || []);
   }, [formData.category, categories]);
 
-  // ==============================
-  // SUB → CHILD
-  // ==============================
   useEffect(() => {
     if (!formData.subCategory) {
       setChildCategories([]);
       return;
     }
-
-    const selected = subCategories.find(
-      (subCategory) => subCategory._id === formData.subCategory,
-    );
-
+    const selected = subCategories.find((s) => s._id === formData.subCategory);
     setChildCategories(selected?.children || []);
   }, [formData.subCategory, subCategories]);
 
-  // ==============================
-  // CHILD → SUB CHILD
-  // ==============================
   useEffect(() => {
     if (!formData.childCategory) {
       setSubChildCategories([]);
       return;
     }
-
-    const selected = childCategories.find(
-      (childCategory) => childCategory._id === formData.childCategory,
-    );
-
+    const selected = childCategories.find((c) => c._id === formData.childCategory);
     setSubChildCategories(selected?.subChildren || []);
   }, [formData.childCategory, childCategories]);
 
+  // ==============================
+  // KEY FEATURES
+  // ==============================
+  const addKeyFeature = () => {
+    const feature = keyFeatureInput.trim();
+    if (!feature) {
+      showReviewToast("Please enter a key feature", 8000, "error");
+      return;
+    }
+    if (formData.keyFeatures.some((item) => item.toLowerCase() === feature.toLowerCase())) {
+      showReviewToast("This key feature already exists", 8000, "error");
+      return;
+    }
+    setFormData((prev) => ({ ...prev, keyFeatures: [...prev.keyFeatures, feature] }));
+    setKeyFeatureInput("");
+  };
 
-// ==============================
-// KEY FEATURES
-// ==============================
-const addKeyFeature = () => {
-  const feature = keyFeatureInput.trim();
-
-  if (!feature) {
-    showReviewToast("Please enter a key feature", 8000, "error");
-    return;
-  }
-
-  if (
-    formData.keyFeatures.some(
-      (item) => item.toLowerCase() === feature.toLowerCase()
-    )
-  ) {
-    showReviewToast("This key feature already exists", 8000, "error");
-    return;
-  }
-
-  setFormData((prev) => ({
-    ...prev,
-    keyFeatures: [...prev.keyFeatures, feature],
-  }));
-
-  setKeyFeatureInput("");
-};
-
-const removeKeyFeature = (index) => {
-  setFormData((prev) => ({
-    ...prev,
-    keyFeatures: prev.keyFeatures.filter(
-      (_, i) => i !== index
-    ),
-  }));
-};
-
-
+  const removeKeyFeature = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      keyFeatures: prev.keyFeatures.filter((_, i) => i !== index),
+    }));
+  };
 
   // ==============================
   // INPUT CHANGE
   // ==============================
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-
     setFormData((prev) => {
-      const updated = {
-        ...prev,
-        [name]: type === "checkbox" ? checked : value,
-      };
+      const updated = { ...prev, [name]: type === "checkbox" ? checked : value };
 
-      // Auto generate slug from name
       if (name === "name") {
         updated.slug = value
           .toLowerCase()
@@ -342,77 +261,49 @@ const removeKeyFeature = (index) => {
           .replace(/\s+/g, "-")
           .replace(/-+/g, "-");
       }
-
-      // Main category বদলালে নিচের সব level reset
       if (name === "category") {
         updated.subCategory = "";
         updated.childCategory = "";
         updated.subChildCategory = "";
       }
-
-      // Sub category বদলালে নিচের দুই level reset
       if (name === "subCategory") {
         updated.childCategory = "";
         updated.subChildCategory = "";
       }
-
-      // Child category বদলালে sub child reset
       if (name === "childCategory") {
         updated.subChildCategory = "";
       }
-
-      // Auto calculate discount percentage
       if (name === "price" || name === "discountPrice") {
-        const price =
-          name === "price" ? parseFloat(value) : parseFloat(prev.price);
+        const price = name === "price" ? parseFloat(value) : parseFloat(prev.price);
         const discountPrice =
-          name === "discountPrice"
-            ? parseFloat(value)
-            : parseFloat(prev.discountPrice);
-
+          name === "discountPrice" ? parseFloat(value) : parseFloat(prev.discountPrice);
         if (price > 0 && discountPrice > 0 && discountPrice < price) {
-          updated.discountPercentage = (
-            ((price - discountPrice) / price) *
-            100
-          ).toFixed(2);
+          updated.discountPercentage = (((price - discountPrice) / price) * 100).toFixed(2);
         } else {
           updated.discountPercentage = "";
         }
       }
-
       return updated;
     });
   };
 
   // ==============================
-  // IMAGE
+  // IMAGES
   // ==============================
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files || []);
-
     if (!files.length) return;
-
     const validFiles = files.filter((file) => file.type.startsWith("image/"));
-
     if (validFiles.length !== files.length) {
       showReviewToast("Only image files are allowed", 8000, "error");
     }
-
     if (!validFiles.length) return;
-
-    setFormData((prev) => ({
-      ...prev,
-      images: [...prev.images, ...validFiles],
-    }));
-
+    setFormData((prev) => ({ ...prev, images: [...prev.images, ...validFiles] }));
     const newPreviews = validFiles.map((file) => ({
       file,
       url: URL.createObjectURL(file),
     }));
-
     setImagePreviews((prev) => [...prev, ...newPreviews]);
-
-    // একই file আবার select করার সুযোগ
     e.target.value = "";
   };
 
@@ -421,16 +312,10 @@ const removeKeyFeature = (index) => {
       ...prev,
       images: prev.images.filter((_, i) => i !== index),
     }));
-
     setImagePreviews((prev) => {
       const updated = [...prev];
-
-      if (updated[index]?.url) {
-        URL.revokeObjectURL(updated[index].url);
-      }
-
+      if (updated[index]?.url) URL.revokeObjectURL(updated[index].url);
       updated.splice(index, 1);
-
       return updated;
     });
   };
@@ -440,19 +325,13 @@ const removeKeyFeature = (index) => {
   // ==============================
   const handleColorImageChange = (e) => {
     const file = e.target.files?.[0];
-
     if (!file) return;
-
     if (!file.type.startsWith("image/")) {
       showReviewToast("Only image files are allowed", 8000, "error");
       return;
     }
-
     setColorImage(file);
-
-    const previewUrl = URL.createObjectURL(file);
-    setColorImagePreview(previewUrl);
-
+    setColorImagePreview(URL.createObjectURL(file));
     e.target.value = "";
   };
 
@@ -461,21 +340,14 @@ const removeKeyFeature = (index) => {
       showReviewToast("Enter color name", 8000, "error");
       return;
     }
-
     if (!colorImage) {
       showReviewToast("Please choose an image for this color", 8000, "error");
       return;
     }
-
-    if (
-      formData.colors.some(
-        (c) => c.name.toLowerCase() === colorName.trim().toLowerCase(),
-      )
-    ) {
+    if (formData.colors.some((c) => c.name.toLowerCase() === colorName.trim().toLowerCase())) {
       showReviewToast("This color is already added", 8000, "error");
       return;
     }
-
     setFormData((prev) => ({
       ...prev,
       colors: [
@@ -488,7 +360,6 @@ const removeKeyFeature = (index) => {
         },
       ],
     }));
-
     setColorName("");
     setColorCode("#000000");
     setColorImage(null);
@@ -503,18 +374,14 @@ const removeKeyFeature = (index) => {
   };
 
   // ==============================
-  // SIZE
+  // SIZE / SPEC / RAM
   // ==============================
   const addSize = () => {
     if (!size.trim()) return;
-
-    if (
-      formData.sizes.some((s) => s.toLowerCase() === size.trim().toLowerCase())
-    ) {
+    if (formData.sizes.some((s) => s.toLowerCase() === size.trim().toLowerCase())) {
       showReviewToast("This size is already added", 8000, "error");
       return;
     }
-
     setFormData((prev) => ({ ...prev, sizes: [...prev.sizes, size.trim()] }));
     setSize("");
   };
@@ -526,42 +393,25 @@ const removeKeyFeature = (index) => {
     }));
   };
 
-  // ==============================
-  // SPECIFICATION
-  // ==============================
   const addSpecification = () => {
     const key = specKey.trim();
     const value = specValue.trim();
-
     if (!key) {
       showReviewToast("Please enter specification name", 8000, "error");
       return;
     }
-
     if (!value) {
       showReviewToast("Please enter specification value", 8000, "error");
       return;
     }
-
-    const exists = formData.specifications.some(
-      (item) => item.key.toLowerCase() === key.toLowerCase(),
-    );
-
-    if (exists) {
+    if (formData.specifications.some((item) => item.key.toLowerCase() === key.toLowerCase())) {
       showReviewToast("This specification already exists", 8000, "error");
       return;
     }
-
-    const newSpecification = {
-      key,
-      value,
-    };
-
     setFormData((prev) => ({
       ...prev,
-      specifications: [...prev.specifications, newSpecification],
+      specifications: [...prev.specifications, { key, value }],
     }));
-
     setSpecKey("");
     setSpecValue("");
   };
@@ -578,21 +428,11 @@ const removeKeyFeature = (index) => {
       showReviewToast("Enter RAM / Memory value", 8000, "error");
       return;
     }
-
-    if (
-      formData.ram.some(
-        (item) => item.toLowerCase() === ramValue.trim().toLowerCase(),
-      )
-    ) {
+    if (formData.ram.some((item) => item.toLowerCase() === ramValue.trim().toLowerCase())) {
       showReviewToast("This RAM / Memory is already added", 8000, "error");
       return;
     }
-
-    setFormData((prev) => ({
-      ...prev,
-      ram: [...prev.ram, ramValue.trim()],
-    }));
-
+    setFormData((prev) => ({ ...prev, ram: [...prev.ram, ramValue.trim()] }));
     setRamValue("");
   };
 
@@ -604,90 +444,56 @@ const removeKeyFeature = (index) => {
   };
 
   // ==============================
-  // VARIANTS (color + ram + storage → stock/price/sku)
+  // VARIANTS
   // ==============================
   const addVariant = () => {
     if (!variantColorName) {
       showReviewToast("Select a color for this variant", 8000, "error");
       return;
     }
-
     if (!variantRam.trim()) {
       showReviewToast("Enter RAM for this variant", 8000, "error");
       return;
     }
-
     if (!variantStorage.trim()) {
       showReviewToast("Enter storage for this variant", 8000, "error");
       return;
     }
-
     if (variantStock === "" || Number(variantStock) < 0) {
       showReviewToast("Enter a valid stock quantity", 8000, "error");
       return;
     }
-
     if (!variantPrice || Number(variantPrice) <= 0) {
       showReviewToast("Enter a valid price for this variant", 8000, "error");
       return;
     }
-
     if (!variantSku.trim()) {
       showReviewToast("Enter a SKU for this variant", 8000, "error");
       return;
     }
-
-    // ==============================
-    // SKU MUST BE UNIQUE
-    // ==============================
     const skuTaken = formData.variants.some(
-      (v) => v.sku?.trim().toLowerCase() === variantSku.trim().toLowerCase(),
+      (v) => v.sku?.trim().toLowerCase() === variantSku.trim().toLowerCase()
     );
-
     if (skuTaken) {
       showReviewToast("This SKU is already used by another variant", 8000, "error");
       return;
     }
-
-    // ==============================
-    // FIND SELECTED COLOR
-    // ==============================
     const selectedColor = formData.colors.find(
-      (c) =>
-        c.name.trim().toLowerCase() === variantColorName.trim().toLowerCase(),
+      (c) => c.name.trim().toLowerCase() === variantColorName.trim().toLowerCase()
     );
-
     if (!selectedColor) {
       showReviewToast("Selected color was not found", 8000, "error");
       return;
     }
-
-    // ==============================
-    // CREATE NEW VARIANT
-    // ==============================
     const newVariant = {
-      color: {
-        name: selectedColor.name,
-        code: selectedColor.code || "#000000",
-      },
+      color: { name: selectedColor.name, code: selectedColor.code || "#000000" },
       ram: variantRam.trim(),
       storage: variantStorage.trim(),
       stock: Number(variantStock),
       price: Number(variantPrice),
       sku: variantSku.trim(),
     };
-
-    // ==============================
-    // ADD VARIANT
-    // ==============================
-    setFormData((prev) => ({
-      ...prev,
-      variants: [...prev.variants, newVariant],
-    }));
-
-    // ==============================
-    // CLEAR VARIANT FORM
-    // ==============================
+    setFormData((prev) => ({ ...prev, variants: [...prev.variants, newVariant] }));
     setVariantColorName("");
     setVariantRam("");
     setVariantStorage("");
@@ -704,7 +510,7 @@ const removeKeyFeature = (index) => {
   };
 
   // ==============================
-  // RESET FORM
+  // RESET
   // ==============================
   const resetForm = () => {
     setFormData(initialFormData);
@@ -732,18 +538,15 @@ const removeKeyFeature = (index) => {
   // ==============================
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     if (!formData.images || formData.images.length === 0) {
       showReviewToast("Choose at least one product image", 8000, "error");
       return;
     }
-
     const rating = parseFloat(formData.rating);
     if (Number.isNaN(rating) || rating < 0 || rating > 5) {
       showReviewToast("Rating must be between 0 and 5", 8000, "error");
       return;
     }
-
     if (
       formData.discountPrice &&
       parseFloat(formData.discountPrice) >= parseFloat(formData.price)
@@ -754,34 +557,21 @@ const removeKeyFeature = (index) => {
 
     try {
       setLoading(true);
-
       const data = new FormData();
 
       data.append("name", formData.name);
       data.append("slug", formData.slug);
       data.append("description", formData.description);
-      
-const sectionsMetadata = formData.descriptionSections.map(
-  (section, index) => ({
-    title: section.title,
-    description: section.description,
-    imageIndex: section.imageFile ? index : null,
-  })
-);
 
-data.append(
-  "descriptionSections",
-  JSON.stringify(sectionsMetadata)
-);
-
-formData.descriptionSections.forEach((section, index) => {
-  if (section.imageFile) {
-    data.append(
-      "descriptionSectionImages",
-      section.imageFile
-    );
-  }
-});
+      const sectionsMetadata = formData.descriptionSections.map((section, index) => ({
+        title: section.title,
+        description: section.description,
+        imageIndex: section.imageFile ? index : null,
+      }));
+      data.append("descriptionSections", JSON.stringify(sectionsMetadata));
+      formData.descriptionSections.forEach((section) => {
+        if (section.imageFile) data.append("descriptionSectionImages", section.imageFile);
+      });
 
       data.append("shortDescription", formData.shortDescription);
       data.append("category", formData.category);
@@ -794,30 +584,18 @@ formData.descriptionSections.forEach((section, index) => {
       data.append("discountPercentage", formData.discountPercentage || "");
       data.append("stock", formData.stock);
       data.append("sku", formData.sku);
+      data.append("additionalCategories", JSON.stringify(formData.additionalCategories || []));
 
-      data.append(
-        "additionalCategories",
-        JSON.stringify(formData.additionalCategories || []),
-      );
-
-      const colorsWithoutFiles = formData.colors.map((color) => ({
-        name: color.name,
-        code: color.code,
-      }));
-
+      const colorsWithoutFiles = formData.colors.map((c) => ({ name: c.name, code: c.code }));
       data.append("colors", JSON.stringify(colorsWithoutFiles));
-
       formData.colors.forEach((color) => {
-        if (color.imageFile) {
-          data.append("colorImages", color.imageFile);
-        }
+        if (color.imageFile) data.append("colorImages", color.imageFile);
       });
 
       data.append("sizes", JSON.stringify(formData.sizes));
       data.append("ram", JSON.stringify(formData.ram));
       data.append("specifications", JSON.stringify(formData.specifications));
       data.append("variants", JSON.stringify(formData.variants));
-
       data.append("rating", String(rating));
       data.append("isActive", String(formData.isActive));
       data.append("isFeatured", String(formData.isFeatured));
@@ -825,13 +603,9 @@ formData.descriptionSections.forEach((section, index) => {
       data.append("isBestSeller", String(formData.isBestSeller));
       data.append("metaTitle", formData.metaTitle);
       data.append("metaDescription", formData.metaDescription);
-data.append(
-  "keyFeatures",
-  JSON.stringify(formData.keyFeatures)
-);
-      formData.images.forEach((image) => {
-        data.append("images", image);
-      });
+      data.append("keyFeatures", JSON.stringify(formData.keyFeatures));
+
+      formData.images.forEach((image) => data.append("images", image));
 
       const response = await fetch(`${API_BASE}/products/addproduct`, {
         method: "POST",
@@ -839,7 +613,6 @@ data.append(
       });
 
       const text = await response.text();
-
       let result;
       try {
         result = JSON.parse(text);
@@ -847,11 +620,9 @@ data.append(
         result = { success: false, message: text || "Invalid server response" };
       }
 
-      if (!response.ok) {
-        throw new Error(result.message || "Could not add product");
-      }
+      if (!response.ok) throw new Error(result.message || "Could not add product");
 
-      showReviewToast("Product added", 8000, "success");
+      showReviewToast("Product added successfully", 8000, "success");
       resetForm();
     } catch (error) {
       console.error("Add product error:", error);
@@ -862,19 +633,16 @@ data.append(
   };
 
   // ==============================
-  // CATEGORY IMAGE HANDLERS
+  // CATEGORY HANDLERS
   // ==============================
   const handleCategoryImageChange = (e, level) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     if (!file.type.startsWith("image/")) {
       showReviewToast("Only image files are allowed", 8000, "error");
       return;
     }
-
     const previewUrl = URL.createObjectURL(file);
-
     if (level === "main") {
       setNewCategoryImage(file);
       setNewCategoryImagePreview(previewUrl);
@@ -888,7 +656,6 @@ data.append(
       setNewSubChildCategoryImage(file);
       setNewSubChildCategoryImagePreview(previewUrl);
     }
-
     e.target.value = "";
   };
 
@@ -898,26 +665,20 @@ data.append(
       setNewCategoryImage(null);
       setNewCategoryImagePreview("");
     } else if (level === "sub") {
-      if (newSubCategoryImagePreview)
-        URL.revokeObjectURL(newSubCategoryImagePreview);
+      if (newSubCategoryImagePreview) URL.revokeObjectURL(newSubCategoryImagePreview);
       setNewSubCategoryImage(null);
       setNewSubCategoryImagePreview("");
     } else if (level === "child") {
-      if (newChildCategoryImagePreview)
-        URL.revokeObjectURL(newChildCategoryImagePreview);
+      if (newChildCategoryImagePreview) URL.revokeObjectURL(newChildCategoryImagePreview);
       setNewChildCategoryImage(null);
       setNewChildCategoryImagePreview("");
     } else if (level === "subChild") {
-      if (newSubChildCategoryImagePreview)
-        URL.revokeObjectURL(newSubChildCategoryImagePreview);
+      if (newSubChildCategoryImagePreview) URL.revokeObjectURL(newSubChildCategoryImagePreview);
       setNewSubChildCategoryImage(null);
       setNewSubChildCategoryImagePreview("");
     }
   };
 
-  // ==============================
-  // ADD MAIN CATEGORY (with image)
-  // ==============================
   const handleCategoryBannerChange = (e, level) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -931,9 +692,16 @@ data.append(
       main: [setNewCategoryBannerImage, setNewCategoryBannerPreview, newCategoryBannerPreview],
       sub: [setNewSubCategoryBannerImage, setNewSubCategoryBannerPreview, newSubCategoryBannerPreview],
       child: [setNewChildCategoryBannerImage, setNewChildCategoryBannerPreview, newChildCategoryBannerPreview],
-      subChild: [setNewSubChildCategoryBannerImage, setNewSubChildCategoryBannerPreview, newSubChildCategoryBannerPreview],
+      subChild: [
+        setNewSubChildCategoryBannerImage,
+        setNewSubChildCategoryBannerPreview,
+        newSubChildCategoryBannerPreview,
+      ],
     }[level];
-    if (!config) { URL.revokeObjectURL(previewUrl); return; }
+    if (!config) {
+      URL.revokeObjectURL(previewUrl);
+      return;
+    }
     if (config[2]) URL.revokeObjectURL(config[2]);
     config[0](file);
     config[1](previewUrl);
@@ -945,7 +713,11 @@ data.append(
       main: [setNewCategoryBannerImage, setNewCategoryBannerPreview, newCategoryBannerPreview],
       sub: [setNewSubCategoryBannerImage, setNewSubCategoryBannerPreview, newSubCategoryBannerPreview],
       child: [setNewChildCategoryBannerImage, setNewChildCategoryBannerPreview, newChildCategoryBannerPreview],
-      subChild: [setNewSubChildCategoryBannerImage, setNewSubChildCategoryBannerPreview, newSubChildCategoryBannerPreview],
+      subChild: [
+        setNewSubChildCategoryBannerImage,
+        setNewSubChildCategoryBannerPreview,
+        newSubChildCategoryBannerPreview,
+      ],
     }[level];
     if (!config) return;
     if (config[2]) URL.revokeObjectURL(config[2]);
@@ -958,38 +730,21 @@ data.append(
       showReviewToast("Enter a main category name", 8000, "error");
       return;
     }
-
     try {
       setCategoryAdding(true);
-
       const formDataToSend = new FormData();
       formDataToSend.append("name", newCategoryName.trim());
+      if (newCategoryImage) formDataToSend.append("image", newCategoryImage);
+      if (newCategoryBannerImage) formDataToSend.append("bannerImage", newCategoryBannerImage);
 
-      if (newCategoryImage) {
-        formDataToSend.append("image", newCategoryImage);
-      }
-      if (newCategoryBannerImage) {
-        formDataToSend.append("bannerImage", newCategoryBannerImage);
-      }
-
-      const response = await fetch(CATEGORY_API.main, {
-        method: "POST",
-        body: formDataToSend,
-      });
-
+      const response = await fetch(CATEGORY_API.main, { method: "POST", body: formDataToSend });
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data?.message || "Could not add main category");
-      }
-
+      if (!response.ok) throw new Error(data?.message || "Could not add main category");
       const created = data?.category;
       if (!created?._id) throw new Error("Invalid category response");
 
       const newCategory = { ...created, subCategories: [] };
-
       setCategories((prev) => [...prev, newCategory]);
-
       setFormData((prev) => ({
         ...prev,
         category: newCategory._id,
@@ -997,269 +752,175 @@ data.append(
         childCategory: "",
         subChildCategory: "",
       }));
-
       setNewCategoryName("");
       clearCategoryImage("main");
       clearCategoryBanner("main");
       setShowCategoryModal(false);
     } catch (error) {
-      console.error("Add main category error:", error);
+      console.error(error);
       showReviewToast(error.message || "Could not add main category", 8000, "error");
     } finally {
       setCategoryAdding(false);
     }
   };
 
-  // ==============================
-  // ADD SUB CATEGORY (with image)
-  // ==============================
   const handleAddSubCategory = async () => {
     if (!formData.category) {
       showReviewToast("Select a main category first", 8000, "error");
       return;
     }
-
     if (!newSubCategoryName.trim()) {
       showReviewToast("Enter a sub category name", 8000, "error");
       return;
     }
-
     try {
       setSubCategoryAdding(true);
-
       const formDataToSend = new FormData();
       formDataToSend.append("name", newSubCategoryName.trim());
       formDataToSend.append("mainCategory", formData.category);
+      if (newSubCategoryImage) formDataToSend.append("image", newSubCategoryImage);
+      if (newSubCategoryBannerImage) formDataToSend.append("bannerImage", newSubCategoryBannerImage);
 
-      if (newSubCategoryImage) {
-        formDataToSend.append("image", newSubCategoryImage);
-      }
-      if (newSubCategoryBannerImage) {
-        formDataToSend.append("bannerImage", newSubCategoryBannerImage);
-      }
-
-      const response = await fetch(CATEGORY_API.sub, {
-        method: "POST",
-        body: formDataToSend,
-      });
-
+      const response = await fetch(CATEGORY_API.sub, { method: "POST", body: formDataToSend });
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data?.message || "Could not add sub category");
-      }
-
+      if (!response.ok) throw new Error(data?.message || "Could not add sub category");
       const created = data?.category;
       if (!created?._id) throw new Error("Invalid sub category response");
 
       const newSubCategory = { ...created, children: [] };
-
       setCategories((prev) =>
-        prev.map((mainCategory) =>
-          mainCategory._id === formData.category
-            ? {
-                ...mainCategory,
-                subCategories: [
-                  ...(mainCategory.subCategories || []),
-                  newSubCategory,
-                ],
-              }
-            : mainCategory,
-        ),
+        prev.map((main) =>
+          main._id === formData.category
+            ? { ...main, subCategories: [...(main.subCategories || []), newSubCategory] }
+            : main
+        )
       );
-
       setFormData((prev) => ({
         ...prev,
         subCategory: newSubCategory._id,
         childCategory: "",
         subChildCategory: "",
       }));
-
       setNewSubCategoryName("");
       clearCategoryImage("sub");
       clearCategoryBanner("sub");
       setShowSubCategoryModal(false);
     } catch (error) {
-      console.error("Add sub category error:", error);
+      console.error(error);
       showReviewToast(error.message || "Could not add sub category", 8000, "error");
     } finally {
       setSubCategoryAdding(false);
     }
   };
 
-  // ==============================
-  // ADD CHILD CATEGORY (with image)
-  // ==============================
   const handleAddChildCategory = async () => {
     if (!formData.subCategory) {
       showReviewToast("Select a sub category first", 8000, "error");
       return;
     }
-
     if (!newChildCategoryName.trim()) {
       showReviewToast("Enter a child category name", 8000, "error");
       return;
     }
-
     try {
       setChildCategoryAdding(true);
-
       const formDataToSend = new FormData();
       formDataToSend.append("name", newChildCategoryName.trim());
       formDataToSend.append("subCategory", formData.subCategory);
+      if (newChildCategoryImage) formDataToSend.append("image", newChildCategoryImage);
+      if (newChildCategoryBannerImage) formDataToSend.append("bannerImage", newChildCategoryBannerImage);
 
-      if (newChildCategoryImage) {
-        formDataToSend.append("image", newChildCategoryImage);
-      }
-      if (newChildCategoryBannerImage) {
-        formDataToSend.append("bannerImage", newChildCategoryBannerImage);
-      }
-
-      const response = await fetch(CATEGORY_API.child, {
-        method: "POST",
-        body: formDataToSend,
-      });
-
+      const response = await fetch(CATEGORY_API.child, { method: "POST", body: formDataToSend });
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data?.message || "Could not add child category");
-      }
-
+      if (!response.ok) throw new Error(data?.message || "Could not add child category");
       const created = data?.category;
       if (!created?._id) throw new Error("Invalid child category response");
 
       const newChildCategory = { ...created, subChildren: [] };
-
       setCategories((prev) =>
-        prev.map((mainCategory) => {
-          if (mainCategory._id !== formData.category) return mainCategory;
-
+        prev.map((main) => {
+          if (main._id !== formData.category) return main;
           return {
-            ...mainCategory,
-            subCategories: (mainCategory.subCategories || []).map(
-              (subCategory) =>
-                subCategory._id === formData.subCategory
-                  ? {
-                      ...subCategory,
-                      children: [
-                        ...(subCategory.children || []),
-                        newChildCategory,
-                      ],
-                    }
-                  : subCategory,
+            ...main,
+            subCategories: (main.subCategories || []).map((sub) =>
+              sub._id === formData.subCategory
+                ? { ...sub, children: [...(sub.children || []), newChildCategory] }
+                : sub
             ),
           };
-        }),
+        })
       );
-
       setFormData((prev) => ({
         ...prev,
         childCategory: newChildCategory._id,
         subChildCategory: "",
       }));
-
       setNewChildCategoryName("");
       clearCategoryImage("child");
       clearCategoryBanner("child");
       setShowChildCategoryModal(false);
     } catch (error) {
-      console.error("Add child category error:", error);
+      console.error(error);
       showReviewToast(error.message || "Could not add child category", 8000, "error");
     } finally {
       setChildCategoryAdding(false);
     }
   };
 
-  // ==============================
-  // ADD SUB CHILD CATEGORY (with image)
-  // ==============================
   const handleAddSubChildCategory = async () => {
     if (!formData.childCategory) {
       showReviewToast("Select a child category first", 8000, "error");
       return;
     }
-
     if (!newSubChildCategoryName.trim()) {
       showReviewToast("Enter a sub child category name", 8000, "error");
       return;
     }
-
     try {
       setSubChildCategoryAdding(true);
-
       const formDataToSend = new FormData();
       formDataToSend.append("name", newSubChildCategoryName.trim());
       formDataToSend.append("childCategory", formData.childCategory);
-
-      if (newSubChildCategoryImage) {
-        formDataToSend.append("image", newSubChildCategoryImage);
-      }
-      if (newSubChildCategoryBannerImage) {
+      if (newSubChildCategoryImage) formDataToSend.append("image", newSubChildCategoryImage);
+      if (newSubChildCategoryBannerImage)
         formDataToSend.append("bannerImage", newSubChildCategoryBannerImage);
-      }
 
-      const response = await fetch(CATEGORY_API.subChild, {
-        method: "POST",
-        body: formDataToSend,
-      });
-
+      const response = await fetch(CATEGORY_API.subChild, { method: "POST", body: formDataToSend });
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data?.message || "Could not add sub child category");
-      }
-
+      if (!response.ok) throw new Error(data?.message || "Could not add sub child category");
       const created = data?.category;
-      if (!created?._id) {
-        throw new Error("Invalid sub child category response");
-      }
+      if (!created?._id) throw new Error("Invalid sub child category response");
 
       const newSubChildCategory = { ...created };
-
       setCategories((prev) =>
-        prev.map((mainCategory) => {
-          if (mainCategory._id !== formData.category) return mainCategory;
-
+        prev.map((main) => {
+          if (main._id !== formData.category) return main;
           return {
-            ...mainCategory,
-            subCategories: (mainCategory.subCategories || []).map(
-              (subCategory) => {
-                if (subCategory._id !== formData.subCategory) {
-                  return subCategory;
-                }
-
-                return {
-                  ...subCategory,
-                  children: (subCategory.children || []).map((childCategory) =>
-                    childCategory._id === formData.childCategory
-                      ? {
-                          ...childCategory,
-                          subChildren: [
-                            ...(childCategory.subChildren || []),
-                            newSubChildCategory,
-                          ],
-                        }
-                      : childCategory,
-                  ),
-                };
-              },
-            ),
+            ...main,
+            subCategories: (main.subCategories || []).map((sub) => {
+              if (sub._id !== formData.subCategory) return sub;
+              return {
+                ...sub,
+                children: (sub.children || []).map((child) =>
+                  child._id === formData.childCategory
+                    ? {
+                        ...child,
+                        subChildren: [...(child.subChildren || []), newSubChildCategory],
+                      }
+                    : child
+                ),
+              };
+            }),
           };
-        }),
+        })
       );
-
-      setFormData((prev) => ({
-        ...prev,
-        subChildCategory: newSubChildCategory._id,
-      }));
-
+      setFormData((prev) => ({ ...prev, subChildCategory: newSubChildCategory._id }));
       setNewSubChildCategoryName("");
       clearCategoryImage("subChild");
       clearCategoryBanner("subChild");
       setShowSubChildCategoryModal(false);
     } catch (error) {
-      console.error("Add sub child category error:", error);
+      console.error(error);
       showReviewToast(error.message || "Could not add sub child category", 8000, "error");
     } finally {
       setSubChildCategoryAdding(false);
@@ -1271,39 +932,32 @@ data.append(
   const selectedSubCategoryName =
     subCategories.find((s) => s._id === formData.subCategory)?.name || "—";
   const selectedChildCategoryName =
-    childCategories.find(
-      (childCategory) => childCategory._id === formData.childCategory,
-    )?.name || "";
+    childCategories.find((c) => c._id === formData.childCategory)?.name || "";
 
   return (
-    <div className="min-h-screen bg-slate-100 p-4 md:p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
       <Toaster
         position="top-center"
         toastOptions={{
           duration: 15000,
-          style: {
-            padding: 0,
-            background: "transparent",
-            boxShadow: "none",
-          },
+          style: { padding: 0, background: "transparent", boxShadow: "none" },
         }}
       />
-      <div className="mx-auto max-w-6xl">
-        {/* HEADER */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-slate-900">Add New Product</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Create a new product for your store
+
+      <div className="mx-auto max-w-6xl px-4 py-8 md:px-6 lg:px-8">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">
+            Add New Product
+          </h1>
+          <p className="mt-2 text-slate-500">
+            Create a premium product listing for your store
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6 pb-28">
           {/* ================= BASIC INFORMATION ================= */}
-          <section className="rounded-2xl bg-white p-6 shadow-sm">
-            <h2 className="mb-5 text-xl font-semibold text-slate-900">
-              Basic Information
-            </h2>
-
+          <Section title="Basic Information" subtitle="Product name, description & details">
             <div className="grid gap-5 md:grid-cols-2">
               <Input
                 label="Product Name"
@@ -1313,7 +967,6 @@ data.append(
                 placeholder="Enter product name"
                 required
               />
-
               <Input
                 label="Slug"
                 name="slug"
@@ -1323,142 +976,112 @@ data.append(
                 required
               />
 
+              {/* Description Builder */}
               <div className="md:col-span-2">
-                <label className="mb-2 block text-sm font-medium">
-                  Description
-                </label>
-               
-{/* ================= PRODUCT DESCRIPTION BUILDER ================= */}
+                <div className="mb-4">
+                  <h3 className="text-base font-semibold text-slate-800">
+                    Product Description Builder
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Add headings, rich text and images for each section
+                  </p>
+                </div>
 
-<div className="md:col-span-2">
-  <div className="mb-4">
-    <h3 className="text-lg font-semibold text-slate-900">
-      Product Description Builder
-    </h3>
-    <p className="mt-1 text-sm text-slate-500">
-      Add headings, formatted descriptions and images for each section.
-    </p>
-  </div>
+                <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/50 p-5">
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                      Section Heading
+                    </label>
+                    <input
+                      type="text"
+                      value={sectionTitle}
+                      onChange={(e) => setSectionTitle(e.target.value)}
+                      placeholder="e.g. Pro Camera System"
+                      className="input-field"
+                    />
+                  </div>
 
-  <div className="space-y-4 rounded-xl border border-slate-200 p-4">
-    {/* Section Heading */}
-    <div>
-      <label className="mb-2 block text-sm font-medium">
-        Section Heading
-      </label>
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                      Section Description
+                    </label>
+                    <RichTextEditor value={sectionDescription} onChange={setSectionDescription} />
+                  </div>
 
-      <input
-        type="text"
-        value={sectionTitle}
-        onChange={(e) => setSectionTitle(e.target.value)}
-        placeholder="e.g. Pro Camera System"
-        className="w-full rounded-xl border border-slate-300 px-4 py-3"
-      />
-    </div>
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                      Section Image (Optional)
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleSectionImageChange}
+                      className="w-full rounded-xl border border-dashed border-slate-300 bg-white p-3 text-sm file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-indigo-700 hover:file:bg-indigo-100"
+                    />
+                    {sectionImagePreview && (
+                      <div className="mt-3">
+                        <img
+                          src={sectionImagePreview}
+                          alt="Section preview"
+                          className="h-48 w-full rounded-xl bg-white object-contain"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            URL.revokeObjectURL(sectionImagePreview);
+                            setSectionImage(null);
+                            setSectionImagePreview("");
+                          }}
+                          className="mt-2 text-sm font-medium text-red-600 hover:text-red-700"
+                        >
+                          Remove image
+                        </button>
+                      </div>
+                    )}
+                  </div>
 
-    {/* Rich Text Description */}
-    <div>
-      <label className="mb-2 block text-sm font-medium">
-        Section Description
-      </label>
+                  <button type="button" onClick={addDescriptionSection} className="btn-primary">
+                    + Add Description Section
+                  </button>
+                </div>
 
-      <RichTextEditor
-        value={sectionDescription}
-        onChange={setSectionDescription}
-      />
-    </div>
-
-    {/* Section Image */}
-    <div>
-      <label className="mb-2 block text-sm font-medium">
-        Section Image (Optional)
-      </label>
-
-      <input
-        type="file"
-        accept="image/*"
-        onChange={handleSectionImageChange}
-        className="w-full rounded-xl border border-dashed border-slate-300 p-3"
-      />
-
-      {sectionImagePreview && (
-        <div className="mt-3">
-          <img
-            src={sectionImagePreview}
-            alt="Section preview"
-            className="h-48 w-full rounded-xl bg-slate-50 object-contain"
-          />
-
-          <button
-            type="button"
-            onClick={() => {
-              URL.revokeObjectURL(sectionImagePreview);
-              setSectionImage(null);
-              setSectionImagePreview("");
-            }}
-            className="mt-2 text-sm text-red-600"
-          >
-            Remove image
-          </button>
-        </div>
-      )}
-    </div>
-
-    {/* Add Section */}
-    <button
-      type="button"
-      onClick={addDescriptionSection}
-      className="rounded-xl bg-blue-600 px-5 py-3 font-medium text-white hover:bg-blue-700"
-    >
-      + Add Description Section
-    </button>
-  </div>
-
-  {/* Added Sections Preview */}
-  <div className="mt-5 space-y-4">
-    {formData.descriptionSections.map((section, index) => (
-      <div
-        key={index}
-        className="rounded-xl border border-slate-200 p-4"
-      >
-        <div className="flex items-start justify-between gap-3">
-          <h4 className="text-lg font-semibold text-slate-900">
-            {index + 1}. {section.title}
-          </h4>
-
-          <button
-            type="button"
-            onClick={() => removeDescriptionSection(index)}
-            className="text-sm font-medium text-red-600"
-          >
-            Remove
-          </button>
-        </div>
-
-        {/* Render formatted HTML */}
-        <div
-          className="product-description-content mt-3 text-sm leading-7 text-slate-600"
-          dangerouslySetInnerHTML={{
-            __html: section.description || "",
-          }}
-        />
-
-        {section.imagePreview && (
-          <img
-            src={section.imagePreview}
-            alt={section.title || "Product section"}
-            className="mt-4 max-h-72 w-full rounded-xl bg-slate-50 object-contain"
-          />
-        )}
-      </div>
-    ))}
-  </div>
-</div>
-
+                {/* Added Sections */}
+                <div className="mt-5 space-y-4">
+                  {formData.descriptionSections.map((section, index) => (
+                    <div
+                      key={index}
+                      className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <h4 className="text-lg font-semibold text-slate-900">
+                          {index + 1}. {section.title}
+                        </h4>
+                        <button
+                          type="button"
+                          onClick={() => removeDescriptionSection(index)}
+                          className="text-sm font-medium text-red-600 hover:text-red-700"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      <div
+                        className="product-description-content mt-3 text-sm leading-7 text-slate-600"
+                        dangerouslySetInnerHTML={{ __html: section.description || "" }}
+                      />
+                      {section.imagePreview && (
+                        <img
+                          src={section.imagePreview}
+                          alt={section.title || "Product section"}
+                          className="mt-4 max-h-72 w-full rounded-xl bg-slate-50 object-contain"
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div className="md:col-span-2">
-                <label className="mb-2 block text-sm font-medium">
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">
                   Short Description
                 </label>
                 <textarea
@@ -1467,198 +1090,164 @@ data.append(
                   onChange={handleChange}
                   rows={3}
                   placeholder="Short product description..."
-                  className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
+                  className="input-field resize-none"
                 />
               </div>
             </div>
-          </section>
+          </Section>
 
           {/* ================= CATEGORY & BRAND ================= */}
-          <section className="rounded-2xl bg-white p-6 shadow-sm">
-            <h2 className="mb-5 text-xl font-semibold text-slate-900">
-              Category &amp; Brand
-            </h2>
-
-            {/* ================= MAIN CATEGORY TREE ================= */}
+          <Section title="Category & Brand" subtitle="Organize your product hierarchy">
             <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-              {/* ================= CATEGORY ================= */}
+              {/* Main Category */}
               <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <label className="block text-sm font-medium text-slate-700">
-                    Category
-                  </label>
-
+                <div className="mb-1.5 flex items-center justify-between">
+                  <label className="text-sm font-medium text-slate-700">Category</label>
                   <button
                     type="button"
                     onClick={() => setShowCategoryModal(true)}
-                    className="text-sm font-semibold text-blue-600 hover:text-blue-700"
+                    className="text-sm font-semibold text-indigo-600 hover:text-indigo-700"
                   >
                     + Add
                   </button>
                 </div>
-
                 <select
                   name="category"
                   value={formData.category}
                   onChange={handleChange}
                   required
                   disabled={categoriesLoading}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+                  className="input-field"
                 >
                   <option value="">
                     {categoriesLoading
-                      ? "Loading categories..."
+                      ? "Loading..."
                       : categories.length === 0
                         ? "No category yet"
                         : "Select category"}
                   </option>
-
-                  {categories.map((category) => (
-                    <option key={category._id} value={category._id}>
-                      {category.name}
+                  {categories.map((c) => (
+                    <option key={c._id} value={c._id}>
+                      {c.name}
                     </option>
                   ))}
                 </select>
-
                 {categoriesError && (
                   <p className="mt-2 text-sm text-red-600">
                     {categoriesError}{" "}
-                    <button
-                      type="button"
-                      onClick={loadCategories}
-                      className="font-semibold underline"
-                    >
+                    <button type="button" onClick={loadCategories} className="font-semibold underline">
                       Try again
                     </button>
                   </p>
                 )}
               </div>
 
-              {/* ================= SUB CATEGORY ================= */}
+              {/* Sub Category */}
               <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <label className="block text-sm font-medium text-slate-700">
-                    Sub Category
-                  </label>
-
+                <div className="mb-1.5 flex items-center justify-between">
+                  <label className="text-sm font-medium text-slate-700">Sub Category</label>
                   <button
                     type="button"
                     disabled={!formData.category}
                     onClick={() => setShowSubCategoryModal(true)}
-                    className="text-sm font-semibold text-blue-600 hover:text-blue-700 disabled:cursor-not-allowed disabled:text-slate-400"
+                    className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 disabled:cursor-not-allowed disabled:text-slate-400"
                   >
                     + Add
                   </button>
                 </div>
-
                 <select
                   name="subCategory"
                   value={formData.subCategory}
                   onChange={handleChange}
                   disabled={!formData.category}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+                  className="input-field"
                 >
                   <option value="">
                     {!formData.category
-                      ? "Select a category first"
+                      ? "Select category first"
                       : subCategories.length === 0
                         ? "No sub category yet"
                         : "Select sub category"}
                   </option>
-
-                  {subCategories.map((subCategory) => (
-                    <option key={subCategory._id} value={subCategory._id}>
-                      {subCategory.name}
+                  {subCategories.map((s) => (
+                    <option key={s._id} value={s._id}>
+                      {s.name}
                     </option>
                   ))}
                 </select>
               </div>
 
-              {/* ================= CHILD CATEGORY ================= */}
+              {/* Child Category */}
               <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <label className="block text-sm font-medium text-slate-700">
-                    Child Category
-                  </label>
-
+                <div className="mb-1.5 flex items-center justify-between">
+                  <label className="text-sm font-medium text-slate-700">Child Category</label>
                   <button
                     type="button"
                     disabled={!formData.subCategory}
                     onClick={() => setShowChildCategoryModal(true)}
-                    className="text-sm font-semibold text-blue-600 hover:text-blue-700 disabled:cursor-not-allowed disabled:text-slate-400"
+                    className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 disabled:cursor-not-allowed disabled:text-slate-400"
                   >
                     + Add
                   </button>
                 </div>
-
                 <select
                   name="childCategory"
                   value={formData.childCategory}
                   onChange={handleChange}
                   disabled={!formData.subCategory}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+                  className="input-field"
                 >
                   <option value="">
                     {!formData.subCategory
-                      ? "Select a sub category first"
+                      ? "Select sub category first"
                       : childCategories.length === 0
                         ? "No child category yet"
                         : "Select child category"}
                   </option>
-
-                  {childCategories.map((childCategory) => (
-                    <option key={childCategory._id} value={childCategory._id}>
-                      {childCategory.name}
+                  {childCategories.map((c) => (
+                    <option key={c._id} value={c._id}>
+                      {c.name}
                     </option>
                   ))}
                 </select>
               </div>
 
-              {/* ================= SUB CHILD CATEGORY ================= */}
+              {/* Sub Child Category */}
               <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <label className="block text-sm font-medium text-slate-700">
-                    Sub Child Category
-                  </label>
-
+                <div className="mb-1.5 flex items-center justify-between">
+                  <label className="text-sm font-medium text-slate-700">Sub Child Category</label>
                   <button
                     type="button"
                     disabled={!formData.childCategory}
                     onClick={() => setShowSubChildCategoryModal(true)}
-                    className="text-sm font-semibold text-blue-600 hover:text-blue-700 disabled:cursor-not-allowed disabled:text-slate-400"
+                    className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 disabled:cursor-not-allowed disabled:text-slate-400"
                   >
                     + Add
                   </button>
                 </div>
-
                 <select
                   name="subChildCategory"
                   value={formData.subChildCategory}
                   onChange={handleChange}
                   disabled={!formData.childCategory}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+                  className="input-field"
                 >
                   <option value="">
                     {!formData.childCategory
-                      ? "Select a child category first"
+                      ? "Select child category first"
                       : subChildCategories.length === 0
-                        ? "No sub child category yet"
+                        ? "No sub child yet"
                         : "Select sub child category"}
                   </option>
-
-                  {subChildCategories.map((subChildCategory) => (
-                    <option
-                      key={subChildCategory._id}
-                      value={subChildCategory._id}
-                    >
-                      {subChildCategory.name}
+                  {subChildCategories.map((s) => (
+                    <option key={s._id} value={s._id}>
+                      {s.name}
                     </option>
                   ))}
                 </select>
               </div>
             </div>
 
-            {/* ================= BRAND ================= */}
             <div className="mt-5 max-w-md">
               <Input
                 label="Brand"
@@ -1669,47 +1258,29 @@ data.append(
               />
             </div>
 
-            {/* =====================================================
-      ADDITIONAL CATEGORIES
-      ===================================================== */}
-            <div className="mt-6 border-t border-slate-200 pt-6">
-              <div className="mb-4">
-                <h3 className="text-base font-semibold text-slate-900">
-                  Additional Categories
-                </h3>
-
-                <p className="mt-1 text-sm text-slate-500">
-                  Select other main categories where this product should also
-                  appear.
-                </p>
-              </div>
+            {/* Additional Categories */}
+            <div className="mt-8 border-t border-slate-200 pt-6">
+              <h3 className="text-base font-semibold text-slate-800">Additional Categories</h3>
+              <p className="mt-1 text-sm text-slate-500">
+                Select other main categories where this product should also appear
+              </p>
 
               {categories.length === 0 ? (
-                <p className="text-sm text-slate-500">
-                  No categories available.
-                </p>
+                <p className="mt-3 text-sm text-slate-500">No categories available.</p>
               ) : (
-                <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                   {categories
-                    .filter((category) => category._id !== formData.category)
+                    .filter((c) => c._id !== formData.category)
                     .map((category) => {
-                      const checked = (
-                        formData.additionalCategories || []
-                      ).includes(category._id);
-
+                      const checked = (formData.additionalCategories || []).includes(category._id);
                       return (
                         <label
                           key={category._id}
-                          className={`
-                  flex cursor-pointer items-center gap-3
-                  rounded-xl border px-4 py-3
-                  transition
-                  ${
-                    checked
-                      ? "border-blue-500 bg-blue-50"
-                      : "border-slate-300 bg-white hover:border-blue-300"
-                  }
-                `}
+                          className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition ${
+                            checked
+                              ? "border-indigo-500 bg-indigo-50"
+                              : "border-slate-200 bg-white hover:border-indigo-300"
+                          }`}
                         >
                           <input
                             type="checkbox"
@@ -1717,35 +1288,22 @@ data.append(
                             onChange={(e) => {
                               setFormData((prev) => {
                                 const current = prev.additionalCategories || [];
-
                                 if (e.target.checked) {
-                                  if (current.includes(category._id)) {
-                                    return prev;
-                                  }
-
+                                  if (current.includes(category._id)) return prev;
                                   return {
                                     ...prev,
-                                    additionalCategories: [
-                                      ...current,
-                                      category._id,
-                                    ],
+                                    additionalCategories: [...current, category._id],
                                   };
                                 }
-
                                 return {
                                   ...prev,
-                                  additionalCategories: current.filter(
-                                    (id) => id !== category._id,
-                                  ),
+                                  additionalCategories: current.filter((id) => id !== category._id),
                                 };
                               });
                             }}
-                            className="h-4 w-4 accent-blue-600"
+                            className="h-4 w-4 accent-indigo-600"
                           />
-
-                          <span className="text-sm font-medium text-slate-700">
-                            {category.name}
-                          </span>
+                          <span className="text-sm font-medium text-slate-700">{category.name}</span>
                         </label>
                       );
                     })}
@@ -1753,40 +1311,26 @@ data.append(
               )}
 
               {formData.additionalCategories?.length > 0 && (
-                <div className="mt-4 rounded-xl bg-slate-50 p-4">
-                  <p className="mb-2 text-sm font-semibold text-slate-700">
-                    Selected additional categories:
-                  </p>
-
-                  <div className="flex flex-wrap gap-2">
-                    {formData.additionalCategories.map((categoryId) => {
-                      const category = categories.find(
-                        (item) => item._id === categoryId,
-                      );
-
-                      if (!category) return null;
-
-                      return (
-                        <span
-                          key={categoryId}
-                          className="rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-700"
-                        >
-                          {category.name}
-                        </span>
-                      );
-                    })}
-                  </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {formData.additionalCategories.map((id) => {
+                    const cat = categories.find((c) => c._id === id);
+                    if (!cat) return null;
+                    return (
+                      <span
+                        key={id}
+                        className="rounded-full bg-indigo-100 px-3 py-1 text-sm font-medium text-indigo-700"
+                      >
+                        {cat.name}
+                      </span>
+                    );
+                  })}
                 </div>
               )}
             </div>
-          </section>
+          </Section>
 
-          {/* ================= PRICE ================= */}
-          <section className="rounded-2xl bg-white p-6 shadow-sm">
-            <h2 className="mb-5 text-xl font-semibold">
-              Pricing &amp; Inventory
-            </h2>
-
+          {/* ================= PRICING ================= */}
+          <Section title="Pricing & Inventory" subtitle="Set price, discount and stock">
             <div className="grid gap-5 md:grid-cols-3 lg:grid-cols-5">
               <Input
                 label="Price"
@@ -1836,47 +1380,36 @@ data.append(
                 placeholder="SKU-001"
               />
             </div>
-          </section>
+          </Section>
 
-          {/* ================= PRODUCT GALLERY ================= */}
-          <section className="rounded-2xl bg-white p-6 shadow-sm">
-            <h2 className="mb-2 text-xl font-semibold text-slate-900">
-              Product Gallery
-            </h2>
-
-            <p className="mb-5 text-sm text-slate-500">
-              Select multiple product images. You can add as many images as
-              needed.
-            </p>
-
+          {/* ================= GALLERY ================= */}
+          <Section title="Product Gallery" subtitle="Upload multiple product images">
             <input
               ref={imageInputRef}
               type="file"
               accept="image/*"
               multiple
               onChange={handleImageChange}
-              className="w-full cursor-pointer rounded-xl border border-dashed border-slate-400 bg-slate-50 p-4"
+              className="w-full cursor-pointer rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-6 text-sm transition hover:border-indigo-400 hover:bg-indigo-50/30 file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-600 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white"
             />
 
-            {imagePreviews.length > 0 && (
+            {imagePreviews.length > 0 ? (
               <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
                 {imagePreviews.map((image, index) => (
                   <div
                     key={`${image.file.name}-${index}`}
-                    className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white"
+                    className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
                   >
                     <img
                       src={image.url}
-                      alt={`Product image ${index + 1}`}
+                      alt={`Product ${index + 1}`}
                       className="h-40 w-full object-cover"
                     />
-
                     {index === 0 && (
-                      <span className="absolute left-2 top-2 rounded-full bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white">
-                        Main Image
+                      <span className="absolute left-2 top-2 rounded-full bg-indigo-600 px-2.5 py-1 text-xs font-semibold text-white">
+                        Main
                       </span>
                     )}
-
                     <button
                       type="button"
                       onClick={() => removeImage(index)}
@@ -1884,78 +1417,58 @@ data.append(
                     >
                       ×
                     </button>
-
                     <div className="p-2">
-                      <p className="truncate text-xs text-slate-500">
-                        {image.file.name}
-                      </p>
+                      <p className="truncate text-xs text-slate-500">{image.file.name}</p>
                     </div>
                   </div>
                 ))}
               </div>
-            )}
-
-            {imagePreviews.length === 0 && (
-              <div className="mt-5 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
-                <p className="text-sm font-medium text-slate-600">
-                  No images selected
-                </p>
+            ) : (
+              <div className="mt-5 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-10 text-center">
+                <p className="text-sm font-medium text-slate-600">No images selected</p>
                 <p className="mt-1 text-xs text-slate-400">
                   Select multiple images to create your product gallery
                 </p>
               </div>
             )}
-          </section>
+          </Section>
 
           {/* ================= COLORS ================= */}
-          <section className="rounded-2xl bg-white p-6 shadow-sm">
-            <h2 className="mb-5 text-xl font-semibold">Colors</h2>
-
+          <Section title="Colors" subtitle="Add available color options with images">
             <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Color Name
-                </label>
-
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">Color Name</label>
                 <input
                   type="text"
                   value={colorName}
                   onChange={(e) => setColorName(e.target.value)}
-                  placeholder="Example: Burgundy"
-                  className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
+                  placeholder="e.g. Burgundy"
+                  className="input-field"
                 />
               </div>
-
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Color Code
-                </label>
-
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">Color Code</label>
                 <div className="flex gap-3">
                   <input
                     type="color"
                     value={colorCode}
                     onChange={(e) => setColorCode(e.target.value)}
-                    className="h-[48px] w-[70px] cursor-pointer rounded-lg border border-slate-300"
+                    className="h-[46px] w-[70px] cursor-pointer rounded-xl border border-slate-300"
                   />
-
                   <input
                     type="text"
                     value={colorCode}
                     onChange={(e) => setColorCode(e.target.value)}
-                    className="flex-1 rounded-xl border border-slate-300 px-4 py-3 uppercase outline-none focus:border-blue-500"
+                    className="input-field flex-1 uppercase"
                   />
                 </div>
               </div>
             </div>
 
             <div className="mt-5">
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                Color Image
-              </label>
-
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">Color Image</label>
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                <label className="flex h-32 w-32 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 hover:border-blue-500">
+                <label className="flex h-32 w-32 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 transition hover:border-indigo-400">
                   {colorImagePreview ? (
                     <img
                       src={colorImagePreview}
@@ -1965,12 +1478,9 @@ data.append(
                   ) : (
                     <>
                       <span className="text-3xl text-slate-400">+</span>
-                      <span className="mt-1 text-xs text-slate-500">
-                        Choose Image
-                      </span>
+                      <span className="mt-1 text-xs text-slate-500">Choose Image</span>
                     </>
                   )}
-
                   <input
                     type="file"
                     accept="image/*"
@@ -1978,70 +1488,52 @@ data.append(
                     className="hidden"
                   />
                 </label>
-
                 <div>
                   {colorImage ? (
                     <>
-                      <p className="text-sm font-medium text-slate-700">
-                        {colorImage.name}
-                      </p>
-                      <p className="mt-1 text-xs text-green-600">
-                        Image selected
-                      </p>
+                      <p className="text-sm font-medium text-slate-700">{colorImage.name}</p>
+                      <p className="mt-1 text-xs text-emerald-600">Image selected</p>
                     </>
                   ) : (
-                    <p className="text-sm text-slate-500">
-                      Upload the phone image for this color
-                    </p>
+                    <p className="text-sm text-slate-500">Upload the product image for this color</p>
                   )}
                 </div>
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={addColor}
-              className="mt-5 rounded-xl bg-blue-600 px-6 py-3 font-medium text-white transition hover:bg-blue-700"
-            >
+            <button type="button" onClick={addColor} className="btn-primary mt-5">
               + Add Color
             </button>
 
             {formData.colors.length > 0 && (
               <div className="mt-6 space-y-3">
-                <h3 className="text-sm font-semibold text-slate-700">
-                  Added Colors
-                </h3>
-
+                <h3 className="text-sm font-semibold text-slate-700">Added Colors</h3>
                 {formData.colors.map((color, index) => (
                   <div
                     key={`${color.name}-${index}`}
-                    className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 p-3"
+                    className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"
                   >
                     <div className="flex items-center gap-4">
                       {color.imagePreview ? (
                         <img
                           src={color.imagePreview}
                           alt={color.name}
-                          className="h-16 w-16 rounded-lg border border-slate-200 bg-white object-contain p-1"
+                          className="h-16 w-16 rounded-xl border border-slate-200 bg-white object-contain p-1"
                         />
                       ) : (
-                        <div className="h-16 w-16 rounded-lg border bg-white" />
+                        <div className="h-16 w-16 rounded-xl border bg-slate-50" />
                       )}
-
                       <div>
                         <div className="flex items-center gap-2">
                           <span
                             className="h-5 w-5 rounded-full border"
                             style={{ backgroundColor: color.code }}
                           />
-                          <span className="font-medium">{color.name}</span>
+                          <span className="font-medium text-slate-800">{color.name}</span>
                         </div>
-                        <p className="mt-1 text-xs text-slate-500">
-                          {color.code}
-                        </p>
+                        <p className="mt-1 text-xs text-slate-500">{color.code}</p>
                       </div>
                     </div>
-
                     <button
                       type="button"
                       onClick={() => removeColor(index)}
@@ -2053,79 +1545,58 @@ data.append(
                 ))}
               </div>
             )}
-          </section>
+          </Section>
 
           {/* ================= SIZES ================= */}
-          <section className="rounded-2xl bg-white p-6 shadow-sm">
-            <h2 className="mb-5 text-xl font-semibold">Sizes</h2>
-
+          <Section title="Sizes" subtitle="Available size options">
             <div className="flex gap-3">
               <input
                 value={size}
                 onChange={(e) => setSize(e.target.value)}
                 placeholder="S / M / L / XL"
-                className="flex-1 rounded-xl border border-slate-300 px-4 py-3"
+                className="input-field flex-1"
               />
-              <button
-                type="button"
-                onClick={addSize}
-                className="rounded-xl bg-blue-600 px-6 py-3 text-white"
-              >
+              <button type="button" onClick={addSize} className="btn-primary">
                 Add size
               </button>
             </div>
-
-            <div className="mt-4 flex flex-wrap gap-3">
+            <div className="mt-4 flex flex-wrap gap-2">
               {formData.sizes.map((item, index) => (
                 <div
                   key={`${item}-${index}`}
-                  className="rounded-lg bg-slate-100 px-4 py-2"
+                  className="flex items-center gap-2 rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700"
                 >
                   {item}
                   <button
                     type="button"
                     onClick={() => removeSize(index)}
-                    className="ml-3 text-red-500"
-                    aria-label={`Remove ${item}`}
+                    className="text-red-500 hover:text-red-700"
                   >
                     ×
                   </button>
                 </div>
               ))}
             </div>
-          </section>
+          </Section>
 
           {/* ================= SPECIFICATIONS ================= */}
-          <section className="rounded-2xl bg-white p-6 shadow-sm">
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold text-slate-900">
-                Specifications
-              </h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Add product technical specifications
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-              <h3 className="mb-4 text-base font-semibold text-slate-800">
-                Add Specification
-              </h3>
-
+          <Section title="Specifications" subtitle="Technical details & memory options">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-5">
+              <h3 className="mb-4 text-base font-semibold text-slate-800">Add Specification</h3>
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700">
                     Specification Name
                   </label>
                   <input
                     value={specKey}
                     onChange={(e) => setSpecKey(e.target.value)}
                     placeholder="e.g. Display Type"
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    className="input-field"
                   />
                 </div>
-
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700">
                     Specification Value
                   </label>
                   <input
@@ -2138,30 +1609,18 @@ data.append(
                       }
                     }}
                     placeholder="e.g. LTPO Super Retina XDR OLED, 120Hz"
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    className="input-field"
                   />
                 </div>
               </div>
-
-              <button
-                type="button"
-                onClick={addSpecification}
-                className="mt-4 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white transition hover:bg-blue-700"
-              >
+              <button type="button" onClick={addSpecification} className="btn-primary mt-4">
                 + Add Specification
               </button>
             </div>
 
-            <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
-              <div className="mb-4">
-                <h3 className="text-base font-semibold text-slate-800">
-                  Memory / RAM
-                </h3>
-                <p className="mt-1 text-sm text-slate-500">
-                  You can add multiple memory variants
-                </p>
-              </div>
-
+            <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50/50 p-5">
+              <h3 className="mb-1 text-base font-semibold text-slate-800">Memory / RAM</h3>
+              <p className="mb-4 text-sm text-slate-500">You can add multiple memory variants</p>
               <div className="flex flex-col gap-3 md:flex-row">
                 <input
                   value={ramValue}
@@ -2173,28 +1632,20 @@ data.append(
                     }
                   }}
                   placeholder="e.g. 256GB / 12GB RAM"
-                  className="flex-1 rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  className="input-field flex-1"
                 />
-
-                <button
-                  type="button"
-                  onClick={addRam}
-                  className="rounded-xl bg-slate-900 px-6 py-3 font-semibold text-white transition hover:bg-slate-800"
-                >
+                <button type="button" onClick={addRam} className="btn-dark">
                   + Add Memory
                 </button>
               </div>
-
               {formData.ram.length > 0 && (
-                <div className="mt-4 flex flex-wrap gap-3">
+                <div className="mt-4 flex flex-wrap gap-2">
                   {formData.ram.map((item, index) => (
                     <div
                       key={`${item}-${index}`}
-                      className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3"
+                      className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700"
                     >
-                      <span className="text-sm font-medium text-slate-700">
-                        {item}
-                      </span>
+                      {item}
                       <button
                         type="button"
                         onClick={() => removeRam(index)}
@@ -2211,14 +1662,11 @@ data.append(
             {formData.specifications.length > 0 && (
               <div className="mt-6">
                 <div className="mb-3 flex items-center justify-between">
-                  <h3 className="text-base font-semibold text-slate-800">
-                    Added Specifications
-                  </h3>
-                  <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-600">
+                  <h3 className="text-base font-semibold text-slate-800">Added Specifications</h3>
+                  <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-600">
                     {formData.specifications.length} items
                   </span>
                 </div>
-
                 <div className="overflow-hidden rounded-2xl border border-slate-200">
                   <div className="divide-y divide-slate-200">
                     {formData.specifications.map((item, index) => (
@@ -2229,9 +1677,7 @@ data.append(
                         <div className="bg-slate-50 px-4 py-4 font-medium text-slate-700">
                           {item.key}
                         </div>
-                        <div className="px-4 py-4 text-sm text-slate-600">
-                          {item.value}
-                        </div>
+                        <div className="px-4 py-4 text-sm text-slate-600">{item.value}</div>
                         <div className="px-4 py-3">
                           <button
                             type="button"
@@ -2247,169 +1693,119 @@ data.append(
                 </div>
               </div>
             )}
-          </section>
+          </Section>
 
-          {/* ================= VARIANTS ================= */}
-
-
-
-
-{/* ================= KEY FEATURES ================= */}
-<section className="rounded-2xl bg-white p-6 shadow-sm">
-  <h2 className="mb-2 text-xl font-semibold text-slate-900">
-    Key Features
-  </h2>
-
-  <p className="mb-5 text-sm text-slate-500">
-    Add the main highlights displayed on the product page.
-  </p>
-
-  <div className="flex flex-col gap-3 sm:flex-row">
-    <input
-      type="text"
-      value={keyFeatureInput}
-      onChange={(e) => setKeyFeatureInput(e.target.value)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          addKeyFeature();
-        }
-      }}
-      placeholder="e.g. AMD Ryzen 5 PRO 5650GE Processor"
-      className="flex-1 rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
-    />
-
-    <button
-      type="button"
-      onClick={addKeyFeature}
-      className="rounded-xl bg-blue-600 px-6 py-3 font-medium text-white hover:bg-blue-700"
-    >
-      + Add Feature
-    </button>
-  </div>
-
-  {formData.keyFeatures.length > 0 && (
-    <div className="mt-5 rounded-xl border border-slate-200 p-4">
-      <h3 className="mb-3 font-semibold text-slate-800">
-        Added Key Features ({formData.keyFeatures.length})
-      </h3>
-
-      <ul className="space-y-3">
-        {formData.keyFeatures.map((feature, index) => (
-          <li
-            key={`${feature}-${index}`}
-            className="flex items-start gap-3"
-          >
-            <span className="mt-1 text-slate-400">•</span>
-
-            <span className="flex-1 text-sm text-slate-700">
-              {feature}
-            </span>
-
-            <button
-              type="button"
-              onClick={() => removeKeyFeature(index)}
-              className="text-sm font-medium text-red-500 hover:text-red-700"
-            >
-              Remove
-            </button>
-          </li>
-        ))}
-      </ul>
-    </div>
-  )}
-</section>
-
-
-
-
-
-          <section className="rounded-2xl bg-white p-6 shadow-sm">
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold text-slate-900">
-                Product Variants
-              </h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Combine a color, RAM and storage to create a purchasable variant
-                with its own stock, price and SKU.
-              </p>
+          {/* ================= KEY FEATURES ================= */}
+          <Section title="Key Features" subtitle="Main highlights shown on the product page">
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <input
+                type="text"
+                value={keyFeatureInput}
+                onChange={(e) => setKeyFeatureInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addKeyFeature();
+                  }
+                }}
+                placeholder="e.g. AMD Ryzen 5 PRO 5650GE Processor"
+                className="input-field flex-1"
+              />
+              <button type="button" onClick={addKeyFeature} className="btn-primary">
+                + Add Feature
+              </button>
             </div>
 
+            {formData.keyFeatures.length > 0 && (
+              <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5">
+                <h3 className="mb-3 font-semibold text-slate-800">
+                  Added Key Features ({formData.keyFeatures.length})
+                </h3>
+                <ul className="space-y-3">
+                  {formData.keyFeatures.map((feature, index) => (
+                    <li key={`${feature}-${index}`} className="flex items-start gap-3">
+                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-500" />
+                      <span className="flex-1 text-sm text-slate-700">{feature}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeKeyFeature(index)}
+                        className="text-sm font-medium text-red-500 hover:text-red-700"
+                      >
+                        Remove
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </Section>
+
+          {/* ================= VARIANTS ================= */}
+          <Section
+            title="Product Variants"
+            subtitle="Combine color, RAM & storage with individual stock, price & SKU"
+          >
             {formData.colors.length === 0 && (
               <p className="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-700">
                 Add at least one color above before creating variants.
               </p>
             )}
 
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-5">
               <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
-                    Color
-                  </label>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700">Color</label>
                   <select
                     value={variantColorName}
                     onChange={(e) => setVariantColorName(e.target.value)}
                     disabled={formData.colors.length === 0}
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+                    className="input-field"
                   >
                     <option value="">Select color</option>
-                    {formData.colors.map((color) => (
-                      <option key={color.name} value={color.name}>
-                        {color.name}
+                    {formData.colors.map((c) => (
+                      <option key={c.name} value={c.name}>
+                        {c.name}
                       </option>
                     ))}
                   </select>
                 </div>
-
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
-                    RAM
-                  </label>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700">RAM</label>
                   <input
                     list="variant-ram-options"
                     value={variantRam}
                     onChange={(e) => setVariantRam(e.target.value)}
                     placeholder="8GB"
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    className="input-field"
                   />
                   <datalist id="variant-ram-options">
-                    {formData.ram.map((item, index) => (
-                      <option key={`${item}-${index}`} value={item} />
+                    {formData.ram.map((item, i) => (
+                      <option key={`${item}-${i}`} value={item} />
                     ))}
                   </datalist>
                 </div>
-
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
-                    Storage
-                  </label>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700">Storage</label>
                   <input
                     value={variantStorage}
                     onChange={(e) => setVariantStorage(e.target.value)}
                     placeholder="256GB"
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    className="input-field"
                   />
                 </div>
-
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
-                    Stock
-                  </label>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700">Stock</label>
                   <input
                     type="number"
                     min="0"
                     value={variantStock}
                     onChange={(e) => setVariantStock(e.target.value)}
                     placeholder="5"
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    className="input-field"
                   />
                 </div>
-
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
-                    Price
-                  </label>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700">Price</label>
                   <input
                     type="number"
                     min="0"
@@ -2417,14 +1813,11 @@ data.append(
                     value={variantPrice}
                     onChange={(e) => setVariantPrice(e.target.value)}
                     placeholder="55000"
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    className="input-field"
                   />
                 </div>
-
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
-                    SKU
-                  </label>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700">SKU</label>
                   <input
                     value={variantSku}
                     onChange={(e) => setVariantSku(e.target.value)}
@@ -2435,16 +1828,15 @@ data.append(
                       }
                     }}
                     placeholder="IQOO-BLK-8-256"
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    className="input-field"
                   />
                 </div>
               </div>
-
               <button
                 type="button"
                 onClick={addVariant}
                 disabled={formData.colors.length === 0}
-                className="mt-4 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="btn-primary mt-4 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 + Add Variant
               </button>
@@ -2453,14 +1845,11 @@ data.append(
             {formData.variants.length > 0 && (
               <div className="mt-6">
                 <div className="mb-3 flex items-center justify-between">
-                  <h3 className="text-base font-semibold text-slate-800">
-                    Added Variants
-                  </h3>
-                  <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-600">
+                  <h3 className="text-base font-semibold text-slate-800">Added Variants</h3>
+                  <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-600">
                     {formData.variants.length} variants
                   </span>
                 </div>
-
                 <div className="overflow-x-auto rounded-2xl border border-slate-200">
                   <table className="w-full min-w-[720px] text-left text-sm">
                     <thead className="bg-slate-50 text-slate-600">
@@ -2474,17 +1863,14 @@ data.append(
                         <th className="px-4 py-3 font-medium" />
                       </tr>
                     </thead>
-
-                    <tbody className="divide-y divide-slate-200">
+                    <tbody className="divide-y divide-slate-200 bg-white">
                       {formData.variants.map((variant, index) => (
                         <tr key={`${variant.sku}-${index}`}>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
                               <span
                                 className="h-4 w-4 rounded-full border"
-                                style={{
-                                  backgroundColor: variant.color.code,
-                                }}
+                                style={{ backgroundColor: variant.color.code }}
                               />
                               {variant.color.name}
                             </div>
@@ -2518,15 +1904,11 @@ data.append(
                 </div>
               </div>
             )}
-          </section>
+          </Section>
 
           {/* ================= STATUS + RATING ================= */}
-          <section className="rounded-2xl bg-white p-6 shadow-sm">
-            <h2 className="mb-5 text-xl font-semibold">
-              Product Status &amp; Rating
-            </h2>
-
-            <div className="mb-5">
+          <Section title="Product Status & Rating">
+            <div className="mb-5 max-w-xs">
               <Input
                 label="Rating (0-5)"
                 name="rating"
@@ -2539,26 +1921,15 @@ data.append(
                 step="0.1"
               />
             </div>
-
-            <div className="grid gap-4 md:grid-cols-4">
-              <Checkbox
-                name="isActive"
-                checked={formData.isActive}
-                onChange={handleChange}
-                label="Active"
-              />
+            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+              <Checkbox name="isActive" checked={formData.isActive} onChange={handleChange} label="Active" />
               <Checkbox
                 name="isFeatured"
                 checked={formData.isFeatured}
                 onChange={handleChange}
                 label="Featured"
               />
-              <Checkbox
-                name="isNew"
-                checked={formData.isNew}
-                onChange={handleChange}
-                label="New product"
-              />
+              <Checkbox name="isNew" checked={formData.isNew} onChange={handleChange} label="New product" />
               <Checkbox
                 name="isBestSeller"
                 checked={formData.isBestSeller}
@@ -2566,12 +1937,10 @@ data.append(
                 label="Best seller"
               />
             </div>
-          </section>
+          </Section>
 
           {/* ================= SEO ================= */}
-          <section className="rounded-2xl bg-white p-6 shadow-sm">
-            <h2 className="mb-5 text-xl font-semibold">SEO</h2>
-
+          <Section title="SEO" subtitle="Search engine optimization">
             <div className="space-y-5">
               <Input
                 label="Meta Title"
@@ -2580,9 +1949,8 @@ data.append(
                 onChange={handleChange}
                 placeholder="Product SEO title"
               />
-
               <div>
-                <label className="mb-2 block text-sm font-medium">
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">
                   Meta Description
                 </label>
                 <textarea
@@ -2591,38 +1959,41 @@ data.append(
                   onChange={handleChange}
                   rows={4}
                   placeholder="SEO description..."
-                  className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
+                  className="input-field resize-none"
                 />
               </div>
             </div>
-          </section>
-
-          {/* ================= SUBMIT ================= */}
-          <div className="flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={resetForm}
-              disabled={loading}
-              className="rounded-xl border border-slate-300 px-8 py-4 font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
-            >
-              Clear form
-            </button>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="rounded-xl bg-slate-900 px-10 py-4 font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {loading ? "Adding product..." : "Add product"}
-            </button>
-          </div>
+          </Section>
         </form>
       </div>
 
-      {/* ================= CATEGORY MODAL (with image) ================= */}
+      {/* Sticky Action Bar */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/90 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl items-center justify-end gap-3 px-4 py-4 md:px-6 lg:px-8">
+          <button
+            type="button"
+            onClick={resetForm}
+            disabled={loading}
+            className="rounded-xl border border-slate-300 px-6 py-3 font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+          >
+            Clear form
+          </button>
+          <button
+            type="submit"
+            form="product-form"
+            onClick={handleSubmit}
+            disabled={loading}
+            className="rounded-xl bg-slate-900 px-8 py-3 font-semibold text-white shadow-lg shadow-slate-900/20 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {loading ? "Adding product..." : "Add Product"}
+          </button>
+        </div>
+      </div>
+
+      {/* ================= MODALS ================= */}
       <Modal
         open={showCategoryModal}
-        title="Add category"
+        title="Add Category"
         onClose={() => {
           setShowCategoryModal(false);
           setNewCategoryName("");
@@ -2641,52 +2012,15 @@ data.append(
             }
           }}
           placeholder="Category name"
-          className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
+          className="input-field"
         />
-
-        {/* Category Image Upload */}
-        <div className="mt-4">
-          <label className="mb-2 block text-sm font-medium text-slate-700">
-            Category Image (optional)
-          </label>
-          <div className="flex items-center gap-4">
-            <label className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 hover:border-blue-500">
-              {newCategoryImagePreview ? (
-                <img
-                  src={newCategoryImagePreview}
-                  alt="Category preview"
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <>
-                  <span className="text-2xl text-slate-400">+</span>
-                  <span className="mt-1 text-xs text-slate-500">Image</span>
-                </>
-              )}
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => handleCategoryImageChange(e, "main")}
-                className="hidden"
-              />
-            </label>
-            {newCategoryImage && (
-              <div>
-                <p className="text-sm font-medium text-slate-700 truncate max-w-[160px]">
-                  {newCategoryImage.name}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => clearCategoryImage("main")}
-                  className="mt-1 text-xs font-medium text-red-500 hover:text-red-700"
-                >
-                  Remove
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
+        <CategoryImageUpload
+          label="Category Image (optional)"
+          preview={newCategoryImagePreview}
+          fileName={newCategoryImage?.name}
+          onChange={(e) => handleCategoryImageChange(e, "main")}
+          onRemove={() => clearCategoryImage("main")}
+        />
         <CategoryFileUpload
           label="Category banner image (optional)"
           fileName={newCategoryBannerImage?.name}
@@ -2694,36 +2028,22 @@ data.append(
           onChange={(e) => handleCategoryBannerChange(e, "main")}
           onRemove={() => clearCategoryBanner("main")}
         />
-
-        <div className="mt-5 flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={() => {
-              setShowCategoryModal(false);
-              setNewCategoryName("");
-              clearCategoryImage("main");
-          clearCategoryBanner("main");
-            }}
-            className="rounded-xl border border-slate-300 px-5 py-2.5 font-medium text-slate-700 hover:bg-slate-50"
-          >
-            Cancel
-          </button>
-
-          <button
-            type="button"
-            onClick={handleAddCategory}
-            disabled={categoryAdding}
-            className="rounded-xl bg-blue-600 px-5 py-2.5 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-          >
-            {categoryAdding ? "Saving..." : "Save category"}
-          </button>
-        </div>
+        <ModalActions
+          onCancel={() => {
+            setShowCategoryModal(false);
+            setNewCategoryName("");
+            clearCategoryImage("main");
+            clearCategoryBanner("main");
+          }}
+          onSave={handleAddCategory}
+          loading={categoryAdding}
+          saveLabel="Save category"
+        />
       </Modal>
 
-      {/* ================= SUB CATEGORY MODAL (with image) ================= */}
       <Modal
         open={showSubCategoryModal}
-        title="Add sub category"
+        title="Add Sub Category"
         onClose={() => {
           setShowSubCategoryModal(false);
           setNewSubCategoryName("");
@@ -2732,12 +2052,8 @@ data.append(
         }}
       >
         <p className="mb-3 text-sm text-slate-500">
-          Under{" "}
-          <span className="font-semibold text-slate-700">
-            {selectedCategoryName}
-          </span>
+          Under <span className="font-semibold text-slate-700">{selectedCategoryName}</span>
         </p>
-
         <input
           autoFocus
           value={newSubCategoryName}
@@ -2749,52 +2065,15 @@ data.append(
             }
           }}
           placeholder="Sub category name"
-          className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
+          className="input-field"
         />
-
-        {/* Sub Category Image Upload */}
-        <div className="mt-4">
-          <label className="mb-2 block text-sm font-medium text-slate-700">
-            Sub Category Image (optional)
-          </label>
-          <div className="flex items-center gap-4">
-            <label className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 hover:border-blue-500">
-              {newSubCategoryImagePreview ? (
-                <img
-                  src={newSubCategoryImagePreview}
-                  alt="Sub category preview"
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <>
-                  <span className="text-2xl text-slate-400">+</span>
-                  <span className="mt-1 text-xs text-slate-500">Image</span>
-                </>
-              )}
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => handleCategoryImageChange(e, "sub")}
-                className="hidden"
-              />
-            </label>
-            {newSubCategoryImage && (
-              <div>
-                <p className="text-sm font-medium text-slate-700 truncate max-w-[160px]">
-                  {newSubCategoryImage.name}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => clearCategoryImage("sub")}
-                  className="mt-1 text-xs font-medium text-red-500 hover:text-red-700"
-                >
-                  Remove
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
+        <CategoryImageUpload
+          label="Sub Category Image (optional)"
+          preview={newSubCategoryImagePreview}
+          fileName={newSubCategoryImage?.name}
+          onChange={(e) => handleCategoryImageChange(e, "sub")}
+          onRemove={() => clearCategoryImage("sub")}
+        />
         <CategoryFileUpload
           label="Sub category banner image (optional)"
           fileName={newSubCategoryBannerImage?.name}
@@ -2802,36 +2081,22 @@ data.append(
           onChange={(e) => handleCategoryBannerChange(e, "sub")}
           onRemove={() => clearCategoryBanner("sub")}
         />
-
-        <div className="mt-5 flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={() => {
-              setShowSubCategoryModal(false);
-              setNewSubCategoryName("");
-              clearCategoryImage("sub");
-          clearCategoryBanner("sub");
-            }}
-            className="rounded-xl border border-slate-300 px-5 py-2.5 font-medium text-slate-700 hover:bg-slate-50"
-          >
-            Cancel
-          </button>
-
-          <button
-            type="button"
-            onClick={handleAddSubCategory}
-            disabled={subCategoryAdding}
-            className="rounded-xl bg-blue-600 px-5 py-2.5 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-          >
-            {subCategoryAdding ? "Saving..." : "Save sub category"}
-          </button>
-        </div>
+        <ModalActions
+          onCancel={() => {
+            setShowSubCategoryModal(false);
+            setNewSubCategoryName("");
+            clearCategoryImage("sub");
+            clearCategoryBanner("sub");
+          }}
+          onSave={handleAddSubCategory}
+          loading={subCategoryAdding}
+          saveLabel="Save sub category"
+        />
       </Modal>
 
-      {/* ================= CHILD CATEGORY MODAL (with image) ================= */}
       <Modal
         open={showChildCategoryModal}
-        title="Add child category"
+        title="Add Child Category"
         onClose={() => {
           setShowChildCategoryModal(false);
           setNewChildCategoryName("");
@@ -2845,7 +2110,6 @@ data.append(
             {selectedCategoryName} › {selectedSubCategoryName}
           </span>
         </p>
-
         <input
           autoFocus
           value={newChildCategoryName}
@@ -2857,52 +2121,15 @@ data.append(
             }
           }}
           placeholder="Child category name"
-          className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
+          className="input-field"
         />
-
-        {/* Child Category Image Upload */}
-        <div className="mt-4">
-          <label className="mb-2 block text-sm font-medium text-slate-700">
-            Child Category Image (optional)
-          </label>
-          <div className="flex items-center gap-4">
-            <label className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 hover:border-blue-500">
-              {newChildCategoryImagePreview ? (
-                <img
-                  src={newChildCategoryImagePreview}
-                  alt="Child category preview"
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <>
-                  <span className="text-2xl text-slate-400">+</span>
-                  <span className="mt-1 text-xs text-slate-500">Image</span>
-                </>
-              )}
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => handleCategoryImageChange(e, "child")}
-                className="hidden"
-              />
-            </label>
-            {newChildCategoryImage && (
-              <div>
-                <p className="text-sm font-medium text-slate-700 truncate max-w-[160px]">
-                  {newChildCategoryImage.name}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => clearCategoryImage("child")}
-                  className="mt-1 text-xs font-medium text-red-500 hover:text-red-700"
-                >
-                  Remove
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
+        <CategoryImageUpload
+          label="Child Category Image (optional)"
+          preview={newChildCategoryImagePreview}
+          fileName={newChildCategoryImage?.name}
+          onChange={(e) => handleCategoryImageChange(e, "child")}
+          onRemove={() => clearCategoryImage("child")}
+        />
         <CategoryFileUpload
           label="Child category banner image (optional)"
           fileName={newChildCategoryBannerImage?.name}
@@ -2910,36 +2137,22 @@ data.append(
           onChange={(e) => handleCategoryBannerChange(e, "child")}
           onRemove={() => clearCategoryBanner("child")}
         />
-
-        <div className="mt-5 flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={() => {
-              setShowChildCategoryModal(false);
-              setNewChildCategoryName("");
-              clearCategoryImage("child");
-          clearCategoryBanner("child");
-            }}
-            className="rounded-xl border border-slate-300 px-5 py-2.5 font-medium text-slate-700 hover:bg-slate-50"
-          >
-            Cancel
-          </button>
-
-          <button
-            type="button"
-            onClick={handleAddChildCategory}
-            disabled={childCategoryAdding}
-            className="rounded-xl bg-blue-600 px-5 py-2.5 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-          >
-            {childCategoryAdding ? "Saving..." : "Save child category"}
-          </button>
-        </div>
+        <ModalActions
+          onCancel={() => {
+            setShowChildCategoryModal(false);
+            setNewChildCategoryName("");
+            clearCategoryImage("child");
+            clearCategoryBanner("child");
+          }}
+          onSave={handleAddChildCategory}
+          loading={childCategoryAdding}
+          saveLabel="Save child category"
+        />
       </Modal>
 
-      {/* ================= SUB CHILD CATEGORY MODAL (with image) ================= */}
       <Modal
         open={showSubChildCategoryModal}
-        title="Add sub child category"
+        title="Add Sub Child Category"
         onClose={() => {
           setShowSubChildCategoryModal(false);
           setNewSubChildCategoryName("");
@@ -2950,11 +2163,9 @@ data.append(
         <p className="mb-3 text-sm text-slate-500">
           Under{" "}
           <span className="font-semibold text-slate-700">
-            {selectedCategoryName} › {selectedSubCategoryName} ›{" "}
-            {selectedChildCategoryName}
+            {selectedCategoryName} › {selectedSubCategoryName} › {selectedChildCategoryName}
           </span>
         </p>
-
         <input
           autoFocus
           value={newSubChildCategoryName}
@@ -2966,52 +2177,15 @@ data.append(
             }
           }}
           placeholder="Sub child category name"
-          className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
+          className="input-field"
         />
-
-        {/* Sub Child Category Image Upload */}
-        <div className="mt-4">
-          <label className="mb-2 block text-sm font-medium text-slate-700">
-            Sub Child Category Image (optional)
-          </label>
-          <div className="flex items-center gap-4">
-            <label className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 hover:border-blue-500">
-              {newSubChildCategoryImagePreview ? (
-                <img
-                  src={newSubChildCategoryImagePreview}
-                  alt="Sub child category preview"
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <>
-                  <span className="text-2xl text-slate-400">+</span>
-                  <span className="mt-1 text-xs text-slate-500">Image</span>
-                </>
-              )}
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => handleCategoryImageChange(e, "subChild")}
-                className="hidden"
-              />
-            </label>
-            {newSubChildCategoryImage && (
-              <div>
-                <p className="text-sm font-medium text-slate-700 truncate max-w-[160px]">
-                  {newSubChildCategoryImage.name}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => clearCategoryImage("subChild")}
-                  className="mt-1 text-xs font-medium text-red-500 hover:text-red-700"
-                >
-                  Remove
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
+        <CategoryImageUpload
+          label="Sub Child Category Image (optional)"
+          preview={newSubChildCategoryImagePreview}
+          fileName={newSubChildCategoryImage?.name}
+          onChange={(e) => handleCategoryImageChange(e, "subChild")}
+          onRemove={() => clearCategoryImage("subChild")}
+        />
         <CategoryFileUpload
           label="Sub child category banner image (optional)"
           fileName={newSubChildCategoryBannerImage?.name}
@@ -3019,44 +2193,156 @@ data.append(
           onChange={(e) => handleCategoryBannerChange(e, "subChild")}
           onRemove={() => clearCategoryBanner("subChild")}
         />
-
-        <div className="mt-5 flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={() => {
-              setShowSubChildCategoryModal(false);
-              setNewSubChildCategoryName("");
-              clearCategoryImage("subChild");
-          clearCategoryBanner("subChild");
-            }}
-            className="rounded-xl border border-slate-300 px-5 py-2.5 font-medium text-slate-700 hover:bg-slate-50"
-          >
-            Cancel
-          </button>
-
-          <button
-            type="button"
-            onClick={handleAddSubChildCategory}
-            disabled={subChildCategoryAdding}
-            className="rounded-xl bg-blue-600 px-5 py-2.5 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-          >
-            {subChildCategoryAdding ? "Saving..." : "Save sub child category"}
-          </button>
-        </div>
+        <ModalActions
+          onCancel={() => {
+            setShowSubChildCategoryModal(false);
+            setNewSubChildCategoryName("");
+            clearCategoryImage("subChild");
+            clearCategoryBanner("subChild");
+          }}
+          onSave={handleAddSubChildCategory}
+          loading={subChildCategoryAdding}
+          saveLabel="Save sub child category"
+        />
       </Modal>
+
+      {/* Global styles for consistent inputs */}
+      <style jsx global>{`
+        .input-field {
+          width: 100%;
+          border-radius: 0.75rem;
+          border: 1px solid #e2e8f0;
+          background: white;
+          padding: 0.75rem 1rem;
+          font-size: 0.875rem;
+          outline: none;
+          transition: all 0.15s;
+        }
+        .input-field:focus {
+          border-color: #6366f1;
+          box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+        }
+        .input-field:disabled {
+          background: #f1f5f9;
+          cursor: not-allowed;
+        }
+        .input-field:read-only {
+          background: #f8fafc;
+        }
+        .btn-primary {
+          border-radius: 0.75rem;
+          background: #4f46e5;
+          padding: 0.75rem 1.5rem;
+          font-weight: 600;
+          color: white;
+          transition: all 0.15s;
+        }
+        .btn-primary:hover {
+          background: #4338ca;
+        }
+        .btn-dark {
+          border-radius: 0.75rem;
+          background: #0f172a;
+          padding: 0.75rem 1.5rem;
+          font-weight: 600;
+          color: white;
+          transition: all 0.15s;
+        }
+        .btn-dark:hover {
+          background: #1e293b;
+        }
+      `}</style>
     </div>
   );
 }
 
 // ======================================
-// MODAL
+// REUSABLE COMPONENTS
 // ======================================
+function Section({ title, subtitle, children }) {
+  return (
+    <section className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm md:p-7">
+      <div className="mb-5">
+        <h2 className="text-xl font-semibold tracking-tight text-slate-900">{title}</h2>
+        {subtitle && <p className="mt-1 text-sm text-slate-500">{subtitle}</p>}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function Input({ label, name, value, onChange, placeholder, type = "text", required = false, ...rest }) {
+  return (
+    <div>
+      <label className="mb-1.5 block text-sm font-medium text-slate-700">{label}</label>
+      <input
+        type={type}
+        name={name}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        required={required}
+        {...rest}
+        className="input-field"
+      />
+    </div>
+  );
+}
+
+function Checkbox({ name, checked, onChange, label }) {
+  return (
+    <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 transition hover:border-indigo-300">
+      <input
+        type="checkbox"
+        name={name}
+        checked={checked}
+        onChange={onChange}
+        className="h-5 w-5 accent-indigo-600"
+      />
+      <span className="font-medium text-slate-700">{label}</span>
+    </label>
+  );
+}
+
+function CategoryImageUpload({ label, preview, fileName, onChange, onRemove }) {
+  return (
+    <div className="mt-4">
+      <label className="mb-1.5 block text-sm font-medium text-slate-700">{label}</label>
+      <div className="flex items-center gap-4">
+        <label className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 transition hover:border-indigo-400">
+          {preview ? (
+            <img src={preview} alt="preview" className="h-full w-full object-cover" />
+          ) : (
+            <>
+              <span className="text-2xl text-slate-400">+</span>
+              <span className="mt-1 text-xs text-slate-500">Image</span>
+            </>
+          )}
+          <input type="file" accept="image/*" onChange={onChange} className="hidden" />
+        </label>
+        {fileName && (
+          <div>
+            <p className="max-w-[160px] truncate text-sm font-medium text-slate-700">{fileName}</p>
+            <button
+              type="button"
+              onClick={onRemove}
+              className="mt-1 text-xs font-medium text-red-500 hover:text-red-700"
+            >
+              Remove
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function CategoryFileUpload({ label, fileName, preview, onChange, onRemove }) {
   return (
     <div className="mt-4">
-      <label className="mb-2 block text-sm font-medium text-slate-700">{label}</label>
+      <label className="mb-1.5 block text-sm font-medium text-slate-700">{label}</label>
       <div className="flex flex-wrap items-center gap-4">
-        <label className="flex h-28 w-full max-w-xs cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 hover:border-blue-500">
+        <label className="flex h-28 w-full max-w-xs cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 transition hover:border-indigo-400">
           {preview ? (
             <img src={preview} alt={label} className="h-full w-full object-cover" />
           ) : (
@@ -3070,7 +2356,13 @@ function CategoryFileUpload({ label, fileName, preview, onChange, onRemove }) {
         {fileName && (
           <div className="min-w-0">
             <p className="max-w-[180px] truncate text-sm font-medium text-slate-700">{fileName}</p>
-            <button type="button" onClick={onRemove} className="mt-1 text-xs font-medium text-red-500 hover:text-red-700">Remove banner</button>
+            <button
+              type="button"
+              onClick={onRemove}
+              className="mt-1 text-xs font-medium text-red-500 hover:text-red-700"
+            >
+              Remove banner
+            </button>
           </div>
         )}
       </div>
@@ -3079,17 +2371,36 @@ function CategoryFileUpload({ label, fileName, preview, onChange, onRemove }) {
   );
 }
 
+function ModalActions({ onCancel, onSave, loading, saveLabel }) {
+  return (
+    <div className="mt-5 flex justify-end gap-3">
+      <button
+        type="button"
+        onClick={onCancel}
+        className="rounded-xl border border-slate-300 px-5 py-2.5 font-medium text-slate-700 transition hover:bg-slate-50"
+      >
+        Cancel
+      </button>
+      <button
+        type="button"
+        onClick={onSave}
+        disabled={loading}
+        className="rounded-xl bg-indigo-600 px-5 py-2.5 font-medium text-white transition hover:bg-indigo-700 disabled:opacity-50"
+      >
+        {loading ? "Saving..." : saveLabel}
+      </button>
+    </div>
+  );
+}
+
 function Modal({ open, title, onClose, children }) {
   useEffect(() => {
     if (!open) return;
-
     const onKeyDown = (e) => {
       if (e.key === "Escape") onClose();
     };
-
     document.addEventListener("keydown", onKeyDown);
     document.body.style.overflow = "hidden";
-
     return () => {
       document.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = "";
@@ -3100,68 +2411,18 @@ function Modal({ open, title, onClose, children }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
+        className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
       >
         <h3 className="mb-4 text-lg font-semibold text-slate-900">{title}</h3>
         {children}
       </div>
     </div>
-  );
-}
-
-// ======================================
-// INPUT COMPONENT
-// ======================================
-function Input({
-  label,
-  name,
-  value,
-  onChange,
-  placeholder,
-  type = "text",
-  required = false,
-  ...rest
-}) {
-  return (
-    <div>
-      <label className="mb-2 block text-sm font-medium text-slate-700">
-        {label}
-      </label>
-      <input
-        type={type}
-        name={name}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        required={required}
-        {...rest}
-        className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 read-only:bg-slate-50"
-      />
-    </div>
-  );
-}
-
-// ======================================
-// CHECKBOX
-// ======================================
-function Checkbox({ name, checked, onChange, label }) {
-  return (
-    <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-4">
-      <input
-        type="checkbox"
-        name={name}
-        checked={checked}
-        onChange={onChange}
-        className="h-5 w-5"
-      />
-      <span className="font-medium text-slate-700">{label}</span>
-    </label>
   );
 }
