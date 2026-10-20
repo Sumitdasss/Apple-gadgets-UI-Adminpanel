@@ -1,5 +1,9 @@
+"use client";
+
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import { Toaster } from "react-hot-toast";
 import RichTextEditor from "./RichTextEditor";
+import { showReviewToast } from ".//SavedToast";
 const API_BASE = "https://apple-gadgets-ui-backend.vercel.app"; // বা তোমার live URL
 
 const CATEGORY_API = {
@@ -93,7 +97,7 @@ export default function UpdateProductPage({ productId: propProductId }) {
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      alert("Please select a valid image");
+      showReviewToast("Please select a valid image", 8000, "error");
       e.target.value = "";
       return;
     }
@@ -105,7 +109,7 @@ export default function UpdateProductPage({ productId: propProductId }) {
 
   const addDescriptionSection = () => {
     if (!sectionTitle.trim() || !sectionDescription.trim()) {
-      alert("Heading and description are required");
+      showReviewToast("Heading and description are required", 8000, "error");
       return;
     }
 
@@ -161,7 +165,7 @@ export default function UpdateProductPage({ productId: propProductId }) {
         setProductsList(list);
       } catch (error) {
         console.error("Load products list error:", error);
-        alert(error.message || "Failed to load products");
+        showReviewToast(error.message || "Failed to load products", 8000, "error");
       } finally {
         setListLoading(false);
       }
@@ -174,7 +178,7 @@ export default function UpdateProductPage({ productId: propProductId }) {
     const feature = keyFeatureInput.trim();
 
     if (!feature) {
-      alert("Please enter a key feature");
+      showReviewToast("Please enter a key feature", 8000, "error");
       return;
     }
 
@@ -183,7 +187,7 @@ export default function UpdateProductPage({ productId: propProductId }) {
     );
 
     if (exists) {
-      alert("This key feature already exists");
+      showReviewToast("This key feature already exists", 8000, "error");
       return;
     }
 
@@ -334,7 +338,7 @@ export default function UpdateProductPage({ productId: propProductId }) {
         setImagePreviews([]);
       } catch (error) {
         console.error("Load product error:", error);
-        alert(error.message || "Failed to load product");
+        showReviewToast(error.message || "Failed to load product", 8000, "error");
         setSelectedProductId(null);
       } finally {
         setFetching(false);
@@ -439,7 +443,7 @@ export default function UpdateProductPage({ productId: propProductId }) {
 
     const validFiles = files.filter((file) => file.type.startsWith("image/"));
     if (validFiles.length !== files.length) {
-      alert("Only image files are allowed");
+      showReviewToast("Only image files are allowed", 8000, "error");
     }
     if (!validFiles.length) return;
 
@@ -486,7 +490,7 @@ export default function UpdateProductPage({ productId: propProductId }) {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      alert("Only image files are allowed");
+      showReviewToast("Only image files are allowed", 8000, "error");
       return;
     }
     setColorImage(file);
@@ -496,7 +500,7 @@ export default function UpdateProductPage({ productId: propProductId }) {
 
   const addColor = () => {
     if (!colorName.trim()) {
-      alert("Enter color name");
+      showReviewToast("Enter color name", 8000, "error");
       return;
     }
     if (
@@ -504,7 +508,7 @@ export default function UpdateProductPage({ productId: propProductId }) {
         (c) => c.name.toLowerCase() === colorName.trim().toLowerCase(),
       )
     ) {
-      alert("This color is already added");
+      showReviewToast("This color is already added", 8000, "error");
       return;
     }
 
@@ -543,7 +547,7 @@ export default function UpdateProductPage({ productId: propProductId }) {
     if (
       formData.sizes.some((s) => s.toLowerCase() === size.trim().toLowerCase())
     ) {
-      alert("This size is already added");
+      showReviewToast("This size is already added", 8000, "error");
       return;
     }
     setFormData((prev) => ({
@@ -567,7 +571,7 @@ export default function UpdateProductPage({ productId: propProductId }) {
     const key = specKey.trim();
     const value = specValue.trim();
     if (!key || !value) {
-      alert("Please enter both name and value");
+      showReviewToast("Please enter both name and value", 8000, "error");
       return;
     }
     if (
@@ -575,7 +579,7 @@ export default function UpdateProductPage({ productId: propProductId }) {
         (item) => item.key.toLowerCase() === key.toLowerCase(),
       )
     ) {
-      alert("This specification already exists");
+      showReviewToast("This specification already exists", 8000, "error");
       return;
     }
     setFormData((prev) => ({
@@ -598,7 +602,7 @@ export default function UpdateProductPage({ productId: propProductId }) {
   // ==============================
   const addRam = () => {
     if (!ramValue.trim()) {
-      alert("Enter RAM / Memory value");
+      showReviewToast("Enter RAM / Memory value", 8000, "error");
       return;
     }
     if (
@@ -606,7 +610,7 @@ export default function UpdateProductPage({ productId: propProductId }) {
         (item) => item.toLowerCase() === ramValue.trim().toLowerCase(),
       )
     ) {
-      alert("This RAM / Memory is already added");
+      showReviewToast("This RAM / Memory is already added", 8000, "error");
       return;
     }
     setFormData((prev) => ({
@@ -628,23 +632,23 @@ export default function UpdateProductPage({ productId: propProductId }) {
   // ==============================
   const addVariant = () => {
     if (!variantColorName) {
-      alert("Select a color");
+      showReviewToast("Select a color", 8000, "error");
       return;
     }
     if (!variantRam.trim() || !variantStorage.trim()) {
-      alert("Enter RAM and Storage");
+      showReviewToast("Enter RAM and Storage", 8000, "error");
       return;
     }
     if (variantStock === "" || Number(variantStock) < 0) {
-      alert("Enter valid stock");
+      showReviewToast("Enter valid stock", 8000, "error");
       return;
     }
     if (!variantPrice || Number(variantPrice) <= 0) {
-      alert("Enter valid price");
+      showReviewToast("Enter valid price", 8000, "error");
       return;
     }
     if (!variantSku.trim()) {
-      alert("Enter SKU");
+      showReviewToast("Enter SKU", 8000, "error");
       return;
     }
 
@@ -652,7 +656,7 @@ export default function UpdateProductPage({ productId: propProductId }) {
       (v) => v.sku?.trim().toLowerCase() === variantSku.trim().toLowerCase(),
     );
     if (skuTaken) {
-      alert("This SKU is already used");
+      showReviewToast("This SKU is already used", 8000, "error");
       return;
     }
 
@@ -661,7 +665,7 @@ export default function UpdateProductPage({ productId: propProductId }) {
         c.name.trim().toLowerCase() === variantColorName.trim().toLowerCase(),
     );
     if (!selectedColor) {
-      alert("Selected color not found");
+      showReviewToast("Selected color not found", 8000, "error");
       return;
     }
 
@@ -707,13 +711,13 @@ export default function UpdateProductPage({ productId: propProductId }) {
     if (!selectedProductId) return;
 
     if (existingImages.length === 0 && formData.images.length === 0) {
-      alert("At least one product image is required");
+      showReviewToast("At least one product image is required", 8000, "error");
       return;
     }
 
     const rating = parseFloat(formData.rating);
     if (Number.isNaN(rating) || rating < 0 || rating > 5) {
-      alert("Rating must be between 0 and 5");
+      showReviewToast("Rating must be between 0 and 5", 8000, "error");
       return;
     }
 
@@ -721,7 +725,7 @@ export default function UpdateProductPage({ productId: propProductId }) {
       formData.discountPrice &&
       parseFloat(formData.discountPrice) >= parseFloat(formData.price)
     ) {
-      alert("Discount price must be lower than price");
+      showReviewToast("Discount price must be lower than price", 8000, "error");
       return;
     }
 
@@ -833,11 +837,11 @@ data.append(
         throw new Error(result.message || "Could not update product");
       }
 
-      alert("Product updated successfully!");
+      showReviewToast("Product updated successfully!", 8000, "success");
       setSelectedProductId(null);
     } catch (error) {
       console.error("Update product error:", error);
-      alert(error.message || "Something went wrong");
+      showReviewToast(error.message || "Something went wrong", 8000, "error");
     } finally {
       setLoading(false);
     }
@@ -862,6 +866,17 @@ data.append(
   if (!selectedProductId) {
     return (
       <div className="min-h-[calc(100vh-65px)] bg-slate-50 p-6">
+      <Toaster
+        position="top-center"
+        toastOptions={{
+          duration: 15000,
+          style: {
+            padding: 0,
+            background: "transparent",
+            boxShadow: "none",
+          },
+        }}
+      />
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-slate-900">Update Product</h1>
           <p className="mt-1 text-sm text-slate-500">
@@ -978,6 +993,17 @@ data.append(
   // ==============================
   return (
     <div className="min-h-[calc(100vh-65px)] bg-slate-50 p-4 md:p-8">
+      <Toaster
+        position="top-center"
+        toastOptions={{
+          duration: 15000,
+          style: {
+            padding: 0,
+            background: "transparent",
+            boxShadow: "none",
+          },
+        }}
+      />
       <div className="mx-auto max-w-6xl">
         <div className="mb-6 flex items-center justify-between">
           <div>

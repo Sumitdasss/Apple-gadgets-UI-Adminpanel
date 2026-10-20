@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import { Toaster } from "react-hot-toast";
 import RichTextEditor from "./RichTextEditor";
+import { showReviewToast } from "./SavedToast";
 const API_BASE = "https://apple-gadgets-ui-backend.vercel.app";
 
 // New 4-level category API
@@ -133,7 +135,7 @@ const handleSectionImageChange = (e) => {
   if (!file) return;
 
   if (!file.type.startsWith("image/")) {
-    alert("Please select a valid image");
+    showReviewToast("Please select a valid image", 8000, "error");
     e.target.value = "";
     return;
   }
@@ -149,12 +151,12 @@ const handleSectionImageChange = (e) => {
 
 const addDescriptionSection = () => {
   if (!sectionTitle.trim()) {
-    alert("Please enter a heading");
+    showReviewToast("Please enter a heading", 8000, "error");
     return;
   }
 
   if (!sectionDescription.trim()) {
-    alert("Please enter a description");
+    showReviewToast("Please enter a description", 8000, "error");
     return;
   }
 
@@ -287,7 +289,7 @@ const addKeyFeature = () => {
   const feature = keyFeatureInput.trim();
 
   if (!feature) {
-    alert("Please enter a key feature");
+    showReviewToast("Please enter a key feature", 8000, "error");
     return;
   }
 
@@ -296,7 +298,7 @@ const addKeyFeature = () => {
       (item) => item.toLowerCase() === feature.toLowerCase()
     )
   ) {
-    alert("This key feature already exists");
+    showReviewToast("This key feature already exists", 8000, "error");
     return;
   }
 
@@ -393,7 +395,7 @@ const removeKeyFeature = (index) => {
     const validFiles = files.filter((file) => file.type.startsWith("image/"));
 
     if (validFiles.length !== files.length) {
-      alert("Only image files are allowed");
+      showReviewToast("Only image files are allowed", 8000, "error");
     }
 
     if (!validFiles.length) return;
@@ -442,7 +444,7 @@ const removeKeyFeature = (index) => {
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      alert("Only image files are allowed");
+      showReviewToast("Only image files are allowed", 8000, "error");
       return;
     }
 
@@ -456,12 +458,12 @@ const removeKeyFeature = (index) => {
 
   const addColor = () => {
     if (!colorName.trim()) {
-      alert("Enter color name");
+      showReviewToast("Enter color name", 8000, "error");
       return;
     }
 
     if (!colorImage) {
-      alert("Please choose an image for this color");
+      showReviewToast("Please choose an image for this color", 8000, "error");
       return;
     }
 
@@ -470,7 +472,7 @@ const removeKeyFeature = (index) => {
         (c) => c.name.toLowerCase() === colorName.trim().toLowerCase(),
       )
     ) {
-      alert("This color is already added");
+      showReviewToast("This color is already added", 8000, "error");
       return;
     }
 
@@ -509,7 +511,7 @@ const removeKeyFeature = (index) => {
     if (
       formData.sizes.some((s) => s.toLowerCase() === size.trim().toLowerCase())
     ) {
-      alert("This size is already added");
+      showReviewToast("This size is already added", 8000, "error");
       return;
     }
 
@@ -532,12 +534,12 @@ const removeKeyFeature = (index) => {
     const value = specValue.trim();
 
     if (!key) {
-      alert("Please enter specification name");
+      showReviewToast("Please enter specification name", 8000, "error");
       return;
     }
 
     if (!value) {
-      alert("Please enter specification value");
+      showReviewToast("Please enter specification value", 8000, "error");
       return;
     }
 
@@ -546,7 +548,7 @@ const removeKeyFeature = (index) => {
     );
 
     if (exists) {
-      alert("This specification already exists");
+      showReviewToast("This specification already exists", 8000, "error");
       return;
     }
 
@@ -573,7 +575,7 @@ const removeKeyFeature = (index) => {
 
   const addRam = () => {
     if (!ramValue.trim()) {
-      alert("Enter RAM / Memory value");
+      showReviewToast("Enter RAM / Memory value", 8000, "error");
       return;
     }
 
@@ -582,7 +584,7 @@ const removeKeyFeature = (index) => {
         (item) => item.toLowerCase() === ramValue.trim().toLowerCase(),
       )
     ) {
-      alert("This RAM / Memory is already added");
+      showReviewToast("This RAM / Memory is already added", 8000, "error");
       return;
     }
 
@@ -606,32 +608,32 @@ const removeKeyFeature = (index) => {
   // ==============================
   const addVariant = () => {
     if (!variantColorName) {
-      alert("Select a color for this variant");
+      showReviewToast("Select a color for this variant", 8000, "error");
       return;
     }
 
     if (!variantRam.trim()) {
-      alert("Enter RAM for this variant");
+      showReviewToast("Enter RAM for this variant", 8000, "error");
       return;
     }
 
     if (!variantStorage.trim()) {
-      alert("Enter storage for this variant");
+      showReviewToast("Enter storage for this variant", 8000, "error");
       return;
     }
 
     if (variantStock === "" || Number(variantStock) < 0) {
-      alert("Enter a valid stock quantity");
+      showReviewToast("Enter a valid stock quantity", 8000, "error");
       return;
     }
 
     if (!variantPrice || Number(variantPrice) <= 0) {
-      alert("Enter a valid price for this variant");
+      showReviewToast("Enter a valid price for this variant", 8000, "error");
       return;
     }
 
     if (!variantSku.trim()) {
-      alert("Enter a SKU for this variant");
+      showReviewToast("Enter a SKU for this variant", 8000, "error");
       return;
     }
 
@@ -643,7 +645,7 @@ const removeKeyFeature = (index) => {
     );
 
     if (skuTaken) {
-      alert("This SKU is already used by another variant");
+      showReviewToast("This SKU is already used by another variant", 8000, "error");
       return;
     }
 
@@ -656,7 +658,7 @@ const removeKeyFeature = (index) => {
     );
 
     if (!selectedColor) {
-      alert("Selected color was not found");
+      showReviewToast("Selected color was not found", 8000, "error");
       return;
     }
 
@@ -732,13 +734,13 @@ const removeKeyFeature = (index) => {
     e.preventDefault();
 
     if (!formData.images || formData.images.length === 0) {
-      alert("Choose at least one product image");
+      showReviewToast("Choose at least one product image", 8000, "error");
       return;
     }
 
     const rating = parseFloat(formData.rating);
     if (Number.isNaN(rating) || rating < 0 || rating > 5) {
-      alert("Rating must be between 0 and 5");
+      showReviewToast("Rating must be between 0 and 5", 8000, "error");
       return;
     }
 
@@ -746,7 +748,7 @@ const removeKeyFeature = (index) => {
       formData.discountPrice &&
       parseFloat(formData.discountPrice) >= parseFloat(formData.price)
     ) {
-      alert("Discount price must be lower than price");
+      showReviewToast("Discount price must be lower than price", 8000, "error");
       return;
     }
 
@@ -849,11 +851,11 @@ data.append(
         throw new Error(result.message || "Could not add product");
       }
 
-      alert("Product added");
+      showReviewToast("Product added", 8000, "success");
       resetForm();
     } catch (error) {
       console.error("Add product error:", error);
-      alert(error.message || "Something went wrong");
+      showReviewToast(error.message || "Something went wrong", 8000, "error");
     } finally {
       setLoading(false);
     }
@@ -867,7 +869,7 @@ data.append(
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      alert("Only image files are allowed");
+      showReviewToast("Only image files are allowed", 8000, "error");
       return;
     }
 
@@ -920,7 +922,7 @@ data.append(
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      alert("Only image files are allowed");
+      showReviewToast("Only image files are allowed", 8000, "error");
       e.target.value = "";
       return;
     }
@@ -953,7 +955,7 @@ data.append(
 
   const handleAddCategory = async () => {
     if (!newCategoryName.trim()) {
-      alert("Enter a main category name");
+      showReviewToast("Enter a main category name", 8000, "error");
       return;
     }
 
@@ -1002,7 +1004,7 @@ data.append(
       setShowCategoryModal(false);
     } catch (error) {
       console.error("Add main category error:", error);
-      alert(error.message || "Could not add main category");
+      showReviewToast(error.message || "Could not add main category", 8000, "error");
     } finally {
       setCategoryAdding(false);
     }
@@ -1013,12 +1015,12 @@ data.append(
   // ==============================
   const handleAddSubCategory = async () => {
     if (!formData.category) {
-      alert("Select a main category first");
+      showReviewToast("Select a main category first", 8000, "error");
       return;
     }
 
     if (!newSubCategoryName.trim()) {
-      alert("Enter a sub category name");
+      showReviewToast("Enter a sub category name", 8000, "error");
       return;
     }
 
@@ -1079,7 +1081,7 @@ data.append(
       setShowSubCategoryModal(false);
     } catch (error) {
       console.error("Add sub category error:", error);
-      alert(error.message || "Could not add sub category");
+      showReviewToast(error.message || "Could not add sub category", 8000, "error");
     } finally {
       setSubCategoryAdding(false);
     }
@@ -1090,12 +1092,12 @@ data.append(
   // ==============================
   const handleAddChildCategory = async () => {
     if (!formData.subCategory) {
-      alert("Select a sub category first");
+      showReviewToast("Select a sub category first", 8000, "error");
       return;
     }
 
     if (!newChildCategoryName.trim()) {
-      alert("Enter a child category name");
+      showReviewToast("Enter a child category name", 8000, "error");
       return;
     }
 
@@ -1163,7 +1165,7 @@ data.append(
       setShowChildCategoryModal(false);
     } catch (error) {
       console.error("Add child category error:", error);
-      alert(error.message || "Could not add child category");
+      showReviewToast(error.message || "Could not add child category", 8000, "error");
     } finally {
       setChildCategoryAdding(false);
     }
@@ -1174,12 +1176,12 @@ data.append(
   // ==============================
   const handleAddSubChildCategory = async () => {
     if (!formData.childCategory) {
-      alert("Select a child category first");
+      showReviewToast("Select a child category first", 8000, "error");
       return;
     }
 
     if (!newSubChildCategoryName.trim()) {
-      alert("Enter a sub child category name");
+      showReviewToast("Enter a sub child category name", 8000, "error");
       return;
     }
 
@@ -1258,7 +1260,7 @@ data.append(
       setShowSubChildCategoryModal(false);
     } catch (error) {
       console.error("Add sub child category error:", error);
-      alert(error.message || "Could not add sub child category");
+      showReviewToast(error.message || "Could not add sub child category", 8000, "error");
     } finally {
       setSubChildCategoryAdding(false);
     }
@@ -1275,6 +1277,17 @@ data.append(
 
   return (
     <div className="min-h-screen bg-slate-100 p-4 md:p-8">
+      <Toaster
+        position="top-center"
+        toastOptions={{
+          duration: 15000,
+          style: {
+            padding: 0,
+            background: "transparent",
+            boxShadow: "none",
+          },
+        }}
+      />
       <div className="mx-auto max-w-6xl">
         {/* HEADER */}
         <div className="mb-6">
