@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-
+import RichTextEditor from "./RichTextEditor";
 const API_BASE = "https://apple-gadgets-ui-backend.vercel.app";
 
 // New 4-level category API
@@ -18,6 +18,7 @@ const initialFormData = {
   slug: "",
   description: "",
   shortDescription: "",
+    descriptionSections: [],
   category: "",
   subCategory: "",
   childCategory: "",
@@ -118,6 +119,84 @@ const [keyFeatureInput, setKeyFeatureInput] = useState("");
   const [subCategoryAdding, setSubCategoryAdding] = useState(false);
   const [childCategoryAdding, setChildCategoryAdding] = useState(false);
   const [subChildCategoryAdding, setSubChildCategoryAdding] = useState(false);
+
+
+
+const [sectionTitle, setSectionTitle] = useState("");
+const [sectionDescription, setSectionDescription] = useState("");
+const [sectionImage, setSectionImage] = useState(null);
+const [sectionImagePreview, setSectionImagePreview] = useState("");
+
+const handleSectionImageChange = (e) => {
+  const file = e.target.files?.[0];
+
+  if (!file) return;
+
+  if (!file.type.startsWith("image/")) {
+    alert("Please select a valid image");
+    e.target.value = "";
+    return;
+  }
+
+  if (sectionImagePreview) {
+    URL.revokeObjectURL(sectionImagePreview);
+  }
+
+  setSectionImage(file);
+  setSectionImagePreview(URL.createObjectURL(file));
+  e.target.value = "";
+};
+
+const addDescriptionSection = () => {
+  if (!sectionTitle.trim()) {
+    alert("Please enter a heading");
+    return;
+  }
+
+  if (!sectionDescription.trim()) {
+    alert("Please enter a description");
+    return;
+  }
+
+  setFormData((prev) => ({
+    ...prev,
+    descriptionSections: [
+      ...prev.descriptionSections,
+      {
+        title: sectionTitle.trim(),
+        description: sectionDescription.trim(),
+        imageFile: sectionImage,
+        imagePreview: sectionImagePreview,
+      },
+    ],
+  }));
+
+  setSectionTitle("");
+  setSectionDescription("");
+  setSectionImage(null);
+  setSectionImagePreview("");
+};
+
+const removeDescriptionSection = (index) => {
+  setFormData((prev) => {
+    const section = prev.descriptionSections[index];
+
+    if (section?.imagePreview) {
+      URL.revokeObjectURL(section.imagePreview);
+    }
+
+    return {
+      ...prev,
+      descriptionSections: prev.descriptionSections.filter(
+        (_, i) => i !== index
+      ),
+    };
+  });
+};
+
+
+
+
 
   // ==============================
   // LOAD 4-LEVEL CATEGORY TREE
@@ -679,6 +758,29 @@ const removeKeyFeature = (index) => {
       data.append("name", formData.name);
       data.append("slug", formData.slug);
       data.append("description", formData.description);
+      
+const sectionsMetadata = formData.descriptionSections.map(
+  (section, index) => ({
+    title: section.title,
+    description: section.description,
+    imageIndex: section.imageFile ? index : null,
+  })
+);
+
+data.append(
+  "descriptionSections",
+  JSON.stringify(sectionsMetadata)
+);
+
+formData.descriptionSections.forEach((section, index) => {
+  if (section.imageFile) {
+    data.append(
+      "descriptionSectionImages",
+      section.imageFile
+    );
+  }
+});
+
       data.append("shortDescription", formData.shortDescription);
       data.append("category", formData.category);
       data.append("subCategory", formData.subCategory);
@@ -1212,15 +1314,134 @@ data.append(
                 <label className="mb-2 block text-sm font-medium">
                   Description
                 </label>
-                <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleChange}
-                  rows={5}
-                  required
-                  placeholder="Write product description..."
-                  className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
-                />
+               
+{/* ================= PRODUCT DESCRIPTION BUILDER ================= */}
+
+<div className="md:col-span-2">
+  <div className="mb-4">
+    <h3 className="text-lg font-semibold text-slate-900">
+      Product Description Builder
+    </h3>
+    <p className="mt-1 text-sm text-slate-500">
+      Add headings, formatted descriptions and images for each section.
+    </p>
+  </div>
+
+  <div className="space-y-4 rounded-xl border border-slate-200 p-4">
+    {/* Section Heading */}
+    <div>
+      <label className="mb-2 block text-sm font-medium">
+        Section Heading
+      </label>
+
+      <input
+        type="text"
+        value={sectionTitle}
+        onChange={(e) => setSectionTitle(e.target.value)}
+        placeholder="e.g. Pro Camera System"
+        className="w-full rounded-xl border border-slate-300 px-4 py-3"
+      />
+    </div>
+
+    {/* Rich Text Description */}
+    <div>
+      <label className="mb-2 block text-sm font-medium">
+        Section Description
+      </label>
+
+      <RichTextEditor
+        value={sectionDescription}
+        onChange={setSectionDescription}
+      />
+    </div>
+
+    {/* Section Image */}
+    <div>
+      <label className="mb-2 block text-sm font-medium">
+        Section Image (Optional)
+      </label>
+
+      <input
+        type="file"
+        accept="image/*"
+        onChange={handleSectionImageChange}
+        className="w-full rounded-xl border border-dashed border-slate-300 p-3"
+      />
+
+      {sectionImagePreview && (
+        <div className="mt-3">
+          <img
+            src={sectionImagePreview}
+            alt="Section preview"
+            className="h-48 w-full rounded-xl bg-slate-50 object-contain"
+          />
+
+          <button
+            type="button"
+            onClick={() => {
+              URL.revokeObjectURL(sectionImagePreview);
+              setSectionImage(null);
+              setSectionImagePreview("");
+            }}
+            className="mt-2 text-sm text-red-600"
+          >
+            Remove image
+          </button>
+        </div>
+      )}
+    </div>
+
+    {/* Add Section */}
+    <button
+      type="button"
+      onClick={addDescriptionSection}
+      className="rounded-xl bg-blue-600 px-5 py-3 font-medium text-white hover:bg-blue-700"
+    >
+      + Add Description Section
+    </button>
+  </div>
+
+  {/* Added Sections Preview */}
+  <div className="mt-5 space-y-4">
+    {formData.descriptionSections.map((section, index) => (
+      <div
+        key={index}
+        className="rounded-xl border border-slate-200 p-4"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <h4 className="text-lg font-semibold text-slate-900">
+            {index + 1}. {section.title}
+          </h4>
+
+          <button
+            type="button"
+            onClick={() => removeDescriptionSection(index)}
+            className="text-sm font-medium text-red-600"
+          >
+            Remove
+          </button>
+        </div>
+
+        {/* Render formatted HTML */}
+        <div
+          className="product-description-content mt-3 text-sm leading-7 text-slate-600"
+          dangerouslySetInnerHTML={{
+            __html: section.description || "",
+          }}
+        />
+
+        {section.imagePreview && (
+          <img
+            src={section.imagePreview}
+            alt={section.title || "Product section"}
+            className="mt-4 max-h-72 w-full rounded-xl bg-slate-50 object-contain"
+          />
+        )}
+      </div>
+    ))}
+  </div>
+</div>
+
               </div>
 
               <div className="md:col-span-2">

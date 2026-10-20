@@ -1,1 +1,187 @@
 @import "tailwindcss";
+
+
+.rich-editor {
+  overflow: hidden;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  background: #fff;
+  color: #334155;
+}
+
+.rte-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  padding: 9px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.rte-button {
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #fff;
+  color: #334155;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.rte-button:hover {
+  background: #eff6ff;
+}
+
+.rte-button-active {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #fff;
+}
+
+.rte-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.rte-select {
+  max-width: 190px;
+  min-height: 35px;
+  padding: 6px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #fff;
+  color: #334155;
+  font-size: 13px;
+}
+
+.rte-size-select {
+  width: 120px;
+}
+
+.rte-color-control {
+  display: inline-flex;
+  height: 34px;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 7px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+}
+
+.rte-color-control input {
+  width: 23px;
+  height: 23px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.rich-editor .tiptap {
+  min-height: 260px;
+  padding: 18px;
+  outline: none;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+.rich-editor .tiptap p {
+  margin: 0 0 12px;
+}
+
+.rich-editor .tiptap h1,
+.rich-editor .tiptap h2,
+.rich-editor .tiptap h3 {
+  margin: 18px 0 10px;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.rich-editor .tiptap h1 {
+  font-size: 2rem;
+}
+
+.rich-editor .tiptap h2 {
+  font-size: 1.5rem;
+}
+
+.rich-editor .tiptap h3 {
+  font-size: 1.25rem;
+}
+
+.rich-editor .tiptap ul {
+  list-style: disc;
+  padding-left: 25px;
+}
+
+.rich-editor .tiptap ol {
+  list-style: decimal;
+  padding-left: 25px;
+}
+
+.rich-editor .tiptap a {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+.rich-editor .tiptap table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  margin: 16px 0;
+  overflow: hidden;
+}
+
+.rich-editor .tiptap th,
+.rich-editor .tiptap td {
+  min-width: 80px;
+  border: 1px solid #cbd5e1;
+  padding: 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.rich-editor .tiptap th {
+  background: #f1f5f9;
+  font-weight: 700;
+}
+
+.rich-editor .tiptap .selectedCell {
+  background: #dbeafe;
+}
+
+.rich-editor .tiptap img {
+  max-width: 100%;
+  height: auto;
+}
+
+.rte-footer {
+  padding: 7px 12px;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 12px;
+}
+
+@media (max-width: 640px) {
+  .rte-toolbar {
+    gap: 5px;
+    padding: 7px;
+  }
+
+  .rte-button {
+    padding: 6px 8px;
+  }
+
+  .rte-select {
+    max-width: 150px;
+  }
+
+  .rich-editor .tiptap {
+    padding: 12px;
+  }
+}

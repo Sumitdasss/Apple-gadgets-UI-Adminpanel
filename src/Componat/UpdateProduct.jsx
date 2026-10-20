@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
-
+import RichTextEditor from "./RichTextEditor";
 const API_BASE = "https://apple-gadgets-ui-backend.vercel.app"; // বা তোমার live URL
 
 const CATEGORY_API = {
@@ -14,6 +14,7 @@ const initialFormData = {
   name: "",
   slug: "",
   description: "",
+  descriptionSections: [],
   shortDescription: "",
   category: "",
   subCategory: "",
@@ -82,6 +83,60 @@ export default function UpdateProductPage({ productId: propProductId }) {
   const [childCategories, setChildCategories] = useState([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [categoriesError, setCategoriesError] = useState("");
+  const [sectionTitle, setSectionTitle] = useState("");
+  const [sectionDescription, setSectionDescription] = useState("");
+  const [sectionImage, setSectionImage] = useState(null);
+  const [sectionImagePreview, setSectionImagePreview] = useState("");
+
+  const handleSectionImageChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      alert("Please select a valid image");
+      e.target.value = "";
+      return;
+    }
+
+    setSectionImage(file);
+    setSectionImagePreview(URL.createObjectURL(file));
+    e.target.value = "";
+  };
+
+  const addDescriptionSection = () => {
+    if (!sectionTitle.trim() || !sectionDescription.trim()) {
+      alert("Heading and description are required");
+      return;
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      descriptionSections: [
+        ...(prev.descriptionSections || []),
+        {
+          title: sectionTitle.trim(),
+          description: sectionDescription.trim(),
+          image: "",
+          imageFile: sectionImage,
+          imagePreview: sectionImagePreview,
+        },
+      ],
+    }));
+
+    setSectionTitle("");
+    setSectionDescription("");
+    setSectionImage(null);
+    setSectionImagePreview("");
+  };
+
+  const removeDescriptionSection = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      descriptionSections: prev.descriptionSections.filter(
+        (_, i) => i !== index,
+      ),
+    }));
+  };
 
   // ==============================
   // LOAD PRODUCT LIST
@@ -115,43 +170,37 @@ export default function UpdateProductPage({ productId: propProductId }) {
     loadList();
   }, [selectedProductId]);
 
+  const addKeyFeature = () => {
+    const feature = keyFeatureInput.trim();
 
+    if (!feature) {
+      alert("Please enter a key feature");
+      return;
+    }
 
-const addKeyFeature = () => {
-  const feature = keyFeatureInput.trim();
+    const exists = formData.keyFeatures.some(
+      (item) => item.toLowerCase() === feature.toLowerCase(),
+    );
 
-  if (!feature) {
-    alert("Please enter a key feature");
-    return;
-  }
+    if (exists) {
+      alert("This key feature already exists");
+      return;
+    }
 
-  const exists = formData.keyFeatures.some(
-    (item) => item.toLowerCase() === feature.toLowerCase()
-  );
+    setFormData((prev) => ({
+      ...prev,
+      keyFeatures: [...prev.keyFeatures, feature],
+    }));
 
-  if (exists) {
-    alert("This key feature already exists");
-    return;
-  }
+    setKeyFeatureInput("");
+  };
 
-  setFormData((prev) => ({
-    ...prev,
-    keyFeatures: [...prev.keyFeatures, feature],
-  }));
-
-  setKeyFeatureInput("");
-};
-
-const removeKeyFeature = (index) => {
-  setFormData((prev) => ({
-    ...prev,
-    keyFeatures: prev.keyFeatures.filter(
-      (_, i) => i !== index
-    ),
-  }));
-};
-
-
+  const removeKeyFeature = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      keyFeatures: prev.keyFeatures.filter((_, i) => i !== index),
+    }));
+  };
 
   // ==============================
   // LOAD CATEGORIES
@@ -231,6 +280,15 @@ const removeKeyFeature = (index) => {
           name: product.name || "",
           slug: product.slug || "",
           description: product.description || "",
+          descriptionSections: (product.descriptionSections || []).map(
+            (section) => ({
+              title: section.title || "",
+              description: section.description || "",
+              image: section.image || "",
+              imagePreview: section.image || "",
+              imageFile: null,
+            }),
+          ),
           shortDescription: product.shortDescription || "",
           category: product.category?._id || product.category || "",
           subCategory: product.subCategory?._id || product.subCategory || "",
@@ -258,8 +316,8 @@ const removeKeyFeature = (index) => {
           specifications: product.specifications || [],
           ram: product.ram || [],
           keyFeatures: Array.isArray(product.keyFeatures)
-  ? product.keyFeatures
-  : [],
+            ? product.keyFeatures
+            : [],
           variants: product.variants || [],
           rating: product.rating || 0,
           isActive: product.isActive ?? true,
@@ -675,6 +733,40 @@ const removeKeyFeature = (index) => {
       data.append("name", formData.name);
       data.append("slug", formData.slug);
       data.append("description", formData.description);
+      
+let imageIndex = 0;
+
+const sectionsMetadata = (formData.descriptionSections || []).map(
+  (section) => {
+    const sectionData = {
+      title: section.title,
+      description: section.description,
+      image: section.image || "",
+      imageIndex: null,
+    };
+
+    if (section.imageFile) {
+      sectionData.imageIndex = imageIndex++;
+    }
+
+    return sectionData;
+  }
+);
+
+data.append(
+  "descriptionSections",
+  JSON.stringify(sectionsMetadata)
+);
+
+(formData.descriptionSections || []).forEach((section) => {
+  if (section.imageFile) {
+    data.append(
+      "descriptionSectionImages",
+      section.imageFile
+    );
+  }
+});
+
       data.append("shortDescription", formData.shortDescription);
       data.append("category", formData.category);
       data.append("subCategory", formData.subCategory);
@@ -716,10 +808,7 @@ const removeKeyFeature = (index) => {
       data.append("metaTitle", formData.metaTitle);
       data.append("metaDescription", formData.metaDescription);
       data.append("existingImages", JSON.stringify(existingImages));
-data.append(
-  "keyFeatures",
-  JSON.stringify(formData.keyFeatures)
-);
+      data.append("keyFeatures", JSON.stringify(formData.keyFeatures));
       formData.images.forEach((image) => {
         data.append("images", image);
       });
@@ -937,15 +1026,133 @@ data.append(
                 <label className="mb-2 block text-sm font-medium">
                   Description
                 </label>
-                <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleChange}
-                  rows={5}
-                  required
-                  placeholder="Write product description..."
-                  className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
-                />
+
+<div className="md:col-span-2">
+  <div className="mb-4">
+    <h3 className="text-lg font-semibold text-slate-900">
+      Product Description Builder
+    </h3>
+    <p className="mt-1 text-sm text-slate-500">
+      Add headings, formatted descriptions and images for each section.
+    </p>
+  </div>
+
+  <div className="space-y-4 rounded-xl border border-slate-200 p-4">
+    {/* Section Heading */}
+    <div>
+      <label className="mb-2 block text-sm font-medium">
+        Section Heading
+      </label>
+
+      <input
+        type="text"
+        value={sectionTitle}
+        onChange={(e) => setSectionTitle(e.target.value)}
+        placeholder="e.g. Pro Camera System"
+        className="w-full rounded-xl border border-slate-300 px-4 py-3"
+      />
+    </div>
+
+    {/* Rich Text Description */}
+    <div>
+      <label className="mb-2 block text-sm font-medium">
+        Section Description
+      </label>
+
+      <RichTextEditor
+        value={sectionDescription}
+        onChange={setSectionDescription}
+      />
+    </div>
+
+    {/* Section Image */}
+    <div>
+      <label className="mb-2 block text-sm font-medium">
+        Section Image (Optional)
+      </label>
+
+      <input
+        type="file"
+        accept="image/*"
+        onChange={handleSectionImageChange}
+        className="w-full rounded-xl border border-dashed border-slate-300 p-3"
+      />
+
+      {sectionImagePreview && (
+        <div className="mt-3">
+          <img
+            src={sectionImagePreview}
+            alt="Section preview"
+            className="h-48 w-full rounded-xl bg-slate-50 object-contain"
+          />
+
+          <button
+            type="button"
+            onClick={() => {
+              URL.revokeObjectURL(sectionImagePreview);
+              setSectionImage(null);
+              setSectionImagePreview("");
+            }}
+            className="mt-2 text-sm text-red-600"
+          >
+            Remove image
+          </button>
+        </div>
+      )}
+    </div>
+
+    {/* Add Section */}
+    <button
+      type="button"
+      onClick={addDescriptionSection}
+      className="rounded-xl bg-blue-600 px-5 py-3 font-medium text-white hover:bg-blue-700"
+    >
+      + Add Description Section
+    </button>
+  </div>
+
+  {/* Added Sections Preview */}
+  <div className="mt-5 space-y-4">
+    {formData.descriptionSections.map((section, index) => (
+      <div
+        key={index}
+        className="rounded-xl border border-slate-200 p-4"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <h4 className="text-lg font-semibold text-slate-900">
+            {index + 1}. {section.title}
+          </h4>
+
+          <button
+            type="button"
+            onClick={() => removeDescriptionSection(index)}
+            className="text-sm font-medium text-red-600"
+          >
+            Remove
+          </button>
+        </div>
+
+        {/* Render formatted HTML */}
+        <div
+          className="product-description-content mt-3 text-sm leading-7 text-slate-600"
+          dangerouslySetInnerHTML={{
+            __html: section.description || "",
+          }}
+        />
+
+        {section.imagePreview && (
+          <img
+            src={section.imagePreview}
+            alt={section.title || "Product section"}
+            className="mt-4 max-h-72 w-full rounded-xl bg-slate-50 object-contain"
+          />
+        )}
+      </div>
+    ))}
+  </div>
+</div>
+
+
               </div>
 
               <div className="md:col-span-2">
@@ -1618,67 +1825,61 @@ data.append(
             )}
           </section>
 
+          {/* ================= KEY FEATURES ================= */}
+          <section className="rounded-2xl bg-white p-6 shadow-sm">
+            <h2 className="mb-2 text-xl font-semibold text-slate-900">
+              Key Features
+            </h2>
 
+            <p className="mb-4 text-sm text-slate-500">
+              Add the main highlights of this product.
+            </p>
 
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <input
+                type="text"
+                value={keyFeatureInput}
+                onChange={(e) => setKeyFeatureInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addKeyFeature();
+                  }
+                }}
+                placeholder="e.g. Ryzen 5 PRO 5650GE Processor"
+                className="flex-1 rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
+              />
 
-{/* ================= KEY FEATURES ================= */}
-<section className="rounded-2xl bg-white p-6 shadow-sm">
-  <h2 className="mb-2 text-xl font-semibold text-slate-900">
-    Key Features
-  </h2>
+              <button
+                type="button"
+                onClick={addKeyFeature}
+                className="rounded-xl bg-blue-600 px-5 py-3 text-white"
+              >
+                + Add Feature
+              </button>
+            </div>
 
-  <p className="mb-4 text-sm text-slate-500">
-    Add the main highlights of this product.
-  </p>
+            <ul className="mt-4 space-y-3">
+              {formData.keyFeatures.map((feature, index) => (
+                <li
+                  key={`${feature}-${index}`}
+                  className="flex items-start gap-3"
+                >
+                  <span className="flex-1 text-sm text-slate-700">
+                    • {feature}
+                  </span>
 
-  <div className="flex flex-col gap-3 sm:flex-row">
-    <input
-      type="text"
-      value={keyFeatureInput}
-      onChange={(e) => setKeyFeatureInput(e.target.value)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          addKeyFeature();
-        }
-      }}
-      placeholder="e.g. Ryzen 5 PRO 5650GE Processor"
-      className="flex-1 rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
-    />
-
-    <button
-      type="button"
-      onClick={addKeyFeature}
-      className="rounded-xl bg-blue-600 px-5 py-3 text-white"
-    >
-      + Add Feature
-    </button>
-  </div>
-
-  <ul className="mt-4 space-y-3">
-    {formData.keyFeatures.map((feature, index) => (
-      <li
-        key={`${feature}-${index}`}
-        className="flex items-start gap-3"
-      >
-        <span className="flex-1 text-sm text-slate-700">
-          • {feature}
-        </span>
-
-        <button
-          type="button"
-          onClick={() => removeKeyFeature(index)}
-          className="text-sm text-red-600"
-        >
-          Remove
-        </button>
-      </li>
-    ))}
-  </ul>
-</section>
-
-
-
+                  <button
+                    type="button"
+                    onClick={() => removeKeyFeature(index)}
+                    className="text-sm text-red-600"
+                  >
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
 
           {/* ================= VARIANTS ================= */}
           <section className="rounded-2xl bg-white p-6 shadow-sm">
