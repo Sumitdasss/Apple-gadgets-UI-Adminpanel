@@ -185,3 +185,112 @@
     padding: 12px;
   }
 }
+
+.edit-lp-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 30px 20px;
+  color: #18181b;
+}
+
+.edit-lp-header,
+.edit-lp-section-heading,
+.edit-lp-footer,
+.edit-lp-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.edit-lp-header {
+  margin-bottom: 24px;
+}
+
+.edit-lp-card,
+.edit-lp-section {
+  padding: 24px;
+  margin-bottom: 24px;
+  border: 1px solid #e4e4e7;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.edit-lp-section {
+  background: #fafafa;
+}
+
+.edit-lp-container label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 18px;
+  font-weight: 500;
+}
+
+.edit-lp-container input,
+.edit-lp-container textarea,
+.edit-lp-container select {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #d4d4d8;
+  border-radius: 8px;
+  font: inherit;
+}
+
+.edit-lp-container textarea {
+  resize: vertical;
+}
+
+.edit-lp-container button,
+.edit-lp-container a {
+  display: inline-block;
+  padding: 10px 14px;
+  border: 1px solid #d4d4d8;
+  border-radius: 8px;
+  background: white;
+  color: #18181b;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.edit-lp-container button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.edit-lp-add-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.edit-lp-error {
+  color: #dc2626;
+}
+
+.edit-lp-success {
+  color: #15803d;
+}
+
+.edit-lp-loading {
+  padding: 50px;
+  text-align: center;
+}
+
+.edit-lp-footer {
+  justify-content: flex-start;
+  margin-bottom: 30px;
+}
+
+@media (max-width: 640px) {
+  .edit-lp-container {
+    padding: 20px 12px;
+  }
+
+  .edit-lp-card,
+  .edit-lp-section {
+    padding: 16px;
+  }
+}

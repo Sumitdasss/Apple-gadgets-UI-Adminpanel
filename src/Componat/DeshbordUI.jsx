@@ -28,6 +28,9 @@ import ProductListView from "./ProductListView.jsx";
 import UpdateProductPage from "./UpdateProduct.jsx";
 import OrdersPage from "./OrderManege.jsx";
 import CustomerManagementPage from "./CostomerMange.jsx";
+import LandingPages from "../pages/LandingPages.jsx";
+import CreateLandingPage from "../pages/CreateLandingPage.jsx";
+import EditLandingPage from "../pages/EditLandingPage.jsx";
 
 
 const API = (
@@ -145,7 +148,7 @@ export default function DeshbordUI() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
-
+const [selectedLandingPageId, setSelectedLandingPageId] = useState("");
   const today = getToday();
 
   // =====================================================
@@ -193,27 +196,40 @@ export default function DeshbordUI() {
   // =====================================================
 
   const navItems = [
-    { name: "Dashboard", icon: LayoutDashboard },
-    { name: "Orders", icon: ShoppingCart },
-    {
-      name: "Product",
-      icon: Package,
-      hasSub: true,
-      subItems: [
-        { name: "Add Product", key: "add" },
-        { name: "Update Product", key: "update" },
-        { name: "Product List", key: "list" },
-      ],
-    },
-    { name: "Users", icon: Users, hasSub: true },
-    { name: "Reports", icon: BarChart3, hasSub: true },
-    { name: "Courier", icon: Truck, hasSub: true },
-    { name: "SMS", icon: MessageSquare, hasSub: true },
-    { name: "Accounting", icon: Calculator },
-    { name: "Messages", icon: Mail },
-    { name: "Landing Pages", icon: Globe },
-    { name: "Settings", icon: Settings },
-  ];
+  { name: "Dashboard", icon: LayoutDashboard },
+  { name: "Orders", icon: ShoppingCart },
+
+  {
+    name: "Product",
+    icon: Package,
+    hasSub: true,
+    subItems: [
+      { name: "Add Product", key: "add" },
+      { name: "Update Product", key: "update" },
+      { name: "Product List", key: "list" },
+    ],
+  },
+
+  { name: "Users", icon: Users, hasSub: true },
+
+  {
+    name: "Create Page",
+    icon: Globe,
+    hasSub: true,
+    subItems: [
+      { name: "Landing Pages", key: "show" },
+      { name: "Create Landing Page", key: "create" },
+      { name: "Edit Landing Page", key: "edit" },
+    ],
+  },
+
+  { name: "Reports", icon: BarChart3, hasSub: true },
+  { name: "Courier", icon: Truck, hasSub: true },
+  { name: "SMS", icon: MessageSquare, hasSub: true },
+  { name: "Accounting", icon: Calculator },
+  { name: "Messages", icon: Mail },
+  { name: "Settings", icon: Settings },
+];
 
   // =====================================================
   // NORMALIZE DASHBOARD DATA
@@ -862,10 +878,14 @@ export default function DeshbordUI() {
                       <button
                         key={sub.key}
                         type="button"
-                        onClick={() => {
-                          setActiveTab(name);
-                          setProductSubTab(sub.key);
-                        }}
+                       onClick={() => {
+  setActiveTab(name);
+  setProductSubTab(sub.key);
+
+  if (name === "Create Page" && sub.key === "create") {
+    setSelectedLandingPageId("");
+  }
+}}
                         className={`w-full rounded-lg px-3 py-2 text-left text-[11px] font-medium transition ${
                           productSubTab === sub.key && activeTab === name
                             ? "bg-red-900/40 text-red-400"
@@ -914,23 +934,64 @@ export default function DeshbordUI() {
           <Header />
         </header>
 
-        <div className="min-w-0">
-          {activeTab === "Dashboard" ? (
-            <DashboardView />
-          ) : activeTab === "Orders" ? (
-            <OrdersPage />
-          ) : activeTab === "Product" ? (
-            <>
-              {productSubTab === "add" && <AddProductPage />}
-              {productSubTab === "update" && <UpdateProductPage />}
-              {productSubTab === "list" && <ProductListView />}
-            </>
-          ) :activeTab === "Users"? (
-            <CustomerManagementPage/>
-          ) : (
-            <Generic />
-          )}
-        </div>
+    
+<div className="min-w-0">
+  {activeTab === "Dashboard" ? (
+    <DashboardView />
+  ) : activeTab === "Orders" ? (
+    <OrdersPage />
+  ) : activeTab === "Product" ? (
+    <>
+      {productSubTab === "add" && <AddProductPage />}
+
+      {productSubTab === "update" && <UpdateProductPage />}
+
+      {productSubTab === "list" && <ProductListView />}
+    </>
+  ) : activeTab === "Users" ? (
+    <CustomerManagementPage />
+  ) : activeTab === "Create Page" ? (
+    <>
+      {productSubTab === "show" && (
+        <LandingPages
+          onCreate={() => {
+            setSelectedLandingPageId("");
+            setProductSubTab("create");
+          }}
+          onEdit={(id) => {
+            setSelectedLandingPageId(id);
+            setProductSubTab("edit");
+          }}
+        />
+      )}
+
+      {productSubTab === "create" && (
+        <CreateLandingPage
+          onCancel={() => setProductSubTab("show")}
+          onSuccess={() => {
+            setSelectedLandingPageId("");
+            setProductSubTab("show");
+          }}
+        />
+      )}
+
+      {productSubTab === "edit" && selectedLandingPageId && (
+        <EditLandingPage
+          key={selectedLandingPageId}
+          pageId={selectedLandingPageId}
+          onCancel={() => setProductSubTab("show")}
+          onSuccess={() => {
+            setSelectedLandingPageId("");
+            setProductSubTab("show");
+          }}
+        />
+      )}
+    </>
+  ) : (
+    <Generic />
+  )}
+</div>
+
       </main>
     </div>
   );
