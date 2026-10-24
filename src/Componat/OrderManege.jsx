@@ -41,7 +41,7 @@ import "./invoice-print.css";
 /* ------------------------------------------------------------------ */
 
 const API_BASE = (
-  import.meta.env.VITE_API_URL || "http://localhost:4000"
+  import.meta.env.VITE_API_URL || "https://apple-gadgets-ui-backend.vercel.app"
 ).replace(/\/+$/, "");
 
 const ORDERS_API = `${API_BASE}/api/dashboard/order`;
