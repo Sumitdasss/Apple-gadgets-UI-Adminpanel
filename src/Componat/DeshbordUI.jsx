@@ -31,6 +31,7 @@ import CustomerManagementPage from "./CostomerMange.jsx";
 import LandingPages from "../pages/LandingPages.jsx";
 import CreateLandingPage from "../pages/CreateLandingPage.jsx";
 import EditLandingPage from "../pages/EditLandingPage.jsx";
+import EmployeeSummaryPage from "./Employeeresult.jsx";
 
 
 const API = (
@@ -198,6 +199,7 @@ const [selectedLandingPageId, setSelectedLandingPageId] = useState("");
   const navItems = [
   { name: "Dashboard", icon: LayoutDashboard },
   { name: "Orders", icon: ShoppingCart },
+  { name: "EmployeeSummaryPage", icon: ShoppingCart },
 
   {
     name: "Product",
@@ -950,7 +952,7 @@ const [selectedLandingPageId, setSelectedLandingPageId] = useState("");
     </>
   ) : activeTab === "Users" ? (
     <CustomerManagementPage />
-  ) : activeTab === "Create Page" ? (
+  ):activeTab==="EmployeeSummaryPage"?(<EmployeeSummaryPage/>) : activeTab === "Create Page" ? (
     <>
       {productSubTab === "show" && (
         <LandingPages
