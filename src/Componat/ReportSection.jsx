@@ -1,12 +1,14 @@
 
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
+  AlertCircle,
   Banknote,
   CalendarDays,
   CheckCircle2,
+  CreditCard,
   Download,
   FileSpreadsheet,
   Filter,
@@ -19,10 +21,8 @@ import {
   Truck,
   Users,
   Wallet,
-  AlertCircle,
   TrendingUp,
   XCircle,
-  CreditCard,
   UserRoundCheck,
 } from "lucide-react";
 
@@ -53,13 +53,41 @@ const REPORTS = [
   { id: "courier", label: "Courier", icon: Truck },
 ];
 
+const ORDER_TABS = ["sales", "orders", "profit", "payments", "courier"];
+
+const HIDDEN_KEYS = new Set([
+  "__v",
+  "password",
+  "token",
+  "accessToken",
+  "refreshToken",
+]);
+
 const money = (value) =>
   `৳ ${Number(value || 0).toLocaleString("en-BD", {
     maximumFractionDigits: 2,
   })}`;
 
-const number = (value) =>
-  Number(value || 0).toLocaleString("en-BD");
+const number = (value) => Number(value || 0).toLocaleString("en-BD");
+
+const n = (value) => {
+  if (value === null || value === undefined || value === "") return 0;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const norm = (value) =>
+  value == null ? "" : String(value).trim().toLowerCase();
+
+const getId = (value) => {
+  if (value == null) return "";
+
+  if (typeof value === "object") {
+    return String(value._id ?? value.$oid ?? value.id ?? "");
+  }
+
+  return String(value);
+};
 
 const dateInput = (date) => {
   const d = new Date(date);
@@ -70,87 +98,296 @@ const dateInput = (date) => {
   )}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
-const n = (value) => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-};
-
-const norm = (value) =>
-  value == null ? "" : String(value).trim().toLowerCase();
-
 const pick = (obj, paths, fallback = 0) => {
   for (const path of paths) {
     const value = path.split(".").reduce((v, key) => v?.[key], obj);
 
-    if (value !== undefined && value !== null) {
-      return value;
-    }
+    if (value !== undefined && value !== null) return value;
   }
 
   return fallback;
 };
 
 /* =========================================================
-   API RESPONSE HELPERS
+   API HELPERS
 ========================================================= */
 
-const unwrap = (payload) =>
-  payload?.data ?? payload?.result ?? payload ?? {};
+function unwrap(payload) {
+  let result = payload;
+
+  for (let i = 0; i < 4; i++) {
+    if (!result || typeof result !== "object" || Array.isArray(result)) {
+      break;
+    }
+
+    if (result.success === false) {
+      throw new Error(result.message || "API request failed.");
+    }
+
+    if (result.data !== undefined) {
+      result = result.data;
+      continue;
+    }
+
+    if (result.result !== undefined) {
+      result = result.result;
+      continue;
+    }
+
+    break;
+  }
+
+  return result ?? {};
+}
 
 function asArray(payload, keys = []) {
   const seen = new Set();
 
-  const walk = (node, depth = 0) => {
+  function walk(node, depth = 0) {
     if (Array.isArray(node)) return node;
 
-    if (
-      !node ||
-      typeof node !== "object" ||
-      depth > 5 ||
-      seen.has(node)
-    ) {
+    if (!node || typeof node !== "object" || depth > 6 || seen.has(node)) {
       return null;
     }
 
     seen.add(node);
 
     for (const key of keys) {
-      if (Array.isArray(node[key])) {
-        return node[key];
-      }
+      if (Array.isArray(node[key])) return node[key];
     }
 
     for (const value of Object.values(node)) {
-      if (Array.isArray(value)) {
-        return value;
-      }
+      if (Array.isArray(value)) return value;
     }
 
     for (const value of Object.values(node)) {
-      const found = walk(value, depth + 1);
-      if (found) return found;
+      const result = walk(value, depth + 1);
+      if (result !== null) return result;
     }
 
     return null;
+  }
+
+  return walk(payload) ?? [];
+}
+
+async function requestJSON(url, signal) {
+  const response = await fetch(url, {
+    method: "GET",
+    headers: { Accept: "application/json" },
+    credentials: "include",
+    signal,
+  });
+
+  const json = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(
+      json?.message || `Request failed with status ${response.status}`
+    );
+  }
+
+  if (json?.success === false) {
+    throw new Error(json.message || "The server returned an error.");
+  }
+
+  return json;
+}
+
+/* =========================================================
+   COST HELPERS
+========================================================= */
+
+function productCost(product) {
+  if (!product || typeof product !== "object") return null;
+
+  const fields = [
+    "costPrice",
+    "purchasePrice",
+    "buyingPrice",
+    "buyPrice",
+    "unitCost",
+    "cost",
+  ];
+
+  for (const field of fields) {
+    const value = product[field];
+
+    if (value === null || value === undefined || value === "") continue;
+
+    const parsed = Number(value);
+
+    if (Number.isFinite(parsed) && parsed >= 0) return parsed;
+  }
+
+  return null;
+}
+
+function buildCostMap(products) {
+  const map = new Map();
+
+  const put = (type, value, cost) => {
+    const key = norm(getId(value) || value);
+    if (key) map.set(`${type}:${key}`, cost);
   };
 
-  return walk(payload) || [];
+  for (const product of products) {
+    if (!product || typeof product !== "object") continue;
+
+    const cost = productCost(product);
+
+    if (cost !== null) {
+      for (const id of [
+        product._id,
+        product.id,
+        product.productId,
+        product.product,
+      ]) {
+        put("id", id, cost);
+      }
+
+      put("sku", product.sku, cost);
+      put("slug", product.slug, cost);
+      put("name", product.name ?? product.title ?? product.productName, cost);
+    }
+
+    if (Array.isArray(product.variants)) {
+      for (const variant of product.variants) {
+        const variantCost = productCost(variant);
+
+        if (variantCost === null) continue;
+
+        put("variant", variant._id ?? variant.id, variantCost);
+        put("sku", variant.sku, variantCost);
+      }
+    }
+  }
+
+  return map;
+}
+
+function itemCostInfo(item, costMap) {
+  if (!item || typeof item !== "object") {
+    return { cost: null, found: false };
+  }
+
+  const lookup = (type, value) => {
+    const key = norm(getId(value) || value);
+
+    if (!key) return null;
+
+    const mapKey = `${type}:${key}`;
+
+    return costMap.has(mapKey)
+      ? { cost: costMap.get(mapKey), found: true }
+      : null;
+  };
+
+  const product = item.product ?? item.productId;
+  const variantId = item.variantId ?? item.variant?._id ?? item.variant?.id;
+
+  const directVariant = lookup("variant", variantId);
+  if (directVariant) return directVariant;
+
+  const productMatch = lookup("id", product);
+  if (productMatch) return productMatch;
+
+  const skuMatch = lookup("sku", item.sku ?? item.variant?.sku);
+  if (skuMatch) return skuMatch;
+
+  const slugMatch = lookup("slug", item.slug ?? item.product?.slug);
+  if (slugMatch) return slugMatch;
+
+  const nameMatch = lookup(
+    "name",
+    item.name ?? item.productName ?? item.product?.name
+  );
+  if (nameMatch) return nameMatch;
+
+  // The populated order item may already contain costPrice.
+  const populatedCost = productCost(item.product);
+  if (populatedCost !== null) {
+    return { cost: populatedCost, found: true };
+  }
+
+  const variantCost = productCost(item.variant);
+  if (variantCost !== null) {
+    return { cost: variantCost, found: true };
+  }
+
+  const directCost = productCost(item);
+  if (directCost !== null) {
+    return { cost: directCost, found: true };
+  }
+
+  return { cost: null, found: false };
+}
+
+function orderCost(order, costMap) {
+  const directFields = [
+    "totalCost",
+    "totalPurchasePrice",
+    "purchaseCost",
+  ];
+
+  for (const field of directFields) {
+    const value = order?.[field];
+
+    if (value === null || value === undefined || value === "") continue;
+
+    const parsed = Number(value);
+
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      return {
+        value: parsed,
+        found: true,
+        unmatchedItems: 0,
+      };
+    }
+  }
+
+  const items =
+    order?.products ??
+    order?.items ??
+    order?.orderItems ??
+    order?.cart ??
+    [];
+
+  if (!Array.isArray(items) || items.length === 0) {
+    return { value: 0, found: false, unmatchedItems: 0 };
+  }
+
+  let value = 0;
+  let matchedItems = 0;
+  let unmatchedItems = 0;
+
+  for (const item of items) {
+    const info = itemCostInfo(item, costMap);
+
+    if (!info.found) {
+      unmatchedItems++;
+      continue;
+    }
+
+    const quantity = Math.max(0, n(item.quantity ?? item.qty ?? 1));
+
+    value += info.cost * quantity;
+    matchedItems++;
+  }
+
+  return {
+    value,
+    found: matchedItems > 0 && unmatchedItems === 0,
+    unmatchedItems,
+  };
 }
 
 /* =========================================================
    ORDER HELPERS
 ========================================================= */
 
-const ORDER_TABS = [
-  "sales",
-  "orders",
-  "profit",
-  "payments",
-  "courier",
-];
-
 const statusOf = (order) =>
-  String(order?.status || order?.orderStatus || "").toLowerCase();
+  norm(order?.status ?? order?.orderStatus);
 
 const isDelivered = (order) =>
   /deliver|complete/.test(statusOf(order));
@@ -163,620 +400,102 @@ const isReturned = (order) =>
 
 const isShipped = (order) =>
   /courier|ship|transit|dispatch|handed_over|picked_up/.test(
-    `${statusOf(order)} ${order?.deliveryStatus || ""} ${
-      order?.courierDetails?.courierStatus || ""
-    }`.toLowerCase()
+    `${statusOf(order)} ${norm(order?.deliveryStatus)} ${norm(
+      order?.courierDetails?.courierStatus
+    )}`
   );
 
 const orderTotal = (order) =>
   n(
     order?.totalAmount ??
-      order?.total ??
       order?.grandTotal ??
+      order?.total ??
       order?.amount
   );
-
-/* =========================================================
-   PRODUCT COST HELPERS
-========================================================= */
-
-function getId(value) {
-  if (value == null) return "";
-
-  if (typeof value === "object") {
-    if (value._id != null) return String(value._id);
-    if (value.$oid != null) return String(value.$oid);
-    if (value.id != null) return String(value.id);
-
-    return "";
-  }
-
-  return String(value);
-}
-
-function productCost(product) {
-  if (!product || typeof product !== "object") {
-    return null;
-  }
-
-  const value =
-    product.costPrice ??
-    product.purchasePrice ??
-    product.buyingPrice ??
-    product.buyPrice ??
-    product.unitCost ??
-    product.cost;
-
-  if (value == null || value === "") {
-    return null;
-  }
-
-  const cost = Number(value);
-
-  return Number.isFinite(cost) && cost >= 0 ? cost : null;
-}
-
-function buildCostMap(products = []) {
-  const map = {};
-
-  const put = (prefix, key, cost) => {
-    const normalized = norm(key);
-
-    if (normalized) {
-      map[`${prefix}:${normalized}`] = cost;
-    }
-  };
-
-  for (const product of products) {
-    if (!product || typeof product !== "object") {
-      continue;
-    }
-
-    const cost = productCost(product);
-
-    if (cost !== null) {
-      [
-        product._id,
-        product.id,
-        product.productId,
-        product.product,
-      ].forEach((value) => {
-        put("id", getId(value), cost);
-      });
-
-      put("sku", product.sku, cost);
-      put("slug", product.slug, cost);
-
-      put(
-        "name",
-        product.name ?? product.title ?? product.productName,
-        cost
-      );
-    }
-
-    if (Array.isArray(product.variants)) {
-      for (const variant of product.variants) {
-        if (!variant || typeof variant !== "object") {
-          continue;
-        }
-
-        const variantCost = productCost(variant);
-
-        if (variantCost === null) {
-          continue;
-        }
-
-        put(
-          "variant",
-          getId(variant._id ?? variant.id),
-          variantCost
-        );
-
-        put("sku", variant.sku, variantCost);
-      }
-    }
-  }
-
-  return map;
-}
-
-function itemCostInfo(item, costMap = {}) {
-  if (!item || typeof item !== "object") {
-    return { cost: 0, found: false };
-  }
-
-  const hit = (prefix, value) => {
-    const normalized = norm(value);
-    const key = `${prefix}:${normalized}`;
-
-    if (
-      normalized &&
-      Object.prototype.hasOwnProperty.call(costMap, key)
-    ) {
-      return {
-        cost: costMap[key],
-        found: true,
-      };
-    }
-
-    return null;
-  };
-
-  const variantId = getId(item.variantId);
-  const productId = getId(item.product ?? item.productId);
-
-  // Match the exact variant first.
-  const variantMatch = hit("variant", variantId);
-  if (variantMatch) return variantMatch;
-
-  // Match the product ObjectId.
-  const productMatch = hit("id", productId);
-  if (productMatch) return productMatch;
-
-  // Match SKU.
-  const skuMatch = hit("sku", item.sku);
-  if (skuMatch) return skuMatch;
-
-  // Match slug.
-  const slugMatch = hit("slug", item.slug);
-  if (slugMatch) return slugMatch;
-
-  // Match product name.
-  const nameMatch = hit(
-    "name",
-    item.name ?? item.productName
-  );
-  if (nameMatch) return nameMatch;
-
-  // If the order contains a populated product object.
-  const populatedCost = productCost(item.product);
-
-  if (populatedCost !== null) {
-    return {
-      cost: populatedCost,
-      found: true,
-    };
-  }
-
-  // Fallback to cost stored directly on the order item.
-  const directCost = productCost(item);
-
-  if (directCost !== null) {
-    return {
-      cost: directCost,
-      found: true,
-    };
-  }
-
-  return {
-    cost: 0,
-    found: false,
-  };
-}
-
-function orderCost(order, costMap = {}) {
-  const direct =
-    order?.totalCost ??
-    order?.totalPurchasePrice ??
-    order?.purchaseCost;
-
-  if (
-    direct !== undefined &&
-    direct !== null &&
-    direct !== "" &&
-    Number.isFinite(Number(direct)) &&
-    Number(direct) >= 0
-  ) {
-    return {
-      value: Number(direct),
-      found: true,
-      unmatchedItems: 0,
-    };
-  }
-
-  const items =
-    order?.products ??
-    order?.items ??
-    order?.orderItems ??
-    order?.cart ??
-    [];
-
-  if (!Array.isArray(items) || items.length === 0) {
-    return {
-      value: 0,
-      found: false,
-      unmatchedItems: 0,
-    };
-  }
-
-  let totalCost = 0;
-  let matchedItems = 0;
-  let unmatchedItems = 0;
-
-  for (const item of items) {
-    const info = itemCostInfo(item, costMap);
-
-    if (!info.found) {
-      unmatchedItems++;
-      continue;
-    }
-
-    const quantity = Math.max(
-      0,
-      n(item?.quantity ?? item?.qty) || 1
-    );
-
-    totalCost += info.cost * quantity;
-    matchedItems++;
-  }
-
-  return {
-    value: totalCost,
-    found: matchedItems > 0 && unmatchedItems === 0,
-    unmatchedItems,
-  };
-}
-
-/* =========================================================
-   PAYMENT CALCULATIONS
-========================================================= */
 
 function paidOf(order) {
   const direct =
     order?.paidAmount ??
-    order?.paid ??
     order?.amountPaid ??
+    order?.advanceAmount ??
     order?.advance ??
-    order?.advanceAmount;
+    order?.paid;
 
-  if (direct != null) return n(direct);
+  if (direct !== undefined && direct !== null && direct !== "") {
+    return Math.max(0, n(direct));
+  }
 
-  const paymentStatus = String(
-    order?.paymentStatus || ""
-  ).toLowerCase();
+  const paymentStatus = norm(order?.paymentStatus);
 
-  if (
-    /paid|success/.test(paymentStatus) &&
-    !/unpaid|partial/.test(paymentStatus)
-  ) {
+  if (/paid|success/.test(paymentStatus) && !/unpaid|partial/.test(paymentStatus)) {
     return orderTotal(order);
   }
 
   return isDelivered(order) ? orderTotal(order) : 0;
 }
 
-/* =========================================================
-   SUMMARY CALCULATIONS
-========================================================= */
-
-function deriveFromOrders(rows, costMap = {}) {
+function deriveFromOrders(rows, costMap) {
   const list = Array.isArray(rows) ? rows : [];
-
   const delivered = list.filter(isDelivered);
-
   const active = list.filter(
     (order) => !isCancelled(order) && !isReturned(order)
   );
 
-  const revenue = delivered.reduce(
-    (sum, order) => sum + orderTotal(order),
-    0
-  );
+  const revenue = delivered.reduce((sum, order) => sum + orderTotal(order), 0);
 
-  const costs = delivered.map((order) =>
-    orderCost(order, costMap)
-  );
+  const costResults = delivered.map((order) => orderCost(order, costMap));
 
-  const totalCost = costs.reduce(
-    (sum, result) => sum + result.value,
-    0
-  );
+  const totalCost = costResults.reduce((sum, result) => sum + result.value, 0);
 
-  const costFound = costs.some((result) => result.found);
-
-  const unmatchedItems = costs.reduce(
+  const unmatchedItems = costResults.reduce(
     (sum, result) => sum + result.unmatchedItems,
     0
   );
 
-  const collected = active.reduce(
-    (sum, order) => sum + paidOf(order),
-    0
-  );
+  const costFound =
+    delivered.length > 0 &&
+    costResults.every((result) => result.found);
 
-  const billed = active.reduce(
-    (sum, order) => sum + orderTotal(order),
-    0
-  );
+  const billed = active.reduce((sum, order) => sum + orderTotal(order), 0);
+  const collected = active.reduce((sum, order) => sum + paidOf(order), 0);
 
   return {
     totalRevenue: billed,
     salesOrders: active.length,
-    averageOrderValue: active.length
-      ? billed / active.length
-      : 0,
-
+    averageOrderValue: active.length ? billed / active.length : 0,
     totalOrders: list.length,
     delivered: delivered.length,
     cancelled: list.filter(isCancelled).length,
-
     revenue,
     totalCost,
     netProfit: revenue - totalCost,
-
     costFound,
     unmatchedItems,
-
     collected,
-    due: Math.max(billed - collected, 0),
-
+    due: Math.max(0, billed - collected),
     refunded: list.reduce(
-      (sum, order) =>
-        sum + n(order?.refundAmount ?? order?.refunded),
+      (sum, order) => sum + n(order.refundAmount ?? order.refunded),
       0
     ),
-
     shipped: list.filter(isShipped).length,
     returned: list.filter(isReturned).length,
   };
 }
 
 function filterByDate(list, from, to) {
-  if (!from || !to) return list;
-
-  const start = new Date(`${from}T00:00:00`).getTime();
-  const end = new Date(`${to}T23:59:59.999`).getTime();
+  const start = from ? new Date(`${from}T00:00:00`).getTime() : -Infinity;
+  const end = to ? new Date(`${to}T23:59:59.999`).getTime() : Infinity;
 
   return list.filter((order) => {
-    const raw =
-      order?.createdAt ??
-      order?.orderDate ??
-      order?.date;
+    const raw = order.createdAt ?? order.orderDate ?? order.date;
 
-    if (!raw) return true;
+    // Exclude records without a date if a date filter is applied.
+    if (!raw) return !from && !to;
 
     const time = new Date(raw).getTime();
 
-    return Number.isNaN(time) || (time >= start && time <= end);
+    return Number.isFinite(time) && time >= start && time <= end;
   });
-}
-
-/* =========================================================
-   IMAGE HELPERS
-========================================================= */
-
-const IMAGE_KEY =
-  /(image|img|photo|thumbnail|thumb|avatar|picture|logo|cover)/i;
-
-const IMAGE_URL =
-  /\.(png|jpe?g|gif|webp|avif|svg)(\?.*)?$/i;
-
-const HIDDEN_KEYS = new Set([
-  "__v",
-  "password",
-  "token",
-  "createdAt",
-  "updatedAt",
-]);
-
-function toImageUrls(value) {
-  const out = [];
-
-  const visit = (item) => {
-    if (!item) return;
-
-    if (typeof item === "string") {
-      let src = item.trim();
-
-      if (!src) return;
-
-      if (src.startsWith("//")) {
-        src = `https:${src}`;
-      } else if (src.startsWith("/")) {
-        src = `${API_BASE}${src}`;
-      } else if (
-        src.startsWith("http://") &&
-        !src.includes("localhost")
-      ) {
-        src = src.replace("http://", "https://");
-      } else if (!/^(https?:|data:|blob:)/i.test(src)) {
-        src = `${API_BASE}/${src.replace(/^\.?\//, "")}`;
-      }
-
-      out.push(src);
-    } else if (Array.isArray(item)) {
-      item.forEach(visit);
-    } else if (typeof item === "object") {
-      visit(
-        item.secure_url ||
-          item.url ||
-          item.src ||
-          item.path ||
-          item.image ||
-          item.location
-      );
-    }
-  };
-
-  visit(value);
-
-  return out;
-}
-
-const looksLikeImage = (key, value) => {
-  if (IMAGE_KEY.test(key)) {
-    return toImageUrls(value).length > 0;
-  }
-
-  if (typeof value === "string") {
-    return IMAGE_URL.test(value);
-  }
-
-  if (Array.isArray(value) && value.length) {
-    return value.every(
-      (item) =>
-        typeof item === "string" && IMAGE_URL.test(item)
-    );
-  }
-
-  return false;
-};
-
-function Thumb({ value }) {
-  const urls = toImageUrls(value);
-  const [failed, setFailed] = useState({});
-
-  if (!urls.length) {
-    return (
-      <span className="ag-thumb-fallback">
-        <ImageOff size={18} />
-      </span>
-    );
-  }
-
-  const shown = urls.slice(0, 2);
-
-  return (
-    <div className="ag-thumb-wrap">
-      {shown.map((src, index) =>
-        failed[index] ? (
-          <span
-            key={src + index}
-            className="ag-thumb-fallback"
-          >
-            <ImageOff size={18} />
-          </span>
-        ) : (
-          <img
-            key={src + index}
-            src={src}
-            alt=""
-            className="ag-thumb"
-            loading="lazy"
-            referrerPolicy="no-referrer"
-            onError={() =>
-              setFailed((previous) => ({
-                ...previous,
-                [index]: true,
-              }))
-            }
-          />
-        )
-      )}
-
-      {urls.length > 2 && (
-        <span className="ag-thumb-more">
-          +{urls.length - 2}
-        </span>
-      )}
-    </div>
-  );
-}
-
-/* =========================================================
-   CELL FORMATTING
-========================================================= */
-
-const MONEY_KEY =
-  /(price|amount|total|revenue|profit|cost|paid|due|balance|salary|charge|fee|sales)/i;
-
-const DATE_KEY = /(date|createdat|updatedat|at$)/i;
-const STATUS_KEY = /status/i;
-
-const badgeTone = (value) => {
-  const status = String(value).toLowerCase();
-
-  if (
-    /(deliver|complete|paid|success|active|confirm|approved|in stock)/.test(
-      status
-    )
-  ) {
-    return "green";
-  }
-
-  if (
-    /(cancel|fail|return|rto|reject|refund|out of stock|inactive)/.test(
-      status
-    )
-  ) {
-    return "red";
-  }
-
-  if (/(pending|process|hold|partial|low|wait)/.test(status)) {
-    return "amber";
-  }
-
-  if (/(ship|transit|courier|dispatch)/.test(status)) {
-    return "blue";
-  }
-
-  return "gray";
-};
-
-function Cell({ column, value }) {
-  if (value == null || value === "") return <>—</>;
-
-  if (looksLikeImage(column, value)) {
-    return <Thumb value={value} />;
-  }
-
-  if (STATUS_KEY.test(column) && typeof value === "string") {
-    return (
-      <span className={`ag-badge ag-badge-${badgeTone(value)}`}>
-        {value}
-      </span>
-    );
-  }
-
-  if (typeof value === "object") {
-    if (Array.isArray(value)) {
-      return (
-        <>
-          {value.length} item{value.length === 1 ? "" : "s"}
-        </>
-      );
-    }
-
-    return (
-      <>
-        {value.name ||
-          value.orderId ||
-          value.title ||
-          value._id ||
-          JSON.stringify(value)}
-      </>
-    );
-  }
-
-  if (typeof value === "number" && MONEY_KEY.test(column)) {
-    return (
-      <span className="ag-cell-num">{money(value)}</span>
-    );
-  }
-
-  if (
-    typeof value === "string" &&
-    DATE_KEY.test(column) &&
-    !Number.isNaN(Date.parse(value))
-  ) {
-    return (
-      <>
-        {new Date(value).toLocaleDateString("en-GB", {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-        })}
-      </>
-    );
-  }
-
-  if (typeof value === "number") {
-    return (
-      <span className="ag-cell-num">{number(value)}</span>
-    );
-  }
-
-  return <>{String(value)}</>;
 }
 
 /* =========================================================
@@ -784,21 +503,21 @@ function Cell({ column, value }) {
 ========================================================= */
 
 function downloadCSV(filename, rows) {
-  if (!rows?.length) return;
+  if (!Array.isArray(rows) || !rows.length) return;
 
-  const columns = [
-    ...new Set(
-      rows.flatMap((row) => Object.keys(row || {}))
-    ),
-  ];
+  const columns = [...new Set(rows.flatMap((row) => Object.keys(row ?? {})))]
+    .filter((key) => !HIDDEN_KEYS.has(key));
 
   const escapeCSV = (value) => {
-    const raw =
+    let raw =
       value == null
         ? ""
         : typeof value === "object"
           ? JSON.stringify(value)
           : String(value);
+
+    // Avoid spreadsheet formula injection.
+    if (/^[\s]*[=+\-@]/.test(raw)) raw = `'${raw}`;
 
     return `"${raw.replace(/"/g, '""')}"`;
   };
@@ -819,75 +538,141 @@ function downloadCSV(filename, rows) {
 
   link.href = url;
   link.download = filename;
+  document.body.appendChild(link);
   link.click();
+  link.remove();
 
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 /* =========================================================
-   UI COMPONENTS
+   TABLE
 ========================================================= */
 
-function StatCard({ label, value, icon: Icon, hint }) {
-  return (
-    <div className="ag-report-stat">
-      <div className="ag-report-stat-top">
-        <span>{label}</span>
+const IMAGE_KEY = /(image|img|photo|thumbnail|thumb|avatar|picture|logo|cover)/i;
+const MONEY_KEY = /(price|amount|total|revenue|profit|cost|paid|due|balance|salary|charge|fee|sales)/i;
+const DATE_KEY = /(date|createdat|updatedat|timestamp|time$)/i;
 
-        <span className="ag-report-stat-icon">
-          <Icon size={19} />
-        </span>
-      </div>
+function imageUrls(value) {
+  const result = [];
 
-      <strong>{value}</strong>
+  const visit = (item) => {
+    if (!item) return;
 
-      {hint && <small>{hint}</small>}
-    </div>
-  );
+    if (typeof item === "string") {
+      const src = item.trim();
+      if (/^(https?:\/\/|data:image\/|blob:)/i.test(src)) {
+        result.push(src);
+      } else if (src.startsWith("//")) {
+        result.push(`https:${src}`);
+      }
+    } else if (Array.isArray(item)) {
+      item.forEach(visit);
+    } else if (typeof item === "object") {
+      visit(item.secure_url ?? item.url ?? item.src ?? item.image);
+    }
+  };
+
+  visit(value);
+
+  return [...new Set(result)];
 }
 
-function EmptyState({ children }) {
-  return (
-    <div className="ag-report-empty">
-      <AlertCircle size={20} />
-      <span>{children}</span>
-    </div>
-  );
+function Cell({ column, value }) {
+  if (value == null || value === "") return <>—</>;
+
+  if (IMAGE_KEY.test(column)) {
+    const urls = imageUrls(value);
+
+    if (urls.length) {
+      return (
+        <div className="ag-thumb-wrap">
+          {urls.slice(0, 2).map((src) => (
+            <img
+              key={src}
+              src={src}
+              alt=""
+              className="ag-thumb"
+              loading="lazy"
+              onError={(event) => {
+                event.currentTarget.style.display = "none";
+              }}
+            />
+          ))}
+        </div>
+      );
+    }
+
+    return (
+      <span className="ag-thumb-fallback">
+        <ImageOff size={18} />
+      </span>
+    );
+  }
+
+  if (typeof value === "number" && MONEY_KEY.test(column)) {
+    return <span className="ag-cell-num">{money(value)}</span>;
+  }
+
+  if (DATE_KEY.test(column) && !Number.isNaN(Date.parse(value))) {
+    return (
+      <>
+        {new Date(value).toLocaleString("en-GB", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        })}
+      </>
+    );
+  }
+
+  if (typeof value === "object") {
+    if (Array.isArray(value)) return <>{value.length} items</>;
+
+    return (
+      <>
+        {String(
+          value.name ??
+            value.productName ??
+            value.orderId ??
+            value.title ??
+            value._id ??
+            "[Object]"
+        )}
+      </>
+    );
+  }
+
+  if (/status/i.test(column)) {
+    const status = norm(value);
+    const tone = /deliver|complete|paid|success|active|confirm/.test(status)
+      ? "green"
+      : /cancel|fail|return|refund|reject/.test(status)
+        ? "red"
+        : /pending|process|partial|hold/.test(status)
+          ? "amber"
+          : /ship|transit|courier/.test(status)
+            ? "blue"
+            : "gray";
+
+    return <span className={`ag-badge ag-badge-${tone}`}>{String(value)}</span>;
+  }
+
+  return <>{String(value)}</>;
 }
 
-function Table({
-  rows,
-  loading,
-  emptyText = "No report records found.",
-}) {
+function Table({ rows, loading, emptyText }) {
   const columns = useMemo(() => {
     const list = Array.isArray(rows) ? rows : [];
+    const keys = [...new Set(list.slice(0, 100).flatMap((row) => Object.keys(row ?? {})))];
 
-    const keys = [
-      ...new Set(
-        list
-          .slice(0, 100)
-          .flatMap((row) => Object.keys(row || {}))
-      ),
-    ].filter(
-      (key) =>
-        key !== "_id" &&
-        key !== "id" &&
-        !HIDDEN_KEYS.has(key)
-    );
-
-    const sample = (key) =>
-      list.find((row) => row?.[key] != null)?.[key];
-
-    const imageColumns = keys.filter((key) =>
-      looksLikeImage(key, sample(key))
-    );
-
-    const rest = keys.filter(
-      (key) => !imageColumns.includes(key)
-    );
-
-    return [...imageColumns.slice(0, 1), ...rest].slice(0, 8);
+    return keys
+      .filter(
+        (key) =>
+          !["_id", "id", "__v", "password", "token"].includes(key) &&
+          !HIDDEN_KEYS.has(key)
+      )
+      .slice(0, 8);
   }, [rows]);
 
   if (loading) {
@@ -900,7 +685,12 @@ function Table({
   }
 
   if (!rows?.length) {
-    return <EmptyState>{emptyText}</EmptyState>;
+    return (
+      <div className="ag-report-empty">
+        <AlertCircle size={20} />
+        <span>{emptyText || "No report records found."}</span>
+      </div>
+    );
   }
 
   return (
@@ -910,9 +700,7 @@ function Table({
           <tr>
             {columns.map((column) => (
               <th key={column}>
-                {column
-                  .replace(/([A-Z])/g, " $1")
-                  .replace(/^./, (s) => s.toUpperCase())}
+                {column.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase())}
               </th>
             ))}
           </tr>
@@ -920,33 +708,31 @@ function Table({
 
         <tbody>
           {rows.map((row, index) => (
-            <tr
-              key={
-                row._id ||
-                row.id ||
-                row.orderId ||
-                index
-              }
-            >
+            <tr key={row._id ?? row.id ?? row.orderId ?? index}>
               {columns.map((column) => (
-                <td
-                  key={column}
-                  title={
-                    typeof row[column] === "object"
-                      ? undefined
-                      : String(row[column] ?? "")
-                  }
-                >
-                  <Cell
-                    column={column}
-                    value={row[column]}
-                  />
+                <td key={column}>
+                  <Cell column={column} value={row[column]} />
                 </td>
               ))}
             </tr>
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function StatCard({ label, value, icon: Icon, hint }) {
+  return (
+    <div className="ag-report-stat">
+      <div className="ag-report-stat-top">
+        <span>{label}</span>
+        <span className="ag-report-stat-icon">
+          <Icon size={19} />
+        </span>
+      </div>
+      <strong>{value}</strong>
+      {hint && <small>{hint}</small>}
     </div>
   );
 }
@@ -958,241 +744,190 @@ function Table({
 export default function ReportSection() {
   const [active, setActive] = useState("overview");
   const [period, setPeriod] = useState("30");
-
   const [from, setFrom] = useState(
     dateInput(new Date(Date.now() - 29 * 86400000))
   );
-
   const [to, setTo] = useState(dateInput(new Date()));
 
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-
   const [payload, setPayload] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const [costMap, setCostMap] = useState({});
+  const [costMap, setCostMap] = useState(new Map());
   const [costLoading, setCostLoading] = useState(false);
   const [costError, setCostError] = useState("");
 
-  /* =======================================================
-     LOAD PRODUCT COSTS
-  ======================================================= */
+  const requestId = useRef(0);
 
   useEffect(() => {
-    if (active !== "profit") return;
-
-    let cancelled = false;
-
-    async function loadProductCosts() {
-      setCostLoading(true);
-      setCostError("");
-
-      try {
-        const response = await fetch(
-          new URL(
-            REPORT_ENDPOINTS.productCosts,
-            API_BASE
-          ).toString(),
-          {
-            method: "GET",
-            headers: {
-              Accept: "application/json",
-            },
-            credentials: "include",
-          }
-        );
-
-        const json = await response.json().catch(() => ({}));
-
-        if (!response.ok) {
-          throw new Error(
-            json?.message ||
-              `Product cost request failed (${response.status})`
-          );
-        }
-
-        if (json?.success === false) {
-          throw new Error(
-            json.message || "Could not load product costs."
-          );
-        }
-
-        const products = asArray(json, [
-          "products",
-          "items",
-          "rows",
-          "results",
-          "records",
-        ]);
-
-        const nextMap = buildCostMap(products);
-
-        if (cancelled) return;
-
-        setCostMap(nextMap);
-
-        if (!products.length) {
-          setCostError(
-            "Product cost API returned no products. Check the endpoint and response."
-          );
-        } else if (!Object.keys(nextMap).length) {
-          setCostError(
-            "Products were returned, but no valid product or variant cost fields were found."
-          );
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setCostMap({});
-          setCostError(
-            err?.message || "Could not load product costs."
-          );
-        }
-      } finally {
-        if (!cancelled) {
-          setCostLoading(false);
-        }
-      }
-    }
-
-    loadProductCosts();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [active, refreshKey]);
-
-  /* =======================================================
-     SEARCH DEBOUNCE
-  ======================================================= */
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(search.trim());
-    }, 400);
-
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 350);
     return () => clearTimeout(timer);
   }, [search]);
-
-  /* =======================================================
-     DATE PRESETS
-  ======================================================= */
 
   useEffect(() => {
     if (period === "custom") return;
 
+    const days = { "7": 6, "30": 29, "90": 89, "365": 364 }[period] ?? 29;
     const today = new Date();
 
-    const days = {
-      "7": 6,
-      "30": 29,
-      "90": 89,
-      "365": 364,
-    }[period] ?? 29;
-
-    setFrom(
-      dateInput(
-        new Date(today.getTime() - days * 86400000)
-      )
-    );
-
+    setFrom(dateInput(new Date(today.getTime() - days * 86400000)));
     setTo(dateInput(today));
   }, [period]);
 
-  /* =======================================================
-     LOAD REPORT
-  ======================================================= */
+  const loadCosts = useCallback(async (signal) => {
+    setCostLoading(true);
+    setCostError("");
+
+    try {
+      const json = await requestJSON(
+        new URL(REPORT_ENDPOINTS.productCosts, API_BASE).toString(),
+        signal
+      );
+
+      const products = asArray(json, [
+        "products",
+        "items",
+        "rows",
+        "results",
+        "records",
+      ]);
+
+      const map = buildCostMap(products);
+
+      if (signal.aborted) return;
+
+      setCostMap(map);
+
+      if (!products.length) {
+        setCostError("No products returned by product-costs-report.");
+      } else if (!map.size) {
+        setCostError("Products returned, but no valid cost fields were found.");
+      }
+    } catch (err) {
+      if (err.name !== "AbortError") {
+        setCostMap(new Map());
+        setCostError(err.message || "Could not load product costs.");
+      }
+    } finally {
+      if (!signal.aborted) setCostLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (active !== "profit") return;
+
+    const controller = new AbortController();
+    loadCosts(controller.signal);
+
+    return () => controller.abort();
+  }, [active, refreshKey, loadCosts]);
 
   const loadReport = useCallback(async () => {
+    const controller = new AbortController();
+    const currentRequest = ++requestId.current;
+
     setLoading(true);
     setError("");
 
     try {
       const endpoint = REPORT_ENDPOINTS[active];
 
-      if (!endpoint) {
-        throw new Error("Invalid report endpoint.");
-      }
+      if (!endpoint) throw new Error("Invalid report endpoint.");
 
       const url = new URL(endpoint, API_BASE);
 
-      if (from) url.searchParams.set("from", from);
-      if (to) url.searchParams.set("to", to);
+      // The overview endpoint explicitly requests all-time data.
+      // Other tabs use the selected date range.
+      if (active !== "overview") {
+        if (from) url.searchParams.set("from", from);
+        if (to) url.searchParams.set("to", to);
+      }
 
       if (debouncedSearch) {
         url.searchParams.set("search", debouncedSearch);
       }
 
-      // No Authorization header or localStorage token.
-      const response = await fetch(url.toString(), {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-        },
-        credentials: "include",
-      });
+      const json = await requestJSON(url.toString(), controller.signal);
 
-      const json = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(
-          json?.message ||
-            `Request failed (${response.status})`
-        );
-      }
-
-      if (json?.success === false) {
-        throw new Error(
-          json.message || "Could not load report."
-        );
-      }
+      if (currentRequest !== requestId.current) return;
 
       setPayload(json);
     } catch (err) {
-      setPayload(null);
-      setError(
-        err?.message || "Could not load report data."
-      );
+      if (err.name !== "AbortError" && currentRequest === requestId.current) {
+        setPayload(null);
+        setError(err.message || "Could not load report data.");
+      }
     } finally {
-      setLoading(false);
+      if (currentRequest === requestId.current) setLoading(false);
     }
-  }, [
-    active,
-    from,
-    to,
-    debouncedSearch,
-    refreshKey,
-  ]);
+
+    return () => controller.abort();
+  }, [active, from, to, debouncedSearch, refreshKey]);
 
   useEffect(() => {
-    loadReport();
-  }, [loadReport]);
+    const controller = new AbortController();
+    const currentRequest = ++requestId.current;
 
-  const data = unwrap(payload);
+    async function run() {
+      setLoading(true);
+      setError("");
 
-  const overviewSummary = Array.isArray(data?.summary)
-    ? Object.fromEntries(
-        data.summary.map((item) => [
-          item.key,
-          item.value,
-        ])
-      )
-    : data?.summary || data?.stats || {};
+      try {
+        const endpoint = REPORT_ENDPOINTS[active];
+        if (!endpoint) throw new Error("Invalid report endpoint.");
 
-  /* =======================================================
-     REPORT ROWS
-  ======================================================= */
+        const url = new URL(endpoint, API_BASE);
+
+        if (active !== "overview") {
+          if (from) url.searchParams.set("from", from);
+          if (to) url.searchParams.set("to", to);
+        }
+
+        if (debouncedSearch) url.searchParams.set("search", debouncedSearch);
+
+        const json = await requestJSON(url.toString(), controller.signal);
+
+        if (currentRequest === requestId.current) setPayload(json);
+      } catch (err) {
+        if (
+          err.name !== "AbortError" &&
+          currentRequest === requestId.current
+        ) {
+          setPayload(null);
+          setError(err.message || "Could not load report.");
+        }
+      } finally {
+        if (currentRequest === requestId.current) setLoading(false);
+      }
+    }
+
+    run();
+
+    return () => controller.abort();
+  }, [active, from, to, debouncedSearch, refreshKey]);
+
+  const data = useMemo(() => {
+    try {
+      return unwrap(payload);
+    } catch {
+      return {};
+    }
+  }, [payload]);
 
   const rows = useMemo(() => {
+    if (!payload) return [];
+
     if (active === "overview") {
       return asArray(payload, [
-        "topProducts",
+        "recentOrders",
         "activity",
+        "topProducts",
         "orders",
         "rows",
-        "recentOrders",
+        "items",
       ]);
     }
 
@@ -1212,344 +947,143 @@ export default function ReportSection() {
       : list;
   }, [payload, active, from, to]);
 
-  /* =======================================================
-     STAT CARDS
-  ======================================================= */
-
-  const cards = useMemo(() => {
-    const get = (...paths) =>
-      pick(
-        data,
-        paths,
-        pick(
-          overviewSummary,
-          paths.map((path) => path.split(".").at(-1)),
-          0
-        )
+  const summary = useMemo(() => {
+    if (Array.isArray(data?.summary)) {
+      return Object.fromEntries(
+        data.summary.map((item) => [item.key, item.value])
       );
-
-    if (active === "overview") {
-      return [
-        {
-          label: "Total Orders",
-          value: number(
-            get("totalOrders", "orders", "counts.orders")
-          ),
-          icon: ShoppingCart,
-        },
-        {
-          label: "Total Sales",
-          value: money(
-            get(
-              "totalSales",
-              "sales",
-              "revenue",
-              "counts.sales"
-            )
-          ),
-          icon: Banknote,
-        },
-        {
-          label: "Total Products",
-          value: number(
-            get("totalProducts", "items", "products")
-          ),
-          icon: Package,
-        },
-        {
-          label: "Total Customers",
-          value: number(
-            get("totalCustomers", "customers")
-          ),
-          icon: Users,
-        },
-      ];
     }
 
+    return data?.summary ?? data?.stats ?? {};
+  }, [data]);
+
+  const cards = useMemo(() => {
     const derived = ORDER_TABS.includes(active)
       ? deriveFromOrders(rows, costMap)
       : null;
 
-    const source = derived || data;
+    const source = derived ?? data;
+
+    const stat = (paths) => pick(source, paths, pick(summary, paths, 0));
 
     const definitions = {
+      overview: [
+        ["Total Orders", ["totalOrders", "orders", "counts.orders"], false, ShoppingCart],
+        ["Total Sales", ["totalSales", "sales", "revenue"], true, Banknote],
+        ["Total Products", ["totalProducts", "products"], false, Package],
+        ["Total Customers", ["totalCustomers", "customers"], false, Users],
+      ],
       sales: [
-        [
-          "Total Revenue",
-          ["totalRevenue", "totalSales", "sales", "revenue"],
-          true,
-          Banknote,
-        ],
-        [
-          "Orders",
-          ["salesOrders", "totalOrders", "orders", "count"],
-          false,
-          ShoppingCart,
-        ],
-        [
-          "Average Order",
-          ["averageOrderValue", "averageOrder"],
-          true,
-          Wallet,
-        ],
+        ["Total Revenue", ["totalRevenue", "totalSales", "sales", "revenue"], true, Banknote],
+        ["Orders", ["salesOrders", "totalOrders", "orders", "count"], false, ShoppingCart],
+        ["Average Order", ["averageOrderValue", "averageOrder"], true, Wallet],
       ],
-
       orders: [
-        [
-          "Total Orders",
-          ["totalOrders", "total", "count"],
-          false,
-          ShoppingCart,
-        ],
-        [
-          "Delivered",
-          ["delivered", "deliveredOrders"],
-          false,
-          CheckCircle2,
-        ],
-        [
-          "Cancelled",
-          ["cancelled", "cancelledOrders"],
-          false,
-          XCircle,
-        ],
+        ["Total Orders", ["totalOrders", "total", "count"], false, ShoppingCart],
+        ["Delivered", ["delivered", "deliveredOrders"], false, CheckCircle2],
+        ["Cancelled", ["cancelled", "cancelledOrders"], false, XCircle],
       ],
-
       profit: [
-        [
-          "Revenue",
-          ["revenue", "totalRevenue", "sales"],
-          true,
-          Banknote,
-        ],
-        [
-          "Total Cost",
-          ["totalCost", "cost"],
-          true,
-          CreditCard,
-        ],
-        [
-          "Net Profit",
-          ["netProfit", "profit"],
-          true,
-          TrendingUp,
-        ],
+        ["Revenue", ["revenue", "totalRevenue", "sales"], true, Banknote],
+        ["Total Cost", ["totalCost", "cost"], true, CreditCard],
+        ["Net Profit", ["netProfit", "profit"], true, TrendingUp],
       ],
-
       products: [
-        [
-          "Products",
-          ["totalProducts", "total", "count"],
-          false,
-          Package,
-        ],
-        [
-          "Low Stock",
-          ["lowStock", "lowStockCount"],
-          false,
-          AlertCircle,
-        ],
-        [
-          "Out of Stock",
-          ["outOfStock", "outOfStockCount"],
-          false,
-          XCircle,
-        ],
+        ["Products", ["totalProducts", "total", "count"], false, Package],
+        ["Low Stock", ["lowStock", "lowStockCount"], false, AlertCircle],
+        ["Out of Stock", ["outOfStock", "outOfStockCount"], false, XCircle],
       ],
-
       customers: [
-        [
-          "Customers",
-          ["totalCustomers", "total", "count"],
-          false,
-          Users,
-        ],
-        [
-          "New Customers",
-          ["newCustomers", "new"],
-          false,
-          UserRoundCheck,
-        ],
-        [
-          "Repeat Customers",
-          ["repeatCustomers", "repeat"],
-          false,
-          Users,
-        ],
+        ["Customers", ["totalCustomers", "total", "count"], false, Users],
+        ["New Customers", ["newCustomers", "new"], false, UserRoundCheck],
+        ["Repeat Customers", ["repeatCustomers", "repeat"], false, Users],
       ],
-
       employees: [
-        [
-          "Employees",
-          ["totalEmployees", "total", "count"],
-          false,
-          UserRoundCheck,
-        ],
-        [
-          "Completed Orders",
-          ["completedOrders", "delivered"],
-          false,
-          CheckCircle2,
-        ],
-        [
-          "Pending Orders",
-          ["pendingOrders", "pending"],
-          false,
-          ShoppingCart,
-        ],
+        ["Employees", ["totalEmployees", "total", "count"], false, UserRoundCheck],
+        ["Completed Orders", ["completedOrders", "delivered"], false, CheckCircle2],
+        ["Pending Orders", ["pendingOrders", "pending"], false, ShoppingCart],
       ],
-
       payments: [
-        [
-          "Collected",
-          ["collected", "totalPaid", "paidAmount"],
-          true,
-          Banknote,
-        ],
-        [
-          "Due",
-          ["due", "totalDue", "unpaidAmount"],
-          true,
-          Wallet,
-        ],
-        [
-          "Refunded",
-          ["refunded", "refundAmount"],
-          true,
-          CreditCard,
-        ],
+        ["Collected", ["collected", "totalPaid", "paidAmount"], true, Banknote],
+        ["Due", ["due", "totalDue", "unpaidAmount"], true, Wallet],
+        ["Refunded", ["refunded", "refundAmount"], true, CreditCard],
       ],
-
       courier: [
-        [
-          "Shipped",
-          ["shipped", "shippedOrders"],
-          false,
-          Truck,
-        ],
-        [
-          "Delivered",
-          ["delivered", "deliveredOrders"],
-          false,
-          CheckCircle2,
-        ],
-        [
-          "Returned / RTO",
-          ["returned", "rto", "returnedOrders"],
-          false,
-          XCircle,
-        ],
+        ["Shipped", ["shipped", "shippedOrders"], false, Truck],
+        ["Delivered", ["delivered", "deliveredOrders"], false, CheckCircle2],
+        ["Returned / RTO", ["returned", "rto", "returnedOrders"], false, XCircle],
       ],
     };
 
-    return (definitions[active] || []).map(
-      ([label, paths, isMoney, icon]) => {
-        let hint;
+    return (definitions[active] ?? []).map(([label, paths, isMoney, icon]) => {
+      let value = stat(paths);
+      let hint = "";
 
-        if (active === "profit" && derived) {
-          if (label === "Revenue") {
-            hint = "Delivered orders only";
-          }
+      if (active === "profit" && derived) {
+        if (label === "Revenue") hint = "Delivered orders only";
 
-          if (label === "Total Cost") {
-            if (costLoading) {
-              hint = "Loading product costs…";
-            } else if (costError) {
-              hint = costError;
-            } else if (derived.unmatchedItems > 0) {
-              hint = `${derived.unmatchedItems} order item(s) unmatched · ${
-                Object.keys(costMap).length
-              } cost keys loaded`;
-            } else if (
-              !derived.costFound &&
-              derived.delivered > 0
-            ) {
-              hint =
-                "No delivered order item costs matched · " +
-                `${Object.keys(costMap).length} cost keys loaded`;
-            } else if (derived.delivered === 0) {
-              hint = "No delivered orders in the selected report";
-            } else {
-              hint =
-                "Calculated using product costPrice × quantity";
-            }
-          }
-
-          if (
-            label === "Net Profit" &&
-            (derived.unmatchedItems > 0 ||
-              (derived.delivered > 0 && !derived.costFound))
-          ) {
-            hint =
-              "May be inaccurate because some product costs are missing";
+        if (label === "Total Cost") {
+          if (costLoading) hint = "Loading product costs…";
+          else if (costError) hint = costError;
+          else if (derived.unmatchedItems) {
+            hint = `${derived.unmatchedItems} item(s) missing cost match`;
+          } else if (derived.delivered && !derived.costFound) {
+            hint = "Cost data incomplete; verify backend order items";
+          } else if (!derived.delivered) {
+            hint = "No delivered orders in this report";
+          } else {
+            hint = "Product cost × quantity";
           }
         }
 
-        return {
-          label,
-          value: isMoney
-            ? money(pick(source, paths, 0))
-            : number(pick(source, paths, 0)),
-          icon,
-          hint,
-        };
-      }
-    );
-  }, [
-    data,
-    overviewSummary,
-    active,
-    rows,
-    costMap,
-    costLoading,
-    costError,
-  ]);
+        if (label === "Net Profit" && derived.delivered && !derived.costFound) {
+          hint = "Estimated only; cost data is incomplete";
+        }
 
-  /* =======================================================
-     EXPORT DATA
-  ======================================================= */
+        // Do not display a misleading profit figure when cost is incomplete.
+        if (label === "Net Profit" && derived.delivered && !derived.costFound) {
+          value = null;
+        }
+      }
+
+      return {
+        label,
+        value: value === null
+          ? "Unavailable"
+          : isMoney
+            ? money(value)
+            : number(value),
+        icon,
+        hint,
+      };
+    });
+  }, [active, rows, costMap, costLoading, costError, data, summary]);
+
+  const activeLabel = REPORTS.find((item) => item.id === active)?.label ?? "Report";
 
   const exportRows = rows.length
     ? rows
-    : data && typeof data === "object"
+    : data && typeof data === "object" && !Array.isArray(data)
       ? [data]
       : [];
 
-  const activeLabel =
-    REPORTS.find((report) => report.id === active)?.label ||
-    "Report";
-
-  /* =======================================================
-     RENDER
-  ======================================================= */
+  const refresh = () => setRefreshKey((value) => value + 1);
 
   return (
     <main className="ag-report-page">
       <header className="ag-report-header">
         <div>
-          <div className="ag-report-eyebrow">
-            APPLE GADGETS · ANALYTICS
-          </div>
-
+          <div className="ag-report-eyebrow">APPLE GADGETS · ANALYTICS</div>
           <h1>Reports &amp; Analytics</h1>
-
-          <p>
-            Track sales, orders, products, customers and
-            business performance.
-          </p>
+          <p>Track sales, orders, products, customers and business performance.</p>
         </div>
 
         <button
           className="ag-report-button ag-report-button-dark"
-          onClick={() => setRefreshKey((value) => value + 1)}
+          onClick={refresh}
           disabled={loading || costLoading}
         >
-          <RefreshCw
-            size={16}
-            className={
-              loading || costLoading ? "ag-spin" : ""
-            }
-          />
+          <RefreshCw size={16} className={loading || costLoading ? "ag-spin" : ""} />
           Refresh
         </button>
       </header>
@@ -1566,9 +1100,7 @@ export default function ReportSection() {
             <button
               key={item.value}
               type="button"
-              className={`ag-report-period-btn ${
-                period === item.value ? "is-active" : ""
-              }`}
+              className={`ag-report-period-btn ${period === item.value ? "is-active" : ""}`}
               onClick={() => setPeriod(item.value)}
             >
               {item.label}
@@ -1577,10 +1109,7 @@ export default function ReportSection() {
         </div>
 
         <label className="ag-report-field">
-          <span>
-            <CalendarDays size={15} /> From
-          </span>
-
+          <span><CalendarDays size={15} /> From</span>
           <input
             type="date"
             value={from}
@@ -1593,10 +1122,7 @@ export default function ReportSection() {
         </label>
 
         <label className="ag-report-field">
-          <span>
-            <CalendarDays size={15} /> To
-          </span>
-
+          <span><CalendarDays size={15} /> To</span>
           <input
             type="date"
             value={to}
@@ -1610,10 +1136,7 @@ export default function ReportSection() {
         </label>
 
         <label className="ag-report-field ag-report-search">
-          <span>
-            <Search size={15} /> Search
-          </span>
-
+          <span><Search size={15} /> Search</span>
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
@@ -1621,25 +1144,14 @@ export default function ReportSection() {
           />
         </label>
 
-        <button
-          className="ag-report-button"
-          onClick={() => setRefreshKey((value) => value + 1)}
-          disabled={loading}
-        >
+        <button className="ag-report-button" onClick={refresh} disabled={loading}>
           <Filter size={16} /> Apply filters
         </button>
 
         <button
           className="ag-report-button"
-          onClick={() =>
-            downloadCSV(
-              `apple-gadgets-${active}-${dateInput(
-                new Date()
-              )}.csv`,
-              exportRows
-            )
-          }
-          disabled={!payload || loading}
+          onClick={() => downloadCSV(`apple-gadgets-${active}-${dateInput(new Date())}.csv`, exportRows)}
+          disabled={!payload || loading || !exportRows.length}
         >
           <Download size={16} /> Export CSV
         </button>
@@ -1650,9 +1162,7 @@ export default function ReportSection() {
           <button
             key={id}
             onClick={() => setActive(id)}
-            className={`ag-report-tab ${
-              active === id ? "is-active" : ""
-            }`}
+            className={`ag-report-tab ${active === id ? "is-active" : ""}`}
           >
             <Icon size={16} /> {label}
           </button>
@@ -1662,50 +1172,31 @@ export default function ReportSection() {
       {error && (
         <div className="ag-report-error">
           <AlertCircle size={18} />
-
           <div>
-            <strong>
-              Could not load {activeLabel.toLowerCase()}
-            </strong>
-
+            <strong>Could not load {activeLabel.toLowerCase()}</strong>
             <p>{error}</p>
-
             <small>
-              Check the backend route, CORS configuration,
-              and whether the endpoint allows requests
-              without an Authorization header.
+              Verify the backend route, response format, CORS and authentication.
             </small>
           </div>
         </div>
       )}
 
       <section className="ag-report-stats">
-        {cards.map((card) => (
-          <StatCard key={card.label} {...card} />
-        ))}
+        {cards.map((card) => <StatCard key={card.label} {...card} />)}
       </section>
 
       <section className="ag-report-panel">
         <div className="ag-report-panel-heading">
           <div>
-            <h2>
-              {active === "overview"
-                ? "Recent Activity & Top Products"
-                : `${activeLabel} Details`}
-            </h2>
-
+            <h2>{active === "overview" ? "Recent Activity & Top Products" : `${activeLabel} Details`}</h2>
             <p>Filtered report data from your backend</p>
           </div>
 
           <button
             className="ag-report-button ag-report-button-small"
-            onClick={() =>
-              downloadCSV(
-                `apple-gadgets-${active}.csv`,
-                exportRows
-              )
-            }
-            disabled={!payload || loading}
+            onClick={() => downloadCSV(`apple-gadgets-${active}.csv`, exportRows)}
+            disabled={!payload || loading || !exportRows.length}
           >
             <FileSpreadsheet size={16} /> Export
           </button>
@@ -1723,9 +1214,8 @@ export default function ReportSection() {
       </section>
 
       <p className="ag-report-footnote">
-        Reports are calculated from the connected backend.
-        Revenue and profit depend on the returned orders and
-        available product cost prices.
+        Reports use the data returned by your backend. Profit is only reliable
+        when delivered order totals and product purchase costs are available.
       </p>
     </main>
   );
