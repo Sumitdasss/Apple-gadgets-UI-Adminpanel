@@ -32,6 +32,7 @@ import LandingPages from "../pages/LandingPages.jsx";
 import CreateLandingPage from "../pages/CreateLandingPage.jsx";
 import EditLandingPage from "../pages/EditLandingPage.jsx";
 import EmployeeSummaryPage from "./Employeeresult.jsx";
+import ReportSection from "./ReportSection.jsx";
 
 
 const API = (
@@ -952,7 +953,8 @@ const [selectedLandingPageId, setSelectedLandingPageId] = useState("");
     </>
   ) : activeTab === "Users" ? (
     <CustomerManagementPage />
-  ):activeTab==="EmployeeSummaryPage"?(<EmployeeSummaryPage/>) : activeTab === "Create Page" ? (
+  ):activeTab==="Reports" ?(<ReportSection/>)
+  :activeTab==="EmployeeSummaryPage"?(<EmployeeSummaryPage/>) : activeTab === "Create Page" ? (
     <>
       {productSubTab === "show" && (
         <LandingPages
