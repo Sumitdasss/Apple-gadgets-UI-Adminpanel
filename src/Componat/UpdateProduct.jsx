@@ -26,6 +26,7 @@ const initialFormData = {
   subChildCategory: "",
   brand: "",
   price: "",
+  costPrice:"",
   discountPrice: "",
   discountPercentage: "",
   additionalCategories: [],
@@ -302,6 +303,7 @@ export default function UpdateProductPage({ productId: propProductId }) {
             product.subChildCategory?._id || product.subChildCategory || "",
           brand: product.brand || "",
           price: product.price || "",
+          costPrice:product.costPrice||"",
           discountPrice: product.discountPrice || "",
           discountPercentage: product.discountPercentage || "",
           additionalCategories: (product.additionalCategories || []).map((c) =>
@@ -778,6 +780,7 @@ data.append(
       data.append("subChildCategory", formData.subChildCategory);
       data.append("brand", formData.brand);
       data.append("price", formData.price);
+      data.append("costPrice", formData.costPrice);
       data.append("discountPrice", formData.discountPrice || "");
       data.append("discountPercentage", formData.discountPercentage || "");
       data.append("stock", formData.stock);
@@ -1413,6 +1416,16 @@ data.append(
                 name="discountPrice"
                 type="number"
                 value={formData.discountPrice}
+                onChange={handleChange}
+                placeholder="900"
+                min="0"
+                step="0.01"
+              />
+              <Input
+                label="costPrice"
+                name="costPrice"
+                type="number"
+                value={formData.costPrice}
                 onChange={handleChange}
                 placeholder="900"
                 min="0"

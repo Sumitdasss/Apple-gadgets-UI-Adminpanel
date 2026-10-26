@@ -26,6 +26,7 @@ const initialFormData = {
   childCategory: "",
   subChildCategory: "",
   brand: "",
+  costPrice:"",
   price: "",
   discountPrice: "",
   discountPercentage: "",
@@ -580,6 +581,7 @@ export default function AddProductPage() {
       data.append("subChildCategory", formData.subChildCategory);
       data.append("brand", formData.brand);
       data.append("price", formData.price);
+      data.append("costPrice", formData.costPrice);
       data.append("discountPrice", formData.discountPrice || "");
       data.append("discountPercentage", formData.discountPercentage || "");
       data.append("stock", formData.stock);
@@ -1348,6 +1350,16 @@ export default function AddProductPage() {
                 name="discountPrice"
                 type="number"
                 value={formData.discountPrice}
+                onChange={handleChange}
+                placeholder="900"
+                min="0"
+                step="0.01"
+              />
+              <Input
+                label="CostPrice"
+                name="costPrice"
+                type="number"
+                value={formData.costPrice}
                 onChange={handleChange}
                 placeholder="900"
                 min="0"
