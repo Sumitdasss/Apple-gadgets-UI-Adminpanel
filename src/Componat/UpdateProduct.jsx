@@ -81,6 +81,7 @@ export default function UpdateProductPage({ productId: propProductId }) {
   const [variantStorage, setVariantStorage] = useState("");
   const [variantStock, setVariantStock] = useState("");
   const [variantPrice, setVariantPrice] = useState("");
+  const [variantCostPrice, setVariantCostPrice] = useState("");
   const [variantSku, setVariantSku] = useState("");
 
   const [categories, setCategories] = useState([]);
@@ -649,6 +650,10 @@ export default function UpdateProductPage({ productId: propProductId }) {
       showReviewToast("Enter valid price", 8000, "error");
       return;
     }
+    if (variantCostPrice !== "" && Number(variantCostPrice) < 0) {
+      showReviewToast("Enter valid cost price", 8000, "error");
+      return;
+    }
     if (!variantSku.trim()) {
       showReviewToast("Enter SKU", 8000, "error");
       return;
@@ -683,6 +688,7 @@ export default function UpdateProductPage({ productId: propProductId }) {
           ram: variantRam.trim(),
           storage: variantStorage.trim(),
           stock: Number(variantStock),
+          costPrice: variantCostPrice === "" ? 0 : Number(variantCostPrice),
           price: Number(variantPrice),
           sku: variantSku.trim(),
         },
@@ -694,6 +700,7 @@ export default function UpdateProductPage({ productId: propProductId }) {
     setVariantStorage("");
     setVariantStock("");
     setVariantPrice("");
+    setVariantCostPrice("");
     setVariantSku("");
   };
 
@@ -1928,7 +1935,7 @@ data.append(
               </h2>
               <p className="mt-1 text-sm text-slate-500">
                 Combine a color, RAM and storage to create a purchasable variant
-                with its own stock, price and SKU.
+                with its own stock, cost price, price and SKU.
               </p>
             </div>
 
@@ -1939,7 +1946,7 @@ data.append(
             )}
 
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-              <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
+              <div className="grid gap-4 md:grid-cols-4 lg:grid-cols-7">
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700">
                     Color
@@ -2005,6 +2012,21 @@ data.append(
 
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700">
+                    Cost Price
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={variantCostPrice}
+                    onChange={(e) => setVariantCostPrice(e.target.value)}
+                    placeholder="48000"
+                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
                     Price
                   </label>
                   <input
@@ -2058,13 +2080,14 @@ data.append(
                   </span>
                 </div>
                 <div className="overflow-x-auto rounded-2xl border border-slate-200">
-                  <table className="w-full min-w-[720px] text-left text-sm">
+                  <table className="w-full min-w-[820px] text-left text-sm">
                     <thead className="bg-slate-50 text-slate-600">
                       <tr>
                         <th className="px-4 py-3 font-medium">Color</th>
                         <th className="px-4 py-3 font-medium">RAM</th>
                         <th className="px-4 py-3 font-medium">Storage</th>
                         <th className="px-4 py-3 font-medium">Stock</th>
+                        <th className="px-4 py-3 font-medium">Cost Price</th>
                         <th className="px-4 py-3 font-medium">Price</th>
                         <th className="px-4 py-3 font-medium">SKU</th>
                         <th className="px-4 py-3 font-medium" />
@@ -2095,6 +2118,7 @@ data.append(
                               variant.stock
                             )}
                           </td>
+                          <td className="px-4 py-3">{variant.costPrice ?? 0}</td>
                           <td className="px-4 py-3">{variant.price}</td>
                           <td className="px-4 py-3">{variant.sku}</td>
                           <td className="px-4 py-3 text-right">
