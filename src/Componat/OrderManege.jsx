@@ -34,6 +34,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import ShipmentRoute from "./ShipmentRoute";
 import "./invoice-print.css";
 
 /* ------------------------------------------------------------------ */
@@ -50,6 +51,8 @@ const SINGLE_ORDER_API = `${API_BASE}/api/dashboard/orders`;
 const ASSIGN_API = `${API_BASE}/api/dashboard/assignOrder`;
 const REASSIGN_API = `${API_BASE}/api/dashboard/reassignOrder`;
 const EMPLOYEES_API = `${API_BASE}/api/dashboard/getEmployees`;
+const COURIER_RIDER_API = (orderId) =>
+  `${API_BASE}/api/dashboard/orders/${orderId}/courier-rider`;
 
 const PAGE_SIZE = 20;
 
@@ -193,7 +196,7 @@ const getStatusStyle = (status) => {
   };
 };
 
-/* ---- Employee resolution (the fix) -------------------------------- */
+/* ---- Employee resolution ------------------------------------------- */
 
 const getEmployeeId = (value) => {
   if (!value) return "";
@@ -370,8 +373,8 @@ const StatCard = ({ label, value, tone = "slate" }) => {
   );
 };
 
-const AssigneeCell = ({ assigned, deliveryStatus }) => {
-  if (!assigned) {
+const AssigneeCell = ({ assigned, rider, deliveryStatus }) => {
+  if (!assigned && !rider) {
     return (
       <span className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-400">
         <UserRound size={12} />
@@ -379,24 +382,36 @@ const AssigneeCell = ({ assigned, deliveryStatus }) => {
       </span>
     );
   }
-  const name = getEmployeeName(assigned);
+  const isCustom = !assigned;
+  const name = isCustom ? rider.riderName || "Rider" : getEmployeeName(assigned);
+  const contact = isCustom
+    ? rider.riderPhone || rider.riderEmail
+    : assigned.phone || assigned.email;
   return (
     <div className="flex items-start gap-2.5">
       <Avatar name={name} />
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold text-slate-800">{name}</p>
-        {(assigned.phone || assigned.email) && (
-          <p className="truncate text-xs text-slate-500">
-            {assigned.phone || assigned.email}
+        {contact && <p className="truncate text-xs text-slate-500">{contact}</p>}
+        <div className="mt-1 flex flex-wrap items-center gap-1">
+          <span
+            className={`inline-block rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getDeliveryStatusClass(
+              deliveryStatus
+            )}`}
+          >
+            {formatStatus(deliveryStatus)}
+          </span>
+          {isCustom && (
+            <span className="inline-block rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
+              Custom
+            </span>
+          )}
+        </div>
+        {!isCustom && rider?.riderName && (
+          <p className="mt-1 truncate text-[11px] font-medium text-blue-600">
+            + {rider.riderName}
           </p>
         )}
-        <span
-          className={`mt-1 inline-block rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getDeliveryStatusClass(
-            deliveryStatus
-          )}`}
-        >
-          {formatStatus(deliveryStatus)}
-        </span>
       </div>
     </div>
   );
@@ -439,7 +454,12 @@ const OrderRow = memo(function OrderRow({
 }) {
   const id = getOrderId(order);
   const products = Array.isArray(order.products) ? order.products : [];
-  const delStatus = order.deliveryStatus || (assigned ? "assigned" : "unassigned");
+  const rider =
+    order.courierDetails?.riderName || order.courierDetails?.riderPhone
+      ? order.courierDetails
+      : null;
+  const delStatus =
+    order.deliveryStatus || (assigned || rider ? "assigned" : "unassigned");
   const date = formatShortDate(order.createdAt);
   const customerName = order.customerName || order.customer?.name || "—";
 
@@ -559,7 +579,7 @@ const OrderRow = memo(function OrderRow({
       </td>
 
       <td className="p-3.5">
-        <AssigneeCell assigned={assigned} deliveryStatus={delStatus} />
+        <AssigneeCell assigned={assigned} rider={rider} deliveryStatus={delStatus} />
       </td>
 
       <td className="p-3.5">
@@ -610,7 +630,7 @@ const OrderRow = memo(function OrderRow({
           <ActionBtn icon={Eye} label="Details" tone="slate" onClick={() => onDetails(order)} />
           <ActionBtn
             icon={UserPlus}
-            label={assigned ? "Reassign" : "Assign"}
+            label={assigned || rider ? "Reassign" : "Assign"}
             tone="emerald"
             onClick={() => onAssign([id])}
           />
@@ -782,6 +802,16 @@ export default function OrderManege() {
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [assignTargetIds, setAssignTargetIds] = useState([]);
 
+  const [riderForm, setRiderForm] = useState({
+    name: "",
+    phone: "",
+    email: "",
+    address: "",
+    provider: "",
+    trackingCode: "",
+  });
+  const [assignMode, setAssignMode] = useState("employee"); // "employee" | "custom"
+
   const [searchInput, setSearchInput] = useState("");
   const [courierInput, setCourierInput] = useState("");
   const search = useDebounced(searchInput.trim());
@@ -871,15 +901,35 @@ export default function OrderManege() {
     () => new Map(orders.map((o) => [getOrderId(o), o])),
     [orders]
   );
+  const ordersByIdRef = useRef(ordersById);
+  ordersByIdRef.current = ordersById;
   const visibleIds = useMemo(() => orders.map(getOrderId).filter(Boolean), [orders]);
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const allVisibleSelected =
     visibleIds.length > 0 && visibleIds.every((id) => selectedSet.has(id));
 
+  // Orders shown inside the Assign modal (products + pickup -> delivery)
+  const assignTargetOrders = useMemo(
+    () =>
+      assignTargetIds
+        .map(
+          (id) =>
+            ordersById.get(id) ||
+            (detailsOrder && getOrderId(detailsOrder) === id ? detailsOrder : null)
+        )
+        .filter(Boolean),
+    [assignTargetIds, ordersById, detailsOrder]
+  );
+
   const pageStats = useMemo(() => {
     let assigned = 0;
     orders.forEach((o) => {
-      if (resolveAssignedEmployee(o, employeeMap)) assigned += 1;
+      if (
+        resolveAssignedEmployee(o, employeeMap) ||
+        o.courierDetails?.riderName ||
+        o.courierDetails?.riderPhone
+      )
+        assigned += 1;
     });
     return { assigned, unassigned: orders.length - assigned };
   }, [orders, employeeMap]);
@@ -965,9 +1015,116 @@ export default function OrderManege() {
     setAssignTargetIds(orderIds);
     setAssignEmployeeId("");
     setAssignNote("");
+    setAssignMode("employee");
+    // prefill custom form when a single order already has a delivery person
+    const single =
+      orderIds.length === 1 ? ordersByIdRef.current.get(orderIds[0]) : null;
+    const c = single?.courierDetails || {};
+    setRiderForm({
+      name: c.riderName || "",
+      phone: c.riderPhone || "",
+      email: c.riderEmail || "",
+      address: c.riderAddress || "",
+      provider: c.provider || "",
+      trackingCode: c.trackingCode || "",
+    });
     setShowAssignModal(true);
     setError("");
   }, []);
+
+  const handleAssignCustom = async () => {
+    const name = riderForm.name.trim();
+    const phone = riderForm.phone.trim();
+    if (!name || !phone) {
+      setError("Delivery person-এর Name এবং Phone আবশ্যক।");
+      return;
+    }
+    if (!assignTargetIds.length) return;
+
+    setBusy(true);
+    setError("");
+    setNotice("");
+
+    const payload = JSON.stringify({
+      riderName: name,
+      riderPhone: phone,
+      riderEmail: riderForm.email.trim(),
+      riderAddress: riderForm.address.trim(),
+      provider: riderForm.provider.trim(),
+      trackingCode: riderForm.trackingCode.trim(),
+    });
+
+    const results = await Promise.allSettled(
+      assignTargetIds.map((orderId) =>
+        apiRequest(COURIER_RIDER_API(encodeURIComponent(orderId)), {
+          method: "PATCH",
+          body: payload,
+        })
+      )
+    );
+
+    const successCount = results.filter((r) => r.status === "fulfilled").length;
+    const failed = results.find((r) => r.status === "rejected");
+    const lastError = failed?.reason?.message || "";
+
+    if (successCount > 0) {
+      setNotice(
+        `${successCount} টি অর্ডারে custom delivery person সেভ হয়েছে।${
+          lastError ? ` কিছু অর্ডারে সমস্যা: ${lastError}` : ""
+        }`
+      );
+      setShowAssignModal(false);
+      setSelectedIds([]);
+      const targets = assignTargetIds;
+      setAssignTargetIds([]);
+      await loadOrders();
+      if (detailsOrder && targets.includes(getOrderId(detailsOrder))) {
+        fetchDetails(getOrderId(detailsOrder));
+      }
+    } else {
+      setError(lastError || "Delivery person সেভ করা যায়নি।");
+    }
+    setBusy(false);
+  };
+
+  const removeCourierRider = useCallback(
+    async (orderId) => {
+      if (!orderId) return;
+      if (!window.confirm("এই custom delivery person-কে remove করতে চাও?")) return;
+
+      setBusy(true);
+      setError("");
+      setNotice("");
+      try {
+        await apiRequest(COURIER_RIDER_API(encodeURIComponent(orderId)), {
+          method: "DELETE",
+        });
+        const clearRider = (o) => ({
+          ...o,
+          courierDetails: {
+            ...(o.courierDetails || {}),
+            riderName: "",
+            riderPhone: "",
+            riderEmail: "",
+            riderAddress: "",
+          },
+        });
+        setOrders((prev) =>
+          prev.map((o) => (getOrderId(o) === orderId ? clearRider(o) : o))
+        );
+        setDetailsOrder((prev) =>
+          prev && getOrderId(prev) === orderId ? clearRider(prev) : prev
+        );
+        setNotice("Custom delivery person remove করা হয়েছে।");
+        await loadOrders();
+      } catch (err) {
+        setError(err.message || "Delivery person remove করা যায়নি।");
+      } finally {
+        setBusy(false);
+      }
+    },
+    [loadOrders]
+  );
 
   const handleAssign = async () => {
     if (!assignEmployeeId) {
@@ -1045,33 +1202,30 @@ export default function OrderManege() {
 
   /* ---- Updates ---- */
 
-  const updateSingleOrder = useCallback(
-    async (id, newStatus) => {
-      if (!id || !newStatus) return;
-      setBusy(true);
-      setError("");
-      setNotice("");
-      try {
-        await apiRequest(`${SINGLE_ORDER_API}/${encodeURIComponent(id)}`, {
-          method: "PUT",
-          body: JSON.stringify({ status: newStatus }),
-        });
-        setNotice("অর্ডারের স্ট্যাটাস আপডেট হয়েছে।");
-        // optimistic local update instead of re-fetching the whole page
-        setOrders((prev) =>
-          prev.map((o) => (getOrderId(o) === id ? { ...o, status: newStatus } : o))
-        );
-        setDetailsOrder((prev) =>
-          prev && getOrderId(prev) === id ? { ...prev, status: newStatus } : prev
-        );
-      } catch (err) {
-        setError(err.message || "স্ট্যাটাস আপডেট করা যায়নি।");
-      } finally {
-        setBusy(false);
-      }
-    },
-    []
-  );
+  const updateSingleOrder = useCallback(async (id, newStatus) => {
+    if (!id || !newStatus) return;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      await apiRequest(`${SINGLE_ORDER_API}/${encodeURIComponent(id)}`, {
+        method: "PUT",
+        body: JSON.stringify({ status: newStatus }),
+      });
+      setNotice("অর্ডারের স্ট্যাটাস আপডেট হয়েছে।");
+      // optimistic local update instead of re-fetching the whole page
+      setOrders((prev) =>
+        prev.map((o) => (getOrderId(o) === id ? { ...o, status: newStatus } : o))
+      );
+      setDetailsOrder((prev) =>
+        prev && getOrderId(prev) === id ? { ...prev, status: newStatus } : prev
+      );
+    } catch (err) {
+      setError(err.message || "স্ট্যাটাস আপডেট করা যায়নি।");
+    } finally {
+      setBusy(false);
+    }
+  }, []);
 
   const bulkUpdate = async (field, value) => {
     if (!selectedIds.length) {
@@ -1187,6 +1341,10 @@ export default function OrderManege() {
     : null;
   const dDeliveryStatus =
     d?.deliveryStatus || (dAssignedEmployee ? "assigned" : "unassigned");
+
+  const dHasRider = Boolean(
+    d?.courierDetails?.riderName || d?.courierDetails?.riderPhone
+  );
 
   const hasPrev = detailsIndex > 0;
   const hasNext = detailsIndex >= 0 && detailsIndex < orders.length - 1;
@@ -1541,8 +1699,8 @@ export default function OrderManege() {
             className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
             onClick={() => !busy && setShowAssignModal(false)}
           />
-          <div className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-200/60">
-            <div className="border-b border-slate-100 bg-gradient-to-r from-emerald-50 to-white px-6 py-5">
+          <div className="relative z-10 flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-200/60">
+            <div className="shrink-0 border-b border-slate-100 bg-gradient-to-r from-emerald-50 to-white px-6 py-5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100 shadow-sm">
@@ -1566,48 +1724,151 @@ export default function OrderManege() {
               </div>
             </div>
 
-            <div className="space-y-5 p-6">
-              <div>
-                <label className="mb-1.5 block text-sm font-semibold text-slate-700">
-                  Select Employee *
-                </label>
-                <select
-                  value={assignEmployeeId}
-                  onChange={(e) => setAssignEmployeeId(e.target.value)}
-                  disabled={busy}
-                  className={`${inputCls} w-full`}
-                >
-                  <option value="">-- Choose employee --</option>
-                  {activeEmployees.map((emp) => (
-                    <option key={emp._id} value={emp._id}>
-                      {getEmployeeName(emp)}
-                      {emp.phone ? ` (${emp.phone})` : ""}
-                      {emp.stats?.currentlyAssigned
-                        ? ` · ${emp.stats.currentlyAssigned} active`
-                        : ""}
-                    </option>
-                  ))}
-                </select>
-                {activeEmployees.length === 0 && (
-                  <p className="mt-1.5 text-xs font-medium text-amber-600">
-                    কোনো active employee পাওয়া যায়নি।
-                  </p>
-                )}
+            <div className="space-y-5 overflow-y-auto p-6">
+              {/* Mode tabs */}
+              <div className="grid grid-cols-2 gap-1.5 rounded-2xl bg-slate-100 p-1.5">
+                {[
+                  { key: "employee", label: "Employee", icon: Users },
+                  { key: "custom", label: "Custom Delivery Person", icon: Truck },
+                ].map(({ key, label, icon: Icon }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => {
+                      setAssignMode(key);
+                      setError("");
+                    }}
+                    className={`inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
+                      assignMode === key
+                        ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200"
+                        : "text-slate-500 hover:text-slate-800"
+                    }`}
+                  >
+                    <Icon size={15} />
+                    {label}
+                  </button>
+                ))}
               </div>
 
-              <div>
-                <label className="mb-1.5 block text-sm font-semibold text-slate-700">
-                  Note (optional)
-                </label>
-                <textarea
-                  value={assignNote}
-                  onChange={(e) => setAssignNote(e.target.value)}
-                  disabled={busy}
-                  rows={3}
-                  placeholder="Any special instruction..."
-                  className={`${inputCls} w-full`}
-                />
-              </div>
+              {/* Products + Pickup -> Customer */}
+              <ShipmentRoute
+                orders={assignTargetOrders}
+                carrier={
+                  assignMode === "custom"
+                    ? riderForm.name || riderForm.provider
+                    : employeeMap.get(assignEmployeeId)
+                    ? getEmployeeName(employeeMap.get(assignEmployeeId))
+                    : ""
+                }
+              />
+
+              {assignMode === "employee" ? (
+                <>
+                  <div>
+                    <label className="mb-1.5 block text-sm font-semibold text-slate-700">
+                      Select Employee *
+                    </label>
+                    <select
+                      value={assignEmployeeId}
+                      onChange={(e) => setAssignEmployeeId(e.target.value)}
+                      disabled={busy}
+                      className={`${inputCls} w-full`}
+                    >
+                      <option value="">-- Choose employee --</option>
+                      {activeEmployees.map((emp) => (
+                        <option key={emp._id} value={emp._id}>
+                          {getEmployeeName(emp)}
+                          {emp.phone ? ` (${emp.phone})` : ""}
+                          {emp.stats?.currentlyAssigned
+                            ? ` · ${emp.stats.currentlyAssigned} active`
+                            : ""}
+                        </option>
+                      ))}
+                    </select>
+                    {activeEmployees.length === 0 && (
+                      <p className="mt-1.5 text-xs font-medium text-amber-600">
+                        কোনো active employee পাওয়া যায়নি।
+                      </p>
+                    )}
+                  </div>
+
+                  {assignEmployeeId && employeeMap.get(assignEmployeeId) && (
+                    <div className="flex items-center gap-3 rounded-2xl bg-emerald-50/60 p-3.5 ring-1 ring-emerald-100">
+                      <Avatar
+                        name={getEmployeeName(employeeMap.get(assignEmployeeId))}
+                        size="h-12 w-12"
+                        text="text-sm"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[11px] font-medium uppercase tracking-wide text-emerald-700/70">
+                          Selected Employee
+                        </p>
+                        <p className="truncate text-base font-bold text-slate-900">
+                          {getEmployeeName(employeeMap.get(assignEmployeeId))}
+                        </p>
+                        <p className="truncate text-xs text-slate-500">
+                          {[
+                            employeeMap.get(assignEmployeeId).phone,
+                            employeeMap.get(assignEmployeeId).email,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ") || "—"}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="mb-1.5 block text-sm font-semibold text-slate-700">
+                      Note (optional)
+                    </label>
+                    <textarea
+                      value={assignNote}
+                      onChange={(e) => setAssignNote(e.target.value)}
+                      disabled={busy}
+                      rows={3}
+                      placeholder="Any special instruction..."
+                      className={`${inputCls} w-full`}
+                    />
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <p className="text-xs text-slate-500">
+                    Employee list ছাড়া সরাসরি রাইডার / কুরিয়ার ম্যানের তথ্য দিন
+                  </p>
+                  <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {[
+                      ["name", "Name *", "text", "Delivery person name"],
+                      ["phone", "Phone *", "tel", "01XXXXXXXXX"],
+                      ["email", "Email", "email", "optional@email.com"],
+                      ["address", "Address", "text", "Area / address"],
+                      ["provider", "Courier / Provider", "text", "Pathao / Steadfast / Own rider"],
+                      ["trackingCode", "Tracking Code", "text", "Optional tracking code"],
+                    ].map(([field, label, type, placeholder]) => (
+                      <label key={field} className="block text-xs font-semibold text-slate-600">
+                        {label}
+                        <input
+                          type={type}
+                          value={riderForm[field]}
+                          disabled={busy}
+                          onChange={(e) =>
+                            setRiderForm((p) => ({ ...p, [field]: e.target.value }))
+                          }
+                          placeholder={placeholder}
+                          className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-slate-400"
+                        />
+                      </label>
+                    ))}
+                  </div>
+                  {assignTargetIds.length > 1 && (
+                    <p className="mt-3 text-xs font-medium text-amber-600">
+                      এই delivery person {assignTargetIds.length} টি অর্ডারেই সেভ হবে।
+                    </p>
+                  )}
+                </div>
+              )}
 
               <div className="flex gap-3 pt-1">
                 <button
@@ -1618,14 +1879,25 @@ export default function OrderManege() {
                 >
                   Cancel
                 </button>
-                <button
-                  type="button"
-                  onClick={handleAssign}
-                  disabled={busy || !assignEmployeeId}
-                  className="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50"
-                >
-                  {busy ? "Assigning..." : "Assign Now"}
-                </button>
+                {assignMode === "employee" ? (
+                  <button
+                    type="button"
+                    onClick={handleAssign}
+                    disabled={busy || !assignEmployeeId}
+                    className="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50"
+                  >
+                    {busy ? "Assigning..." : "Assign Now"}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleAssignCustom}
+                    disabled={busy || !riderForm.name.trim() || !riderForm.phone.trim()}
+                    className="flex-1 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-50"
+                  >
+                    {busy ? "Saving..." : "Save Delivery Person"}
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -1740,10 +2012,10 @@ export default function OrderManege() {
                     </div>
                   </section>
 
-                  {/* Assignment */}
+                  {/* Assignment — employee and/or custom delivery person */}
                   <SectionCard title="Assignment" icon={UserPlus}>
                     <div className="space-y-3">
-                      {dAssignedEmployee ? (
+                      {dAssignedEmployee && (
                         <div className="flex items-center gap-3 rounded-2xl bg-emerald-50/60 p-3.5 ring-1 ring-emerald-100">
                           <Avatar
                             name={getEmployeeName(dAssignedEmployee)}
@@ -1771,9 +2043,62 @@ export default function OrderManege() {
                             {formatStatus(dDeliveryStatus)}
                           </span>
                         </div>
-                      ) : (
+                      )}
+
+                      {dHasRider && (
+                        <div className="flex items-start gap-3 rounded-2xl bg-blue-50/60 p-3.5 ring-1 ring-blue-100">
+                          <Avatar
+                            name={d.courierDetails.riderName || "Rider"}
+                            size="h-12 w-12"
+                            text="text-sm"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[11px] font-medium uppercase tracking-wide text-blue-700/70">
+                              Custom Delivery Person
+                            </p>
+                            <p className="truncate text-base font-bold text-slate-900">
+                              {d.courierDetails.riderName || "—"}
+                            </p>
+                            <p className="truncate text-xs text-slate-500">
+                              {[d.courierDetails.riderPhone, d.courierDetails.riderEmail]
+                                .filter(Boolean)
+                                .join(" · ") || "—"}
+                            </p>
+                            {d.courierDetails.riderAddress && (
+                              <p className="mt-1 text-xs text-slate-500">
+                                {d.courierDetails.riderAddress}
+                              </p>
+                            )}
+                            {(d.courierDetails.provider || d.courierDetails.trackingCode) && (
+                              <div className="mt-2 flex flex-wrap gap-1.5">
+                                {d.courierDetails.provider && (
+                                  <span className="rounded-lg bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-600 ring-1 ring-slate-200">
+                                    {d.courierDetails.provider}
+                                  </span>
+                                )}
+                                {d.courierDetails.trackingCode && (
+                                  <span className="rounded-lg bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-600 ring-1 ring-slate-200">
+                                    #{d.courierDetails.trackingCode}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => removeCourierRider(getOrderId(d))}
+                            className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+                          >
+                            <Trash2 size={14} />
+                            Remove
+                          </button>
+                        </div>
+                      )}
+
+                      {!dAssignedEmployee && !dHasRider && (
                         <div className="rounded-2xl border border-dashed border-slate-300 p-4 text-center text-sm font-medium text-slate-400">
-                          এখনো কোনো employee assign করা হয়নি
+                          এখনো কোনো employee বা delivery person assign করা হয়নি
                         </div>
                       )}
 
@@ -1807,7 +2132,7 @@ export default function OrderManege() {
                         className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
                       >
                         <UserPlus size={16} />
-                        {dAssignedEmployee ? "Reassign Employee" : "Assign Employee"}
+                        {dAssignedEmployee || dHasRider ? "Reassign" : "Assign"}
                       </button>
                     </div>
                   </SectionCard>
