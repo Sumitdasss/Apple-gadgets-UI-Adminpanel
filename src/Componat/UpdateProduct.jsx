@@ -1,17 +1,15 @@
+
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Toaster } from "react-hot-toast";
 import RichTextEditor from "./RichTextEditor";
-import { showReviewToast } from ".//SavedToast";
-const API_BASE = "https://apple-gadgets-ui-backend.vercel.app"; // বা তোমার live URL
+import { showReviewToast } from "./SavedToast";
+
+const API_BASE = "https://apple-gadgets-ui-backend.vercel.app";
 
 const CATEGORY_API = {
   tree: `${API_BASE}/category/tree`,
-  main: `${API_BASE}/category/main`,
-  sub: `${API_BASE}/category/sub`,
-  child: `${API_BASE}/category/child`,
-  subChild: `${API_BASE}/category/sub-child`,
 };
 
 const initialFormData = {
@@ -26,7 +24,7 @@ const initialFormData = {
   subChildCategory: "",
   brand: "",
   price: "",
-  costPrice:"",
+  costPrice: "",
   discountPrice: "",
   discountPercentage: "",
   additionalCategories: [],
@@ -49,187 +47,267 @@ const initialFormData = {
   existingImages: [],
 };
 
+const buttonClass =
+  "rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50";
+
+const inputClass =
+  "w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100";
+
+const emptyVariant = {
+  colorName: "",
+  ram: "",
+  storage: "",
+  stock: "",
+  costPrice: "",
+  price: "",
+  sku: "",
+};
+
+const normalize = (value) =>
+  String(value ?? "").trim().toLowerCase();
+
+const getImageUrl = (image) => {
+  if (typeof image === "string") return image;
+  return image?.url || image?.secure_url || "";
+};
+
 export default function UpdateProductPage({ productId: propProductId }) {
   const [selectedProductId, setSelectedProductId] = useState(
-    propProductId || null,
+    propProductId || null
   );
 
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
-  const [productsList, setProductsList] = useState([]);
   const [listLoading, setListLoading] = useState(false);
+  const [productsList, setProductsList] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
 
-  const imageInputRef = useRef(null);
   const [formData, setFormData] = useState(initialFormData);
-  const [subChildCategories, setSubChildCategories] = useState([]);
-  const [imagePreviews, setImagePreviews] = useState([]);
-  const [existingImages, setExistingImages] = useState([]);
-
-  const [colorName, setColorName] = useState("");
-  const [colorCode, setColorCode] = useState("#000000");
-  const [colorImage, setColorImage] = useState(null);
-  const [colorImagePreview, setColorImagePreview] = useState("");
-  const [size, setSize] = useState("");
-  const [specKey, setSpecKey] = useState("");
-  const [specValue, setSpecValue] = useState("");
-  const [keyFeatureInput, setKeyFeatureInput] = useState("");
-  const [ramValue, setRamValue] = useState("");
-
-  const [variantColorName, setVariantColorName] = useState("");
-  const [variantRam, setVariantRam] = useState("");
-  const [variantStorage, setVariantStorage] = useState("");
-  const [variantStock, setVariantStock] = useState("");
-  const [variantPrice, setVariantPrice] = useState("");
-  const [variantCostPrice, setVariantCostPrice] = useState("");
-  const [variantSku, setVariantSku] = useState("");
-
   const [categories, setCategories] = useState([]);
   const [subCategories, setSubCategories] = useState([]);
   const [childCategories, setChildCategories] = useState([]);
+  const [subChildCategories, setSubChildCategories] = useState([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [categoriesError, setCategoriesError] = useState("");
+
+  const [existingImages, setExistingImages] = useState([]);
+  const [imagePreviews, setImagePreviews] = useState([]);
+
+  const imageInputRef = useRef(null);
+
+  // Description builder
   const [sectionTitle, setSectionTitle] = useState("");
   const [sectionDescription, setSectionDescription] = useState("");
   const [sectionImage, setSectionImage] = useState(null);
   const [sectionImagePreview, setSectionImagePreview] = useState("");
+  const [editingSectionIndex, setEditingSectionIndex] = useState(null);
 
-  const handleSectionImageChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // Color builder
+  const [colorName, setColorName] = useState("");
+  const [colorCode, setColorCode] = useState("#000000");
+  const [colorImage, setColorImage] = useState(null);
+  const [colorImagePreview, setColorImagePreview] = useState("");
+  const [editingColorIndex, setEditingColorIndex] = useState(null);
 
-    if (!file.type.startsWith("image/")) {
-      showReviewToast("Please select a valid image", 8000, "error");
-      e.target.value = "";
-      return;
-    }
+  // Other arrays
+  const [size, setSize] = useState("");
+  const [editingSizeIndex, setEditingSizeIndex] = useState(null);
 
-    setSectionImage(file);
-    setSectionImagePreview(URL.createObjectURL(file));
-    e.target.value = "";
+  const [specKey, setSpecKey] = useState("");
+  const [specValue, setSpecValue] = useState("");
+  const [editingSpecIndex, setEditingSpecIndex] = useState(null);
+
+  const [ramValue, setRamValue] = useState("");
+  const [editingRamIndex, setEditingRamIndex] = useState(null);
+
+  const [keyFeatureInput, setKeyFeatureInput] = useState("");
+  const [editingFeatureIndex, setEditingFeatureIndex] = useState(null);
+
+  // Variant builder
+  const [variantForm, setVariantForm] = useState(emptyVariant);
+  const [editingVariantIndex, setEditingVariantIndex] = useState(null);
+
+  // ------------------------------------------
+  // Shared helpers
+  // ------------------------------------------
+
+  const updateFormField = (name, value) => {
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const addDescriptionSection = () => {
-    if (!sectionTitle.trim() || !sectionDescription.trim()) {
-      showReviewToast("Heading and description are required", 8000, "error");
-      return;
+  const revokePreview = (url) => {
+    if (url && url.startsWith("blob:")) {
+      URL.revokeObjectURL(url);
     }
+  };
 
-    setFormData((prev) => ({
-      ...prev,
-      descriptionSections: [
-        ...(prev.descriptionSections || []),
-        {
-          title: sectionTitle.trim(),
-          description: sectionDescription.trim(),
-          image: "",
-          imageFile: sectionImage,
-          imagePreview: sectionImagePreview,
-        },
-      ],
-    }));
-
+  const resetSectionEditor = () => {
+    revokePreview(sectionImagePreview);
     setSectionTitle("");
     setSectionDescription("");
     setSectionImage(null);
     setSectionImagePreview("");
+    setEditingSectionIndex(null);
   };
 
-  const removeDescriptionSection = (index) => {
-    setFormData((prev) => ({
-      ...prev,
-      descriptionSections: prev.descriptionSections.filter(
-        (_, i) => i !== index,
-      ),
-    }));
+  const resetColorEditor = () => {
+    revokePreview(colorImagePreview);
+    setColorName("");
+    setColorCode("#000000");
+    setColorImage(null);
+    setColorImagePreview("");
+    setEditingColorIndex(null);
   };
 
-  // ==============================
-  // LOAD PRODUCT LIST
-  // ==============================
+  const resetSizeEditor = () => {
+    setSize("");
+    setEditingSizeIndex(null);
+  };
+
+  const resetSpecEditor = () => {
+    setSpecKey("");
+    setSpecValue("");
+    setEditingSpecIndex(null);
+  };
+
+  const resetRamEditor = () => {
+    setRamValue("");
+    setEditingRamIndex(null);
+  };
+
+  const resetFeatureEditor = () => {
+    setKeyFeatureInput("");
+    setEditingFeatureIndex(null);
+  };
+
+  const resetVariantEditor = () => {
+    setVariantForm(emptyVariant);
+    setEditingVariantIndex(null);
+  };
+
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+
+    setFormData((prev) => {
+      const next = {
+        ...prev,
+        [name]: type === "checkbox" ? checked : value,
+      };
+
+      if (name === "name") {
+        next.slug = value
+          .toLowerCase()
+          .trim()
+          .replace(/[^\w\s-]/g, "")
+          .replace(/\s+/g, "-")
+          .replace(/-+/g, "-");
+      }
+
+      if (name === "category") {
+        next.subCategory = "";
+        next.childCategory = "";
+        next.subChildCategory = "";
+      }
+
+      if (name === "subCategory") {
+        next.childCategory = "";
+        next.subChildCategory = "";
+      }
+
+      if (name === "childCategory") {
+        next.subChildCategory = "";
+      }
+
+      if (name === "price" || name === "discountPrice") {
+        const price = Number(
+          name === "price" ? value : prev.price
+        );
+        const discount = Number(
+          name === "discountPrice" ? value : prev.discountPrice
+        );
+
+        next.discountPercentage =
+          price > 0 && discount > 0 && discount < price
+            ? (((price - discount) / price) * 100).toFixed(2)
+            : "";
+      }
+
+      return next;
+    });
+  };
+
+  // ------------------------------------------
+  // Load product list
+  // ------------------------------------------
+
   useEffect(() => {
     if (selectedProductId) return;
 
-    const loadList = async () => {
+    let active = true;
+
+    const loadProducts = async () => {
       try {
         setListLoading(true);
-        const response = await fetch(`${API_BASE}/products/getALLproducts`);
-        const data = await response.json();
+
+        const response = await fetch(
+          `${API_BASE}/products/getALLproducts`,
+          { cache: "no-store" }
+        );
+
+        const result = await response.json();
 
         if (!response.ok) {
-          throw new Error(data?.message || "Failed to load products");
+          throw new Error(result?.message || "Failed to load products");
         }
 
-        const list = Array.isArray(data)
-          ? data
-          : data?.products || data?.data || [];
+        const products = Array.isArray(result)
+          ? result
+          : result?.products || result?.data || [];
 
-        setProductsList(list);
+        if (active) setProductsList(products);
       } catch (error) {
-        console.error("Load products list error:", error);
-        showReviewToast(error.message || "Failed to load products", 8000, "error");
+        if (active) {
+          showReviewToast(
+            error.message || "Failed to load products",
+            8000,
+            "error"
+          );
+        }
       } finally {
-        setListLoading(false);
+        if (active) setListLoading(false);
       }
     };
 
-    loadList();
+    loadProducts();
+
+    return () => {
+      active = false;
+    };
   }, [selectedProductId]);
 
-  const addKeyFeature = () => {
-    const feature = keyFeatureInput.trim();
+  // ------------------------------------------
+  // Load categories
+  // ------------------------------------------
 
-    if (!feature) {
-      showReviewToast("Please enter a key feature", 8000, "error");
-      return;
-    }
-
-    const exists = formData.keyFeatures.some(
-      (item) => item.toLowerCase() === feature.toLowerCase(),
-    );
-
-    if (exists) {
-      showReviewToast("This key feature already exists", 8000, "error");
-      return;
-    }
-
-    setFormData((prev) => ({
-      ...prev,
-      keyFeatures: [...prev.keyFeatures, feature],
-    }));
-
-    setKeyFeatureInput("");
-  };
-
-  const removeKeyFeature = (index) => {
-    setFormData((prev) => ({
-      ...prev,
-      keyFeatures: prev.keyFeatures.filter((_, i) => i !== index),
-    }));
-  };
-
-  // ==============================
-  // LOAD CATEGORIES
-  // ==============================
   const loadCategories = useCallback(async () => {
     try {
       setCategoriesLoading(true);
       setCategoriesError("");
 
       const response = await fetch(CATEGORY_API.tree, {
-        method: "GET",
         cache: "no-store",
       });
 
-      const data = await response.json();
+      const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(data?.message || "Could not load categories");
+        throw new Error(result?.message || "Could not load categories");
       }
 
-      setCategories(Array.isArray(data?.categories) ? data.categories : []);
+      setCategories(
+        Array.isArray(result?.categories) ? result.categories : []
+      );
     } catch (error) {
-      console.error("Load categories error:", error);
       setCategoriesError(error.message || "Could not load categories");
     } finally {
       setCategoriesLoading(false);
@@ -240,14 +318,38 @@ export default function UpdateProductPage({ productId: propProductId }) {
     loadCategories();
   }, [loadCategories]);
 
-  // ==============================
-  // LOAD SINGLE PRODUCT
-  // ==============================
+  useEffect(() => {
+    const selected = categories.find(
+      (item) => item._id === formData.category
+    );
+    setSubCategories(selected?.subCategories || []);
+  }, [categories, formData.category]);
+
+  useEffect(() => {
+    const selected = subCategories.find(
+      (item) => item._id === formData.subCategory
+    );
+    setChildCategories(selected?.children || []);
+  }, [subCategories, formData.subCategory]);
+
+  useEffect(() => {
+    const selected = childCategories.find(
+      (item) => item._id === formData.childCategory
+    );
+    setSubChildCategories(selected?.subChildren || []);
+  }, [childCategories, formData.childCategory]);
+
+  // ------------------------------------------
+  // Load selected product
+  // ------------------------------------------
+
   useEffect(() => {
     if (!selectedProductId) {
       setFetching(false);
       return;
     }
+
+    let active = true;
 
     const loadProduct = async () => {
       try {
@@ -256,33 +358,33 @@ export default function UpdateProductPage({ productId: propProductId }) {
         const response = await fetch(
           `${API_BASE}/products/${selectedProductId}`,
           {
-            method: "GET",
-            headers: {
-              Accept: "application/json",
-            },
+            headers: { Accept: "application/json" },
             cache: "no-store",
-          },
+          }
         );
 
         const contentType = response.headers.get("content-type") || "";
 
         if (!contentType.includes("application/json")) {
-          const body = await response.text();
-
+          const text = await response.text();
           throw new Error(
-            `API JSON ফেরত দেয়নি। HTTP ${response.status}: ${body.slice(0, 150)}`,
+            `API JSON ফেরত দেয়নি। HTTP ${response.status}: ${text.slice(0, 150)}`
           );
         }
 
-        const data = await response.json();
+        const result = await response.json();
 
         if (!response.ok) {
-          throw new Error(data?.message || "Product not found");
+          throw new Error(result?.message || "Product not found");
         }
 
-        const product = data?.product || data?.data || data;
+        const product = result?.product || result?.data || result;
+
+        if (!active) return;
 
         setFormData({
+          ...initialFormData,
+          ...product,
           name: product.name || "",
           slug: product.slug || "",
           description: product.description || "",
@@ -290,34 +392,42 @@ export default function UpdateProductPage({ productId: propProductId }) {
             (section) => ({
               title: section.title || "",
               description: section.description || "",
-              image: section.image || "",
-              imagePreview: section.image || "",
+              image: getImageUrl(section.image),
+              imagePreview: getImageUrl(section.image),
               imageFile: null,
-            }),
+            })
           ),
           shortDescription: product.shortDescription || "",
           category: product.category?._id || product.category || "",
-          subCategory: product.subCategory?._id || product.subCategory || "",
+          subCategory:
+            product.subCategory?._id || product.subCategory || "",
           childCategory:
             product.childCategory?._id || product.childCategory || "",
           subChildCategory:
-            product.subChildCategory?._id || product.subChildCategory || "",
+            product.subChildCategory?._id ||
+            product.subChildCategory ||
+            "",
           brand: product.brand || "",
-          price: product.price || "",
-          costPrice:product.costPrice||"",
-          discountPrice: product.discountPrice || "",
-          discountPercentage: product.discountPercentage || "",
-          additionalCategories: (product.additionalCategories || []).map((c) =>
-            typeof c === "object" ? c._id : c,
+          price: product.price ?? "",
+          costPrice: product.costPrice ?? "",
+          discountPrice: product.discountPrice ?? "",
+          discountPercentage: product.discountPercentage ?? "",
+          additionalCategories: (product.additionalCategories || []).map(
+            (category) =>
+              typeof category === "object" ? category._id : category
           ),
-          stock: product.stock || "",
+          stock: product.stock ?? "",
           sku: product.sku || "",
-          colors: (product.colors || []).map((c) => ({
-            name: c.name,
-            code: c.code || "#000000",
-            imagePreview: c.image || c.imageUrl || "",
+          colors: (product.colors || []).map((color) => ({
+            name: color.name || "",
+            code: color.code || "#000000",
+            imagePreview: getImageUrl(
+              color.image || color.imageUrl
+            ),
             imageFile: null,
-            existingImage: c.image || c.imageUrl || "",
+            existingImage: getImageUrl(
+              color.image || color.imageUrl
+            ),
           })),
           sizes: product.sizes || [],
           specifications: product.specifications || [],
@@ -325,8 +435,15 @@ export default function UpdateProductPage({ productId: propProductId }) {
           keyFeatures: Array.isArray(product.keyFeatures)
             ? product.keyFeatures
             : [],
-          variants: product.variants || [],
-          rating: product.rating || 0,
+          variants: (product.variants || []).map((variant) => ({
+            ...variant,
+            color: {
+              name: variant.color?.name || "",
+              code: variant.color?.code || "#000000",
+            },
+            costPrice: variant.costPrice ?? 0,
+          })),
+          rating: product.rating ?? 0,
           isActive: product.isActive ?? true,
           isFeatured: product.isFeatured ?? false,
           isNew: product.isNew ?? false,
@@ -339,402 +456,725 @@ export default function UpdateProductPage({ productId: propProductId }) {
 
         setExistingImages(product.images || []);
         setImagePreviews([]);
+        resetSectionEditor();
+        resetColorEditor();
+        resetSizeEditor();
+        resetSpecEditor();
+        resetRamEditor();
+        resetFeatureEditor();
+        resetVariantEditor();
       } catch (error) {
-        console.error("Load product error:", error);
-        showReviewToast(error.message || "Failed to load product", 8000, "error");
-        setSelectedProductId(null);
+        if (active) {
+          showReviewToast(
+            error.message || "Failed to load product",
+            8000,
+            "error"
+          );
+          setSelectedProductId(null);
+        }
       } finally {
-        setFetching(false);
+        if (active) setFetching(false);
       }
     };
 
     loadProduct();
+
+    return () => {
+      active = false;
+    };
+    // Only reload when selected product changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedProductId]);
 
-  // Category cascade
-  useEffect(() => {
-    if (!formData.category) {
-      setSubCategories([]);
+  // ------------------------------------------
+  // Description sections: add / edit / cancel
+  // ------------------------------------------
+
+  const handleSectionImageChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      showReviewToast("Please select a valid image", 8000, "error");
+      e.target.value = "";
       return;
     }
-    const selected = categories.find((c) => c._id === formData.category);
-    setSubCategories(selected?.subCategories || []);
-  }, [formData.category, categories]);
 
-  useEffect(() => {
-    if (!formData.subCategory) {
-      setChildCategories([]);
-      return;
-    }
-    const selected = subCategories.find((s) => s._id === formData.subCategory);
-    setChildCategories(selected?.children || []);
-  }, [formData.subCategory, subCategories]);
-
-  useEffect(() => {
-    if (!formData.childCategory) {
-      setSubChildCategories([]);
-      return;
-    }
-    const selected = childCategories.find(
-      (c) => c._id === formData.childCategory,
-    );
-    setSubChildCategories(selected?.subChildren || []);
-  }, [formData.childCategory, childCategories]);
-
-  // ==============================
-  // INPUT CHANGE
-  // ==============================
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-
-    setFormData((prev) => {
-      const updated = {
-        ...prev,
-        [name]: type === "checkbox" ? checked : value,
-      };
-
-      if (name === "name") {
-        updated.slug = value
-          .toLowerCase()
-          .trim()
-          .replace(/[^\w\s-]/g, "")
-          .replace(/\s+/g, "-")
-          .replace(/-+/g, "-");
-      }
-
-      if (name === "category") {
-        updated.subCategory = "";
-        updated.childCategory = "";
-        updated.subChildCategory = "";
-      }
-      if (name === "subCategory") {
-        updated.childCategory = "";
-        updated.subChildCategory = "";
-      }
-      if (name === "childCategory") {
-        updated.subChildCategory = "";
-      }
-
-      if (name === "price" || name === "discountPrice") {
-        const price =
-          name === "price" ? parseFloat(value) : parseFloat(prev.price);
-        const discountPrice =
-          name === "discountPrice"
-            ? parseFloat(value)
-            : parseFloat(prev.discountPrice);
-
-        if (price > 0 && discountPrice > 0 && discountPrice < price) {
-          updated.discountPercentage = (
-            ((price - discountPrice) / price) *
-            100
-          ).toFixed(2);
-        } else {
-          updated.discountPercentage = "";
-        }
-      }
-
-      return updated;
-    });
+    revokePreview(sectionImagePreview);
+    setSectionImage(file);
+    setSectionImagePreview(URL.createObjectURL(file));
+    e.target.value = "";
   };
 
-  // ==============================
-  // IMAGE
-  // ==============================
+  const addDescriptionSection = () => {
+    if (!sectionTitle.trim() || !sectionDescription.trim()) {
+      showReviewToast("Heading and description are required", 8000, "error");
+      return;
+    }
+
+    const section = {
+      title: sectionTitle.trim(),
+      description: sectionDescription,
+      image:
+        editingSectionIndex !== null
+          ? formData.descriptionSections[editingSectionIndex]?.image || ""
+          : "",
+      imageFile: sectionImage,
+      imagePreview: sectionImagePreview,
+    };
+
+    setFormData((prev) => {
+      const sections = [...(prev.descriptionSections || [])];
+
+      if (editingSectionIndex !== null) {
+        const oldSection = sections[editingSectionIndex];
+
+        sections[editingSectionIndex] = {
+          ...oldSection,
+          ...section,
+          image:
+            sectionImage
+              ? ""
+              : oldSection?.image || "",
+          imageFile:
+            sectionImage || oldSection?.imageFile || null,
+          imagePreview:
+            sectionImagePreview ||
+            oldSection?.imagePreview ||
+            oldSection?.image ||
+            "",
+        };
+      } else {
+        sections.push(section);
+      }
+
+      return { ...prev, descriptionSections: sections };
+    });
+
+    resetSectionEditor();
+    showReviewToast(
+      editingSectionIndex !== null
+        ? "Description section updated"
+        : "Description section added",
+      3000,
+      "success"
+    );
+  };
+
+  const editDescriptionSection = (index) => {
+    const section = formData.descriptionSections[index];
+
+    setEditingSectionIndex(index);
+    setSectionTitle(section.title || "");
+    setSectionDescription(section.description || "");
+    setSectionImage(null);
+    setSectionImagePreview(
+      section.imagePreview || section.image || ""
+    );
+  };
+
+  const removeDescriptionSection = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      descriptionSections: prev.descriptionSections.filter(
+        (_, itemIndex) => itemIndex !== index
+      ),
+    }));
+
+    if (editingSectionIndex === index) {
+      resetSectionEditor();
+    } else if (
+      editingSectionIndex !== null &&
+      editingSectionIndex > index
+    ) {
+      setEditingSectionIndex((current) => current - 1);
+    }
+  };
+
+  // ------------------------------------------
+  // Product gallery
+  // ------------------------------------------
+
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
 
-    const validFiles = files.filter((file) => file.type.startsWith("image/"));
+    const validFiles = files.filter((file) =>
+      file.type.startsWith("image/")
+    );
+
     if (validFiles.length !== files.length) {
       showReviewToast("Only image files are allowed", 8000, "error");
     }
+
     if (!validFiles.length) return;
+
+    const previews = validFiles.map((file) => ({
+      file,
+      url: URL.createObjectURL(file),
+    }));
 
     setFormData((prev) => ({
       ...prev,
       images: [...prev.images, ...validFiles],
     }));
 
-    const newPreviews = validFiles.map((file) => ({
-      file,
-      url: URL.createObjectURL(file),
-    }));
-
-    setImagePreviews((prev) => [...prev, ...newPreviews]);
+    setImagePreviews((prev) => [...prev, ...previews]);
     e.target.value = "";
   };
 
   const removeNewImage = (index) => {
     setFormData((prev) => ({
       ...prev,
-      images: prev.images.filter((_, i) => i !== index),
+      images: prev.images.filter((_, itemIndex) => itemIndex !== index),
     }));
 
     setImagePreviews((prev) => {
-      const updated = [...prev];
-      if (updated[index]?.url) URL.revokeObjectURL(updated[index].url);
-      updated.splice(index, 1);
-      return updated;
+      const copy = [...prev];
+      revokePreview(copy[index]?.url);
+      copy.splice(index, 1);
+      return copy;
     });
   };
 
   const removeExistingImage = (index) => {
-    setExistingImages((prev) => prev.filter((_, i) => i !== index));
-    setFormData((prev) => ({
-      ...prev,
-      existingImages: prev.existingImages.filter((_, i) => i !== index),
-    }));
+    setExistingImages((prev) =>
+      prev.filter((_, itemIndex) => itemIndex !== index)
+    );
   };
 
-  // ==============================
-  // COLOR
-  // ==============================
+  // ------------------------------------------
+  // Colors: add / edit / cancel
+  // ------------------------------------------
+
   const handleColorImageChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
     if (!file.type.startsWith("image/")) {
       showReviewToast("Only image files are allowed", 8000, "error");
+      e.target.value = "";
       return;
     }
+
+    revokePreview(colorImagePreview);
     setColorImage(file);
     setColorImagePreview(URL.createObjectURL(file));
     e.target.value = "";
   };
 
   const addColor = () => {
-    if (!colorName.trim()) {
+    const name = colorName.trim();
+
+    if (!name) {
       showReviewToast("Enter color name", 8000, "error");
       return;
     }
-    if (
-      formData.colors.some(
-        (c) => c.name.toLowerCase() === colorName.trim().toLowerCase(),
-      )
-    ) {
+
+    const duplicate = formData.colors.some(
+      (color, index) =>
+        index !== editingColorIndex &&
+        normalize(color.name) === normalize(name)
+    );
+
+    if (duplicate) {
       showReviewToast("This color is already added", 8000, "error");
       return;
     }
 
-    setFormData((prev) => ({
-      ...prev,
-      colors: [
-        ...prev.colors,
-        {
-          name: colorName.trim(),
-          code: colorCode,
-          imageFile: colorImage,
-          imagePreview: colorImagePreview,
-          existingImage: "",
-        },
-      ],
-    }));
+    setFormData((prev) => {
+      const colors = [...prev.colors];
+      const oldColor =
+        editingColorIndex !== null
+          ? colors[editingColorIndex]
+          : null;
 
-    setColorName("");
-    setColorCode("#000000");
+      const updatedColor = {
+        name,
+        code: colorCode || "#000000",
+        imageFile:
+          colorImage || oldColor?.imageFile || null,
+        imagePreview:
+          colorImagePreview ||
+          oldColor?.imagePreview ||
+          oldColor?.existingImage ||
+          "",
+        existingImage: colorImage
+          ? ""
+          : oldColor?.existingImage || "",
+      };
+
+      if (editingColorIndex !== null) {
+        colors[editingColorIndex] = updatedColor;
+
+        // Keep existing variants linked to the edited color.
+        const oldName = oldColor?.name;
+
+        return {
+          ...prev,
+          colors,
+          variants: prev.variants.map((variant) =>
+            normalize(variant.color?.name) === normalize(oldName)
+              ? {
+                  ...variant,
+                  color: {
+                    name: updatedColor.name,
+                    code: updatedColor.code,
+                  },
+                }
+              : variant
+          ),
+        };
+      }
+
+      colors.push(updatedColor);
+      return { ...prev, colors };
+    });
+
+    resetColorEditor();
+    showReviewToast(
+      editingColorIndex !== null ? "Color updated" : "Color added",
+      3000,
+      "success"
+    );
+  };
+
+  const editColor = (index) => {
+    const color = formData.colors[index];
+
+    setEditingColorIndex(index);
+    setColorName(color.name || "");
+    setColorCode(color.code || "#000000");
     setColorImage(null);
-    setColorImagePreview("");
+    setColorImagePreview(
+      color.imagePreview || color.existingImage || ""
+    );
   };
 
   const removeColor = (index) => {
-    setFormData((prev) => ({
-      ...prev,
-      colors: prev.colors.filter((_, i) => i !== index),
-    }));
-  };
+    const color = formData.colors[index];
 
-  // ==============================
-  // SIZE
-  // ==============================
-  const addSize = () => {
-    if (!size.trim()) return;
-    if (
-      formData.sizes.some((s) => s.toLowerCase() === size.trim().toLowerCase())
-    ) {
-      showReviewToast("This size is already added", 8000, "error");
+    const usedInVariants = formData.variants.some(
+      (variant) =>
+        normalize(variant.color?.name) === normalize(color?.name)
+    );
+
+    if (usedInVariants) {
+      showReviewToast(
+        "This color is used by a variant. Edit or remove those variants first.",
+        6000,
+        "error"
+      );
       return;
     }
+
     setFormData((prev) => ({
       ...prev,
-      sizes: [...prev.sizes, size.trim()],
+      colors: prev.colors.filter((_, itemIndex) => itemIndex !== index),
     }));
-    setSize("");
+
+    if (editingColorIndex === index) {
+      resetColorEditor();
+    } else if (
+      editingColorIndex !== null &&
+      editingColorIndex > index
+    ) {
+      setEditingColorIndex((current) => current - 1);
+    }
+  };
+
+  // ------------------------------------------
+  // Sizes: add / edit / cancel
+  // ------------------------------------------
+
+  const addSize = () => {
+    const value = size.trim();
+
+    if (!value) {
+      showReviewToast("Enter a size", 4000, "error");
+      return;
+    }
+
+    if (
+      formData.sizes.some(
+        (item, index) =>
+          index !== editingSizeIndex &&
+          normalize(item) === normalize(value)
+      )
+    ) {
+      showReviewToast("This size already exists", 5000, "error");
+      return;
+    }
+
+    setFormData((prev) => {
+      const sizes = [...prev.sizes];
+
+      if (editingSizeIndex !== null) {
+        sizes[editingSizeIndex] = value;
+      } else {
+        sizes.push(value);
+      }
+
+      return { ...prev, sizes };
+    });
+
+    resetSizeEditor();
+  };
+
+  const editSize = (index) => {
+    setSize(formData.sizes[index]);
+    setEditingSizeIndex(index);
   };
 
   const removeSize = (index) => {
     setFormData((prev) => ({
       ...prev,
-      sizes: prev.sizes.filter((_, i) => i !== index),
+      sizes: prev.sizes.filter((_, itemIndex) => itemIndex !== index),
     }));
+
+    if (editingSizeIndex === index) resetSizeEditor();
+    else if (editingSizeIndex !== null && editingSizeIndex > index) {
+      setEditingSizeIndex((current) => current - 1);
+    }
   };
 
-  // ==============================
-  // SPECIFICATION
-  // ==============================
+  // ------------------------------------------
+  // Specifications: add / edit / cancel
+  // ------------------------------------------
+
   const addSpecification = () => {
     const key = specKey.trim();
     const value = specValue.trim();
+
     if (!key || !value) {
-      showReviewToast("Please enter both name and value", 8000, "error");
+      showReviewToast("Please enter both name and value", 5000, "error");
       return;
     }
-    if (
-      formData.specifications.some(
-        (item) => item.key.toLowerCase() === key.toLowerCase(),
-      )
-    ) {
-      showReviewToast("This specification already exists", 8000, "error");
+
+    const duplicate = formData.specifications.some(
+      (item, index) =>
+        index !== editingSpecIndex &&
+        normalize(item.key) === normalize(key)
+    );
+
+    if (duplicate) {
+      showReviewToast("This specification already exists", 5000, "error");
       return;
     }
-    setFormData((prev) => ({
-      ...prev,
-      specifications: [...prev.specifications, { key, value }],
-    }));
-    setSpecKey("");
-    setSpecValue("");
+
+    setFormData((prev) => {
+      const specifications = [...prev.specifications];
+      const item = { key, value };
+
+      if (editingSpecIndex !== null) {
+        specifications[editingSpecIndex] = item;
+      } else {
+        specifications.push(item);
+      }
+
+      return { ...prev, specifications };
+    });
+
+    resetSpecEditor();
+  };
+
+  const editSpecification = (index) => {
+    const item = formData.specifications[index];
+    setSpecKey(item.key || "");
+    setSpecValue(item.value || "");
+    setEditingSpecIndex(index);
   };
 
   const removeSpecification = (index) => {
     setFormData((prev) => ({
       ...prev,
-      specifications: prev.specifications.filter((_, i) => i !== index),
+      specifications: prev.specifications.filter(
+        (_, itemIndex) => itemIndex !== index
+      ),
     }));
+
+    if (editingSpecIndex === index) resetSpecEditor();
+    else if (
+      editingSpecIndex !== null &&
+      editingSpecIndex > index
+    ) {
+      setEditingSpecIndex((current) => current - 1);
+    }
   };
 
-  // ==============================
-  // RAM
-  // ==============================
+  // ------------------------------------------
+  // RAM: add / edit / cancel
+  // ------------------------------------------
+
   const addRam = () => {
-    if (!ramValue.trim()) {
-      showReviewToast("Enter RAM / Memory value", 8000, "error");
+    const value = ramValue.trim();
+
+    if (!value) {
+      showReviewToast("Enter RAM / Memory value", 5000, "error");
       return;
     }
+
     if (
       formData.ram.some(
-        (item) => item.toLowerCase() === ramValue.trim().toLowerCase(),
+        (item, index) =>
+          index !== editingRamIndex &&
+          normalize(item) === normalize(value)
       )
     ) {
-      showReviewToast("This RAM / Memory is already added", 8000, "error");
+      showReviewToast("This RAM / Memory already exists", 5000, "error");
       return;
     }
-    setFormData((prev) => ({
-      ...prev,
-      ram: [...prev.ram, ramValue.trim()],
-    }));
-    setRamValue("");
+
+    setFormData((prev) => {
+      const ram = [...prev.ram];
+
+      if (editingRamIndex !== null) {
+        ram[editingRamIndex] = value;
+      } else {
+        ram.push(value);
+      }
+
+      return { ...prev, ram };
+    });
+
+    resetRamEditor();
+  };
+
+  const editRam = (index) => {
+    setRamValue(formData.ram[index]);
+    setEditingRamIndex(index);
   };
 
   const removeRam = (index) => {
     setFormData((prev) => ({
       ...prev,
-      ram: prev.ram.filter((_, i) => i !== index),
+      ram: prev.ram.filter((_, itemIndex) => itemIndex !== index),
     }));
+
+    if (editingRamIndex === index) resetRamEditor();
+    else if (editingRamIndex !== null && editingRamIndex > index) {
+      setEditingRamIndex((current) => current - 1);
+    }
   };
 
-  // ==============================
-  // VARIANT
-  // ==============================
+  // ------------------------------------------
+  // Key features: add / edit / cancel
+  // ------------------------------------------
+
+  const addKeyFeature = () => {
+    const feature = keyFeatureInput.trim();
+
+    if (!feature) {
+      showReviewToast("Please enter a key feature", 5000, "error");
+      return;
+    }
+
+    const duplicate = formData.keyFeatures.some(
+      (item, index) =>
+        index !== editingFeatureIndex &&
+        normalize(item) === normalize(feature)
+    );
+
+    if (duplicate) {
+      showReviewToast("This key feature already exists", 5000, "error");
+      return;
+    }
+
+    setFormData((prev) => {
+      const keyFeatures = [...prev.keyFeatures];
+
+      if (editingFeatureIndex !== null) {
+        keyFeatures[editingFeatureIndex] = feature;
+      } else {
+        keyFeatures.push(feature);
+      }
+
+      return { ...prev, keyFeatures };
+    });
+
+    resetFeatureEditor();
+  };
+
+  const editKeyFeature = (index) => {
+    setKeyFeatureInput(formData.keyFeatures[index]);
+    setEditingFeatureIndex(index);
+  };
+
+  const removeKeyFeature = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      keyFeatures: prev.keyFeatures.filter(
+        (_, itemIndex) => itemIndex !== index
+      ),
+    }));
+
+    if (editingFeatureIndex === index) resetFeatureEditor();
+    else if (
+      editingFeatureIndex !== null &&
+      editingFeatureIndex > index
+    ) {
+      setEditingFeatureIndex((current) => current - 1);
+    }
+  };
+
+  // ------------------------------------------
+  // Variants: add / edit / cancel
+  // ------------------------------------------
+
+  const handleVariantChange = (e) => {
+    const { name, value } = e.target;
+    setVariantForm((prev) => ({ ...prev, [name]: value }));
+  };
+
   const addVariant = () => {
-    if (!variantColorName) {
-      showReviewToast("Select a color", 8000, "error");
+    const {
+      colorName,
+      ram,
+      storage,
+      stock,
+      costPrice,
+      price,
+      sku,
+    } = variantForm;
+
+    if (!colorName) {
+      showReviewToast("Select a color", 5000, "error");
       return;
     }
-    if (!variantRam.trim() || !variantStorage.trim()) {
-      showReviewToast("Enter RAM and Storage", 8000, "error");
+
+    if (!ram.trim() || !storage.trim()) {
+      showReviewToast("Enter RAM and storage", 5000, "error");
       return;
     }
-    if (variantStock === "" || Number(variantStock) < 0) {
-      showReviewToast("Enter valid stock", 8000, "error");
+
+    if (stock === "" || !Number.isFinite(Number(stock)) || Number(stock) < 0) {
+      showReviewToast("Enter valid stock", 5000, "error");
       return;
     }
-    if (!variantPrice || Number(variantPrice) <= 0) {
-      showReviewToast("Enter valid price", 8000, "error");
+
+    if (price === "" || !Number.isFinite(Number(price)) || Number(price) <= 0) {
+      showReviewToast("Enter valid price", 5000, "error");
       return;
     }
-    if (variantCostPrice !== "" && Number(variantCostPrice) < 0) {
-      showReviewToast("Enter valid cost price", 8000, "error");
+
+    if (
+      costPrice !== "" &&
+      (!Number.isFinite(Number(costPrice)) || Number(costPrice) < 0)
+    ) {
+      showReviewToast("Enter valid cost price", 5000, "error");
       return;
     }
-    if (!variantSku.trim()) {
-      showReviewToast("Enter SKU", 8000, "error");
+
+    if (!sku.trim()) {
+      showReviewToast("Enter SKU", 5000, "error");
       return;
     }
 
     const skuTaken = formData.variants.some(
-      (v) => v.sku?.trim().toLowerCase() === variantSku.trim().toLowerCase(),
+      (variant, index) =>
+        index !== editingVariantIndex &&
+        normalize(variant.sku) === normalize(sku)
     );
+
     if (skuTaken) {
-      showReviewToast("This SKU is already used", 8000, "error");
+      showReviewToast("This SKU is already used", 5000, "error");
       return;
     }
 
     const selectedColor = formData.colors.find(
-      (c) =>
-        c.name.trim().toLowerCase() === variantColorName.trim().toLowerCase(),
+      (color) => normalize(color.name) === normalize(colorName)
     );
+
     if (!selectedColor) {
-      showReviewToast("Selected color not found", 8000, "error");
+      showReviewToast("Selected color not found", 5000, "error");
       return;
     }
 
-    setFormData((prev) => ({
-      ...prev,
-      variants: [
-        ...prev.variants,
-        {
-          color: {
-            name: selectedColor.name,
-            code: selectedColor.code || "#000000",
-          },
-          ram: variantRam.trim(),
-          storage: variantStorage.trim(),
-          stock: Number(variantStock),
-          costPrice: variantCostPrice === "" ? 0 : Number(variantCostPrice),
-          price: Number(variantPrice),
-          sku: variantSku.trim(),
-        },
-      ],
-    }));
+    const variant = {
+      color: {
+        name: selectedColor.name,
+        code: selectedColor.code || "#000000",
+      },
+      ram: ram.trim(),
+      storage: storage.trim(),
+      stock: Number(stock),
+      costPrice: costPrice === "" ? 0 : Number(costPrice),
+      price: Number(price),
+      sku: sku.trim(),
+    };
 
-    setVariantColorName("");
-    setVariantRam("");
-    setVariantStorage("");
-    setVariantStock("");
-    setVariantPrice("");
-    setVariantCostPrice("");
-    setVariantSku("");
+    setFormData((prev) => {
+      const variants = [...prev.variants];
+
+      if (editingVariantIndex !== null) {
+        variants[editingVariantIndex] = variant;
+      } else {
+        variants.push(variant);
+      }
+
+      return { ...prev, variants };
+    });
+
+    resetVariantEditor();
+  };
+
+  const editVariant = (index) => {
+    const variant = formData.variants[index];
+
+    setVariantForm({
+      colorName: variant.color?.name || "",
+      ram: variant.ram || "",
+      storage: variant.storage || "",
+      stock: String(variant.stock ?? 0),
+      costPrice: String(variant.costPrice ?? 0),
+      price: String(variant.price ?? ""),
+      sku: variant.sku || "",
+    });
+
+    setEditingVariantIndex(index);
   };
 
   const removeVariant = (index) => {
     setFormData((prev) => ({
       ...prev,
-      variants: prev.variants.filter((_, i) => i !== index),
+      variants: prev.variants.filter((_, itemIndex) => itemIndex !== index),
     }));
+
+    if (editingVariantIndex === index) resetVariantEditor();
+    else if (
+      editingVariantIndex !== null &&
+      editingVariantIndex > index
+    ) {
+      setEditingVariantIndex((current) => current - 1);
+    }
   };
 
-  // ==============================
-  // SUBMIT
-  // ==============================
+  // ------------------------------------------
+  // Submit product
+  // ------------------------------------------
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!selectedProductId) return;
 
     if (existingImages.length === 0 && formData.images.length === 0) {
-      showReviewToast("At least one product image is required", 8000, "error");
+      showReviewToast("At least one product image is required", 6000, "error");
       return;
     }
 
-    const rating = parseFloat(formData.rating);
-    if (Number.isNaN(rating) || rating < 0 || rating > 5) {
-      showReviewToast("Rating must be between 0 and 5", 8000, "error");
+    const rating = Number(formData.rating);
+
+    if (!Number.isFinite(rating) || rating < 0 || rating > 5) {
+      showReviewToast("Rating must be between 0 and 5", 5000, "error");
       return;
     }
 
     if (
-      formData.discountPrice &&
-      parseFloat(formData.discountPrice) >= parseFloat(formData.price)
+      formData.discountPrice !== "" &&
+      Number(formData.discountPrice) >= Number(formData.price)
     ) {
-      showReviewToast("Discount price must be lower than price", 8000, "error");
+      showReviewToast("Discount price must be lower than price", 5000, "error");
       return;
     }
 
@@ -743,66 +1183,78 @@ export default function UpdateProductPage({ productId: propProductId }) {
 
       const data = new FormData();
 
-      data.append("name", formData.name);
-      data.append("slug", formData.slug);
-      data.append("description", formData.description);
-      
-let imageIndex = 0;
+      [
+        "name",
+        "slug",
+        "description",
+        "shortDescription",
+        "category",
+        "subCategory",
+        "childCategory",
+        "subChildCategory",
+        "brand",
+        "price",
+        "costPrice",
+        "discountPrice",
+        "discountPercentage",
+        "stock",
+        "sku",
+        "metaTitle",
+        "metaDescription",
+      ].forEach((field) => {
+        data.append(field, formData[field] ?? "");
+      });
 
-const sectionsMetadata = (formData.descriptionSections || []).map(
-  (section) => {
-    const sectionData = {
-      title: section.title,
-      description: section.description,
-      image: section.image || "",
-      imageIndex: null,
-    };
+      // Description sections: preserve old image URLs.
+      let imageIndex = 0;
 
-    if (section.imageFile) {
-      sectionData.imageIndex = imageIndex++;
-    }
+      const sectionsMetadata = formData.descriptionSections.map(
+        (section) => {
+          const metadata = {
+            title: section.title,
+            description: section.description,
+            image: section.image || "",
+            imageIndex: null,
+          };
 
-    return sectionData;
-  }
-);
+          if (section.imageFile) {
+            metadata.imageIndex = imageIndex++;
+          }
 
-data.append(
-  "descriptionSections",
-  JSON.stringify(sectionsMetadata)
-);
-
-(formData.descriptionSections || []).forEach((section) => {
-  if (section.imageFile) {
-    data.append(
-      "descriptionSectionImages",
-      section.imageFile
-    );
-  }
-});
-
-      data.append("shortDescription", formData.shortDescription);
-      data.append("category", formData.category);
-      data.append("subCategory", formData.subCategory);
-      data.append("childCategory", formData.childCategory);
-      data.append("subChildCategory", formData.subChildCategory);
-      data.append("brand", formData.brand);
-      data.append("price", formData.price);
-      data.append("costPrice", formData.costPrice);
-      data.append("discountPrice", formData.discountPrice || "");
-      data.append("discountPercentage", formData.discountPercentage || "");
-      data.append("stock", formData.stock);
-      data.append("sku", formData.sku);
-      data.append(
-        "additionalCategories",
-        JSON.stringify(formData.additionalCategories || []),
+          return metadata;
+        }
       );
 
-      const colorsWithoutFiles = formData.colors.map((c) => ({
-        name: c.name,
-        code: c.code,
-        existingImage: c.existingImage || "",
-      }));
-      data.append("colors", JSON.stringify(colorsWithoutFiles));
+      data.append(
+        "descriptionSections",
+        JSON.stringify(sectionsMetadata)
+      );
+
+      formData.descriptionSections.forEach((section) => {
+        if (section.imageFile) {
+          data.append(
+            "descriptionSectionImages",
+            section.imageFile
+          );
+        }
+      });
+
+      data.append(
+        "additionalCategories",
+        JSON.stringify(formData.additionalCategories || [])
+      );
+
+      // Color images
+      data.append(
+        "colors",
+        JSON.stringify(
+          formData.colors.map((color) => ({
+            name: color.name,
+            code: color.code,
+            existingImage: color.existingImage || "",
+          }))
+        )
+      );
 
       formData.colors.forEach((color) => {
         if (color.imageFile) {
@@ -812,17 +1264,21 @@ data.append(
 
       data.append("sizes", JSON.stringify(formData.sizes));
       data.append("ram", JSON.stringify(formData.ram));
-      data.append("specifications", JSON.stringify(formData.specifications));
+      data.append(
+        "specifications",
+        JSON.stringify(formData.specifications)
+      );
       data.append("variants", JSON.stringify(formData.variants));
+      data.append("keyFeatures", JSON.stringify(formData.keyFeatures));
+
       data.append("rating", String(rating));
       data.append("isActive", String(formData.isActive));
       data.append("isFeatured", String(formData.isFeatured));
       data.append("isNew", String(formData.isNew));
       data.append("isBestSeller", String(formData.isBestSeller));
-      data.append("metaTitle", formData.metaTitle);
-      data.append("metaDescription", formData.metaDescription);
+
       data.append("existingImages", JSON.stringify(existingImages));
-      data.append("keyFeatures", JSON.stringify(formData.keyFeatures));
+
       formData.images.forEach((image) => {
         data.append("images", image);
       });
@@ -832,144 +1288,130 @@ data.append(
         {
           method: "PUT",
           body: data,
-        },
+        }
       );
 
-      const text = await response.text();
+      const responseText = await response.text();
+
       let result;
+
       try {
-        result = JSON.parse(text);
+        result = JSON.parse(responseText);
       } catch {
-        result = { success: false, message: text || "Invalid server response" };
+        result = {
+          success: false,
+          message: responseText || "Invalid server response",
+        };
       }
 
       if (!response.ok) {
         throw new Error(result.message || "Could not update product");
       }
 
-      showReviewToast("Product updated successfully!", 8000, "success");
+      showReviewToast("Product updated successfully!", 6000, "success");
+
+      // Return to product list after successful update.
       setSelectedProductId(null);
     } catch (error) {
       console.error("Update product error:", error);
-      showReviewToast(error.message || "Something went wrong", 8000, "error");
+      showReviewToast(
+        error.message || "Something went wrong",
+        8000,
+        "error"
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  // ==============================
-  // FILTERED LIST
-  // ==============================
-  const filteredProducts = productsList.filter((p) => {
-    if (!searchTerm.trim()) return true;
-    const q = searchTerm.toLowerCase();
+  // ------------------------------------------
+  // Product list UI
+  // ------------------------------------------
+
+  const filteredProducts = productsList.filter((product) => {
+    const query = normalize(searchTerm);
+
+    if (!query) return true;
+
     return (
-      p.name?.toLowerCase().includes(q) ||
-      p.sku?.toLowerCase().includes(q) ||
-      p.brand?.toLowerCase().includes(q)
+      normalize(product.name).includes(query) ||
+      normalize(product.sku).includes(query) ||
+      normalize(product.brand).includes(query)
     );
   });
 
-  // ==============================
-  // UI: PRODUCT LIST
-  // ==============================
   if (!selectedProductId) {
     return (
-      <div className="min-h-[calc(100vh-65px)] bg-slate-50 p-6">
-      <Toaster
-        position="top-center"
-        toastOptions={{
-          duration: 15000,
-          style: {
-            padding: 0,
-            background: "transparent",
-            boxShadow: "none",
-          },
-        }}
-      />
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-slate-900">Update Product</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Select a product to edit
-          </p>
-        </div>
+      <div className="min-h-screen bg-slate-50 p-4 md:p-6">
+        <Toaster position="top-center" />
 
-        <div className="mb-4">
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search by name, SKU or brand..."
-            className="w-full max-w-md rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm outline-none focus:border-red-500"
-          />
-        </div>
+        <h1 className="text-2xl font-bold text-slate-900">
+          Update Product
+        </h1>
+        <p className="mb-5 mt-1 text-sm text-slate-500">
+          Select a product to edit.
+        </p>
+
+        <input
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Search by name, SKU or brand..."
+          className={`${inputClass} mb-5 max-w-lg`}
+        />
 
         {listLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-red-700 border-t-transparent" />
-          </div>
+          <p className="py-12 text-center">Loading products...</p>
         ) : filteredProducts.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-300 bg-white py-16 text-center">
-            <p className="text-sm text-slate-500">No products found</p>
-          </div>
+          <p className="rounded-xl border bg-white p-10 text-center text-slate-500">
+            No products found.
+          </p>
         ) : (
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase text-slate-500">
+          <div className="overflow-x-auto rounded-xl border bg-white">
+            <table className="w-full min-w-[700px] text-left text-sm">
+              <thead className="bg-slate-100">
                 <tr>
-                  <th className="px-4 py-3">Image</th>
-                  <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Brand</th>
-                  <th className="px-4 py-3">Price</th>
-                  <th className="px-4 py-3">Stock</th>
-                  <th className="px-4 py-3 text-right">Action</th>
+                  {["Image", "Name", "Brand", "Price", "Stock", "Action"].map(
+                    (label) => (
+                      <th key={label} className="px-4 py-3">
+                        {label}
+                      </th>
+                    )
+                  )}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y">
                 {filteredProducts.map((product) => (
-                  <tr
-                    key={product._id || product.id}
-                    className="hover:bg-slate-50"
-                  >
+                  <tr key={product._id || product.id}>
                     <td className="px-4 py-3">
                       <img
                         src={
-                          product.images?.[0] || product.image || "/images.png"
+                          getImageUrl(product.images?.[0]) ||
+                          product.image ||
+                          "/images.png"
                         }
-                        alt={product.name}
-                        className="h-12 w-12 rounded-lg border border-slate-200 object-contain"
+                        alt={product.name || "Product"}
+                        className="h-12 w-12 rounded-lg object-contain"
                       />
                     </td>
-                    <td className="px-4 py-3 font-medium text-slate-800">
+                    <td className="px-4 py-3 font-medium">
                       {product.name}
                     </td>
-                    <td className="px-4 py-3 text-slate-600">
+                    <td className="px-4 py-3">
                       {product.brand || "—"}
                     </td>
-                    <td className="px-4 py-3 font-semibold text-slate-800">
-                      ৳{" "}
-                      {Number(
-                        product.discountPrice || product.price || 0,
+                    <td className="px-4 py-3">
+                      ৳{Number(
+                        product.discountPrice || product.price || 0
                       ).toLocaleString()}
                     </td>
+                    <td className="px-4 py-3">{product.stock ?? 0}</td>
                     <td className="px-4 py-3">
-                      <span
-                        className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                          product.stock > 0
-                            ? "bg-emerald-50 text-emerald-700"
-                            : "bg-red-50 text-red-600"
-                        }`}
-                      >
-                        {product.stock > 0 ? product.stock : "Out"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right">
                       <button
                         type="button"
                         onClick={() =>
                           setSelectedProductId(product._id || product.id)
                         }
-                        className="rounded-lg bg-red-800 px-4 py-2 text-xs font-semibold text-white hover:bg-red-900"
+                        className={`${buttonClass} bg-red-800 text-white hover:bg-red-900`}
                       >
                         Edit
                       </button>
@@ -984,255 +1426,230 @@ data.append(
     );
   }
 
-  // ==============================
-  // UI: LOADING
-  // ==============================
   if (fetching) {
     return (
-      <div className="flex min-h-[calc(100vh-65px)] items-center justify-center bg-slate-50">
-        <div className="text-center">
-          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-red-700 border-t-transparent" />
-          <p className="mt-3 text-sm text-slate-500">Loading product...</p>
-        </div>
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <Toaster position="top-center" />
+        <p className="text-slate-600">Loading product...</p>
       </div>
     );
   }
 
-  // ==============================
-  // UI: EDIT FORM
-  // ==============================
+  // ------------------------------------------
+  // Edit form UI
+  // ------------------------------------------
+
   return (
-    <div className="min-h-[calc(100vh-65px)] bg-slate-50 p-4 md:p-8">
-      <Toaster
-        position="top-center"
-        toastOptions={{
-          duration: 15000,
-          style: {
-            padding: 0,
-            background: "transparent",
-            boxShadow: "none",
-          },
-        }}
-      />
+    <div className="min-h-screen bg-slate-50 p-4 md:p-8">
+      <Toaster position="top-center" />
+
       <div className="mx-auto max-w-6xl">
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">
               Update Product
             </h1>
-            <p className="mt-1 text-sm text-slate-500">Edit product details</p>
+            <p className="mt-1 text-sm text-slate-500">
+              Edit product details and saved items.
+            </p>
           </div>
 
           <button
             type="button"
             onClick={() => setSelectedProductId(null)}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-white"
+            className={`${buttonClass} border border-slate-300 bg-white`}
           >
             ← Back to list
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* ================= BASIC INFORMATION ================= */}
-          <section className="rounded-2xl bg-white p-6 shadow-sm">
-            <h2 className="mb-5 text-xl font-semibold text-slate-900">
-              Basic Information
-            </h2>
+          {/* BASIC INFORMATION */}
+          <Section title="Basic Information">
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field label="Product Name">
+                <input
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  required
+                  className={inputClass}
+                />
+              </Field>
 
-            <div className="grid gap-5 md:grid-cols-2">
-              <Input
-                label="Product Name"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                placeholder="Enter product name"
-                required
-              />
+              <Field label="Slug">
+                <input
+                  name="slug"
+                  value={formData.slug}
+                  onChange={handleChange}
+                  required
+                  className={inputClass}
+                />
+              </Field>
 
-              <Input
-                label="Slug"
-                name="slug"
-                value={formData.slug}
-                onChange={handleChange}
-                placeholder="product-slug"
-                required
-              />
-
-              <div className="md:col-span-2">
-                <label className="mb-2 block text-sm font-medium">
-                  Description
-                </label>
-
-<div className="md:col-span-2">
-  <div className="mb-4">
-    <h3 className="text-lg font-semibold text-slate-900">
-      Product Description Builder
-    </h3>
-    <p className="mt-1 text-sm text-slate-500">
-      Add headings, formatted descriptions and images for each section.
-    </p>
-  </div>
-
-  <div className="space-y-4 rounded-xl border border-slate-200 p-4">
-    {/* Section Heading */}
-    <div>
-      <label className="mb-2 block text-sm font-medium">
-        Section Heading
-      </label>
-
-      <input
-        type="text"
-        value={sectionTitle}
-        onChange={(e) => setSectionTitle(e.target.value)}
-        placeholder="e.g. Pro Camera System"
-        className="w-full rounded-xl border border-slate-300 px-4 py-3"
-      />
-    </div>
-
-    {/* Rich Text Description */}
-    <div>
-      <label className="mb-2 block text-sm font-medium">
-        Section Description
-      </label>
-
-      <RichTextEditor
-        value={sectionDescription}
-        onChange={setSectionDescription}
-      />
-    </div>
-
-    {/* Section Image */}
-    <div>
-      <label className="mb-2 block text-sm font-medium">
-        Section Image (Optional)
-      </label>
-
-      <input
-        type="file"
-        accept="image/*"
-        onChange={handleSectionImageChange}
-        className="w-full rounded-xl border border-dashed border-slate-300 p-3"
-      />
-
-      {sectionImagePreview && (
-        <div className="mt-3">
-          <img
-            src={sectionImagePreview}
-            alt="Section preview"
-            className="h-48 w-full rounded-xl bg-slate-50 object-contain"
-          />
-
-          <button
-            type="button"
-            onClick={() => {
-              URL.revokeObjectURL(sectionImagePreview);
-              setSectionImage(null);
-              setSectionImagePreview("");
-            }}
-            className="mt-2 text-sm text-red-600"
-          >
-            Remove image
-          </button>
-        </div>
-      )}
-    </div>
-
-    {/* Add Section */}
-    <button
-      type="button"
-      onClick={addDescriptionSection}
-      className="rounded-xl bg-blue-600 px-5 py-3 font-medium text-white hover:bg-blue-700"
-    >
-      + Add Description Section
-    </button>
-  </div>
-
-  {/* Added Sections Preview */}
-  <div className="mt-5 space-y-4">
-    {formData.descriptionSections.map((section, index) => (
-      <div
-        key={index}
-        className="rounded-xl border border-slate-200 p-4"
-      >
-        <div className="flex items-start justify-between gap-3">
-          <h4 className="text-lg font-semibold text-slate-900">
-            {index + 1}. {section.title}
-          </h4>
-
-          <button
-            type="button"
-            onClick={() => removeDescriptionSection(index)}
-            className="text-sm font-medium text-red-600"
-          >
-            Remove
-          </button>
-        </div>
-
-        {/* Render formatted HTML */}
-        <div
-          className="product-description-content mt-3 text-sm leading-7 text-slate-600"
-          dangerouslySetInnerHTML={{
-            __html: section.description || "",
-          }}
-        />
-
-        {section.imagePreview && (
-          <img
-            src={section.imagePreview}
-            alt={section.title || "Product section"}
-            className="mt-4 max-h-72 w-full rounded-xl bg-slate-50 object-contain"
-          />
-        )}
-      </div>
-    ))}
-  </div>
-</div>
-
-
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="mb-2 block text-sm font-medium">
-                  Short Description
-                </label>
+              <Field label="Short Description" full>
                 <textarea
                   name="shortDescription"
                   value={formData.shortDescription}
                   onChange={handleChange}
                   rows={3}
-                  placeholder="Short product description..."
-                  className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
+                  className={inputClass}
                 />
+              </Field>
+            </div>
+          </Section>
+
+          {/* DESCRIPTION SECTIONS */}
+          <Section title="Product Description Builder">
+            <div className="space-y-4 rounded-xl border bg-slate-50 p-4">
+              <Field label="Section Heading">
+                <input
+                  value={sectionTitle}
+                  onChange={(e) => setSectionTitle(e.target.value)}
+                  placeholder="e.g. Pro Camera System"
+                  className={inputClass}
+                />
+              </Field>
+
+              <Field label="Section Description">
+                <RichTextEditor
+                  value={sectionDescription}
+                  onChange={setSectionDescription}
+                />
+              </Field>
+
+              <Field label="Section Image (Optional)">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleSectionImageChange}
+                  className={inputClass}
+                />
+
+                {sectionImagePreview && (
+                  <div className="mt-3">
+                    <img
+                      src={sectionImagePreview}
+                      alt="Section preview"
+                      className="max-h-64 w-full rounded-xl bg-white object-contain"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        // If editing an existing section, removing a
+                        // newly-selected file restores its previous image.
+                        revokePreview(sectionImagePreview);
+                        setSectionImage(null);
+
+                        const oldSection =
+                          editingSectionIndex !== null
+                            ? formData.descriptionSections[
+                                editingSectionIndex
+                              ]
+                            : null;
+
+                        setSectionImagePreview(
+                          oldSection?.image || ""
+                        );
+                      }}
+                      className="mt-2 text-sm text-red-600"
+                    >
+                      Remove selected image
+                    </button>
+                  </div>
+                )}
+              </Field>
+
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={addDescriptionSection}
+                  className={`${buttonClass} bg-blue-600 text-white hover:bg-blue-700`}
+                >
+                  {editingSectionIndex !== null
+                    ? "Update Description Section"
+                    : "+ Add Description Section"}
+                </button>
+
+                {editingSectionIndex !== null && (
+                  <button
+                    type="button"
+                    onClick={resetSectionEditor}
+                    className={`${buttonClass} border bg-white`}
+                  >
+                    Cancel Edit
+                  </button>
+                )}
               </div>
             </div>
-          </section>
 
-          {/* ================= CATEGORY & BRAND ================= */}
-          <section className="rounded-2xl bg-white p-6 shadow-sm">
-            <h2 className="mb-5 text-xl font-semibold text-slate-900">
-              Category &amp; Brand
-            </h2>
+            <div className="mt-5 space-y-4">
+              {formData.descriptionSections.map((section, index) => (
+                <div
+                  key={`section-${index}`}
+                  className="rounded-xl border bg-white p-4"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <h3 className="font-semibold text-slate-900">
+                      {index + 1}. {section.title}
+                    </h3>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => editDescriptionSection(index)}
+                        className={`${buttonClass} bg-amber-100 text-amber-800`}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeDescriptionSection(index)}
+                        className={`${buttonClass} bg-red-50 text-red-600`}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
 
-            <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-              {/* Category */}
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Category
-                </label>
+                  <div
+                    className="product-description-content mt-3 text-sm leading-7 text-slate-600"
+                    dangerouslySetInnerHTML={{
+                      __html: section.description || "",
+                    }}
+                  />
+
+                  {(section.imagePreview || section.image) && (
+                    <img
+                      src={section.imagePreview || section.image}
+                      alt={section.title}
+                      className="mt-4 max-h-72 w-full rounded-xl bg-slate-50 object-contain"
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          </Section>
+
+          {/* CATEGORY & BRAND */}
+          <Section title="Category & Brand">
+            {categoriesError && (
+              <p className="mb-4 text-sm text-red-600">
+                {categoriesError}
+              </p>
+            )}
+
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <Field label="Category">
                 <select
                   name="category"
                   value={formData.category}
                   onChange={handleChange}
                   required
                   disabled={categoriesLoading}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-blue-500 disabled:bg-slate-100"
+                  className={inputClass}
                 >
                   <option value="">
-                    {categoriesLoading
-                      ? "Loading..."
-                      : categories.length === 0
-                        ? "No category"
-                        : "Select category"}
+                    {categoriesLoading ? "Loading..." : "Select category"}
                   </option>
                   {categories.map((category) => (
                     <option key={category._id} value={category._id}>
@@ -1240,274 +1657,216 @@ data.append(
                     </option>
                   ))}
                 </select>
-                {categoriesError && (
-                  <p className="mt-2 text-sm text-red-600">{categoriesError}</p>
-                )}
-              </div>
+              </Field>
 
-              {/* Sub Category */}
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Sub Category
-                </label>
+              <Field label="Sub Category">
                 <select
                   name="subCategory"
                   value={formData.subCategory}
                   onChange={handleChange}
                   disabled={!formData.category}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-blue-500 disabled:bg-slate-100"
+                  className={inputClass}
                 >
-                  <option value="">
-                    {!formData.category
-                      ? "Select category first"
-                      : subCategories.length === 0
-                        ? "No sub category"
-                        : "Select sub category"}
-                  </option>
-                  {subCategories.map((sub) => (
-                    <option key={sub._id} value={sub._id}>
-                      {sub.name}
+                  <option value="">Select sub category</option>
+                  {subCategories.map((category) => (
+                    <option key={category._id} value={category._id}>
+                      {category.name}
                     </option>
                   ))}
                 </select>
-              </div>
+              </Field>
 
-              {/* Child Category */}
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Child Category
-                </label>
+              <Field label="Child Category">
                 <select
                   name="childCategory"
                   value={formData.childCategory}
                   onChange={handleChange}
                   disabled={!formData.subCategory}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-blue-500 disabled:bg-slate-100"
+                  className={inputClass}
                 >
-                  <option value="">
-                    {!formData.subCategory
-                      ? "Select sub category first"
-                      : childCategories.length === 0
-                        ? "No child category"
-                        : "Select child category"}
-                  </option>
-                  {childCategories.map((child) => (
-                    <option key={child._id} value={child._id}>
-                      {child.name}
+                  <option value="">Select child category</option>
+                  {childCategories.map((category) => (
+                    <option key={category._id} value={category._id}>
+                      {category.name}
                     </option>
                   ))}
                 </select>
-              </div>
+              </Field>
 
-              {/* Sub Child Category */}
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Sub Child Category
-                </label>
+              <Field label="Sub Child Category">
                 <select
                   name="subChildCategory"
                   value={formData.subChildCategory}
                   onChange={handleChange}
                   disabled={!formData.childCategory}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-blue-500 disabled:bg-slate-100"
+                  className={inputClass}
                 >
-                  <option value="">
-                    {!formData.childCategory
-                      ? "Select child category first"
-                      : subChildCategories.length === 0
-                        ? "No sub child category"
-                        : "Select sub child category"}
-                  </option>
-                  {subChildCategories.map((sc) => (
-                    <option key={sc._id} value={sc._id}>
-                      {sc.name}
+                  <option value="">Select sub child category</option>
+                  {subChildCategories.map((category) => (
+                    <option key={category._id} value={category._id}>
+                      {category.name}
                     </option>
                   ))}
                 </select>
-              </div>
+              </Field>
+
+              <Field label="Brand" full>
+                <input
+                  name="brand"
+                  value={formData.brand}
+                  onChange={handleChange}
+                  className={inputClass}
+                />
+              </Field>
             </div>
 
-            <div className="mt-5 max-w-md">
-              <Input
-                label="Brand"
-                name="brand"
-                value={formData.brand}
-                onChange={handleChange}
-                placeholder="Apple"
-              />
-            </div>
+            <div className="mt-6 border-t pt-5">
+              <h3 className="mb-3 font-semibold">Additional Categories</h3>
 
-            {/* Additional Categories */}
-            <div className="mt-6 border-t border-slate-200 pt-6">
-              <h3 className="mb-2 text-base font-semibold text-slate-900">
-                Additional Categories
-              </h3>
-              <p className="mb-4 text-sm text-slate-500">
-                Select other main categories where this product should also
-                appear.
-              </p>
-
-              <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 {categories
-                  .filter((c) => c._id !== formData.category)
+                  .filter((category) => category._id !== formData.category)
                   .map((category) => {
-                    const checked = (
-                      formData.additionalCategories || []
-                    ).includes(category._id);
+                    const checked = formData.additionalCategories.includes(
+                      category._id
+                    );
 
                     return (
                       <label
                         key={category._id}
-                        className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition ${
-                          checked
-                            ? "border-blue-500 bg-blue-50"
-                            : "border-slate-300 bg-white hover:border-blue-300"
-                        }`}
+                        className="flex items-center gap-2 rounded-xl border p-3"
                       >
                         <input
                           type="checkbox"
                           checked={checked}
                           onChange={(e) => {
-                            setFormData((prev) => {
-                              const current = prev.additionalCategories || [];
-                              if (e.target.checked) {
-                                if (current.includes(category._id)) return prev;
-                                return {
-                                  ...prev,
-                                  additionalCategories: [
-                                    ...current,
+                            const selected = e.target.checked;
+
+                            setFormData((prev) => ({
+                              ...prev,
+                              additionalCategories: selected
+                                ? [
+                                    ...prev.additionalCategories,
                                     category._id,
-                                  ],
-                                };
-                              }
-                              return {
-                                ...prev,
-                                additionalCategories: current.filter(
-                                  (id) => id !== category._id,
-                                ),
-                              };
-                            });
+                                  ]
+                                : prev.additionalCategories.filter(
+                                    (id) => id !== category._id
+                                  ),
+                            }));
                           }}
-                          className="h-4 w-4 accent-blue-600"
                         />
-                        <span className="text-sm font-medium text-slate-700">
-                          {category.name}
-                        </span>
+                        <span className="text-sm">{category.name}</span>
                       </label>
                     );
                   })}
               </div>
             </div>
-          </section>
+          </Section>
 
-          {/* ================= PRICING ================= */}
-          <section className="rounded-2xl bg-white p-6 shadow-sm">
-            <h2 className="mb-5 text-xl font-semibold">
-              Pricing &amp; Inventory
-            </h2>
+          {/* PRICING & INVENTORY */}
+          <Section title="Pricing & Inventory">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <Field label="Price">
+                <input
+                  name="price"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  required
+                  value={formData.price}
+                  onChange={handleChange}
+                  className={inputClass}
+                />
+              </Field>
 
-            <div className="grid gap-5 md:grid-cols-3 lg:grid-cols-5">
-              <Input
-                label="Price"
-                name="price"
-                type="number"
-                value={formData.price}
-                onChange={handleChange}
-                placeholder="1000"
-                required
-                min="0"
-                step="0.01"
-              />
-              <Input
-                label="Discount Price"
-                name="discountPrice"
-                type="number"
-                value={formData.discountPrice}
-                onChange={handleChange}
-                placeholder="900"
-                min="0"
-                step="0.01"
-              />
-              <Input
-                label="costPrice"
-                name="costPrice"
-                type="number"
-                value={formData.costPrice}
-                onChange={handleChange}
-                placeholder="900"
-                min="0"
-                step="0.01"
-              />
-              <Input
-                label="Discount %"
-                name="discountPercentage"
-                type="number"
-                value={formData.discountPercentage}
-                onChange={handleChange}
-                placeholder="10"
-                readOnly
-              />
-              <Input
-                label="Stock"
-                name="stock"
-                type="number"
-                value={formData.stock}
-                onChange={handleChange}
-                placeholder="50"
-                required
-                min="0"
-              />
-              <Input
-                label="SKU"
-                name="sku"
-                value={formData.sku}
-                onChange={handleChange}
-                placeholder="SKU-001"
-              />
+              <Field label="Discount Price">
+                <input
+                  name="discountPrice"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.discountPrice}
+                  onChange={handleChange}
+                  className={inputClass}
+                />
+              </Field>
+
+              <Field label="Cost Price">
+                <input
+                  name="costPrice"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.costPrice}
+                  onChange={handleChange}
+                  className={inputClass}
+                />
+              </Field>
+
+              <Field label="Discount Percentage">
+                <input
+                  name="discountPercentage"
+                  type="number"
+                  value={formData.discountPercentage}
+                  readOnly
+                  className={inputClass}
+                />
+              </Field>
+
+              <Field label="Stock">
+                <input
+                  name="stock"
+                  type="number"
+                  min="0"
+                  required
+                  value={formData.stock}
+                  onChange={handleChange}
+                  className={inputClass}
+                />
+              </Field>
+
+              <Field label="SKU">
+                <input
+                  name="sku"
+                  value={formData.sku}
+                  onChange={handleChange}
+                  className={inputClass}
+                />
+              </Field>
             </div>
-          </section>
+          </Section>
 
-          {/* ================= GALLERY ================= */}
-          <section className="rounded-2xl bg-white p-6 shadow-sm">
-            <h2 className="mb-2 text-xl font-semibold text-slate-900">
-              Product Gallery
-            </h2>
-            <p className="mb-5 text-sm text-slate-500">
-              Keep existing images or add new ones.
+          {/* PRODUCT GALLERY */}
+          <Section title="Product Gallery">
+            <p className="mb-4 text-sm text-slate-500">
+              Keep existing images, remove unwanted images or upload new ones.
             </p>
 
             {existingImages.length > 0 && (
-              <div className="mb-6">
-                <h3 className="mb-3 text-sm font-semibold text-slate-700">
-                  Current Images
-                </h3>
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-                  {existingImages.map((img, index) => (
+              <>
+                <h3 className="mb-3 font-medium">Current Images</h3>
+                <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-5">
+                  {existingImages.map((image, index) => (
                     <div
                       key={`existing-${index}`}
-                      className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white"
+                      className="relative rounded-xl border p-2"
                     >
                       <img
-                        src={typeof img === "string" ? img : img.url || img}
-                        alt={`Existing ${index + 1}`}
-                        className="h-40 w-full object-cover"
+                        src={getImageUrl(image)}
+                        alt={`Existing image ${index + 1}`}
+                        className="h-32 w-full object-contain"
                       />
-                      {index === 0 && (
-                        <span className="absolute left-2 top-2 rounded-full bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white">
-                          Main
-                        </span>
-                      )}
                       <button
                         type="button"
                         onClick={() => removeExistingImage(index)}
-                        className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-red-500 text-lg font-bold text-white hover:bg-red-600"
+                        className="absolute right-1 top-1 rounded-full bg-red-600 px-3 py-1 text-white"
                       >
                         ×
                       </button>
                     </div>
                   ))}
                 </div>
-              </div>
+              </>
             )}
 
             <input
@@ -1516,28 +1875,28 @@ data.append(
               accept="image/*"
               multiple
               onChange={handleImageChange}
-              className="w-full cursor-pointer rounded-xl border border-dashed border-slate-400 bg-slate-50 p-4"
+              className={inputClass}
             />
 
             {imagePreviews.length > 0 && (
-              <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+              <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-5">
                 {imagePreviews.map((image, index) => (
                   <div
                     key={`new-${index}`}
-                    className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white"
+                    className="relative rounded-xl border p-2"
                   >
                     <img
                       src={image.url}
-                      alt={`New ${index + 1}`}
-                      className="h-40 w-full object-cover"
+                      alt={`New image ${index + 1}`}
+                      className="h-32 w-full object-contain"
                     />
-                    <span className="absolute left-2 top-2 rounded-full bg-green-600 px-2.5 py-1 text-xs font-semibold text-white">
+                    <span className="absolute left-2 top-2 rounded bg-green-600 px-2 py-1 text-xs text-white">
                       New
                     </span>
                     <button
                       type="button"
                       onClick={() => removeNewImage(index)}
-                      className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-red-500 text-lg font-bold text-white hover:bg-red-600"
+                      className="absolute right-1 top-1 rounded-full bg-red-600 px-3 py-1 text-white"
                     >
                       ×
                     </button>
@@ -1545,682 +1904,617 @@ data.append(
                 ))}
               </div>
             )}
-          </section>
+          </Section>
 
-          {/* ================= COLORS ================= */}
-          <section className="rounded-2xl bg-white p-6 shadow-sm">
-            <h2 className="mb-5 text-xl font-semibold">Colors</h2>
-
+          {/* COLORS */}
+          <Section title="Colors">
             <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Color Name
-                </label>
+              <Field label="Color Name">
                 <input
-                  type="text"
                   value={colorName}
                   onChange={(e) => setColorName(e.target.value)}
-                  placeholder="Example: Burgundy"
-                  className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
+                  placeholder="e.g. Burgundy"
+                  className={inputClass}
                 />
-              </div>
+              </Field>
 
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Color Code
-                </label>
+              <Field label="Color Code">
                 <div className="flex gap-3">
                   <input
                     type="color"
                     value={colorCode}
                     onChange={(e) => setColorCode(e.target.value)}
-                    className="h-[48px] w-[70px] cursor-pointer rounded-lg border border-slate-300"
+                    className="h-12 w-16 rounded-lg border"
                   />
                   <input
-                    type="text"
                     value={colorCode}
                     onChange={(e) => setColorCode(e.target.value)}
-                    className="flex-1 rounded-xl border border-slate-300 px-4 py-3 uppercase outline-none focus:border-blue-500"
+                    className={inputClass}
                   />
                 </div>
-              </div>
+              </Field>
             </div>
 
-            <div className="mt-5">
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                Color Image
-              </label>
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                <label className="flex h-32 w-32 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 hover:border-blue-500">
-                  {colorImagePreview ? (
-                    <img
-                      src={colorImagePreview}
-                      alt="Color preview"
-                      className="h-full w-full object-contain p-2"
+            <Field label="Color Image">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleColorImageChange}
+                className={inputClass}
+              />
+              {colorImagePreview && (
+                <img
+                  src={colorImagePreview}
+                  alt="Color preview"
+                  className="mt-3 h-36 w-36 rounded-xl border object-contain p-2"
+                />
+              )}
+            </Field>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={addColor}
+                className={`${buttonClass} bg-blue-600 text-white`}
+              >
+                {editingColorIndex !== null ? "Update Color" : "+ Add Color"}
+              </button>
+
+              {editingColorIndex !== null && (
+                <button
+                  type="button"
+                  onClick={resetColorEditor}
+                  className={`${buttonClass} border bg-white`}
+                >
+                  Cancel Edit
+                </button>
+              )}
+            </div>
+
+            <div className="mt-5 space-y-3">
+              {formData.colors.map((color, index) => (
+                <div
+                  key={`color-${index}`}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3"
+                >
+                  <div className="flex items-center gap-3">
+                    {(color.imagePreview || color.existingImage) && (
+                      <img
+                        src={color.imagePreview || color.existingImage}
+                        alt={color.name}
+                        className="h-16 w-16 rounded-lg border object-contain"
+                      />
+                    )}
+                    <span
+                      className="h-5 w-5 rounded-full border"
+                      style={{ backgroundColor: color.code }}
                     />
-                  ) : (
-                    <>
-                      <span className="text-3xl text-slate-400">+</span>
-                      <span className="mt-1 text-xs text-slate-500">
-                        Choose Image
-                      </span>
-                    </>
-                  )}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleColorImageChange}
-                    className="hidden"
-                  />
-                </label>
-                <div>
-                  {colorImage ? (
-                    <>
-                      <p className="text-sm font-medium text-slate-700">
-                        {colorImage.name}
-                      </p>
-                      <p className="mt-1 text-xs text-green-600">
-                        Image selected
-                      </p>
-                    </>
-                  ) : (
-                    <p className="text-sm text-slate-500">
-                      Upload the phone image for this color
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={addColor}
-              className="mt-5 rounded-xl bg-blue-600 px-6 py-3 font-medium text-white hover:bg-blue-700"
-            >
-              + Add Color
-            </button>
-
-            {formData.colors.length > 0 && (
-              <div className="mt-6 space-y-3">
-                <h3 className="text-sm font-semibold text-slate-700">
-                  Added Colors
-                </h3>
-                {formData.colors.map((color, index) => (
-                  <div
-                    key={`${color.name}-${index}`}
-                    className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 p-3"
-                  >
-                    <div className="flex items-center gap-4">
-                      {color.imagePreview || color.existingImage ? (
-                        <img
-                          src={color.imagePreview || color.existingImage}
-                          alt={color.name}
-                          className="h-16 w-16 rounded-lg border border-slate-200 bg-white object-contain p-1"
-                        />
-                      ) : (
-                        <div className="h-16 w-16 rounded-lg border bg-white" />
-                      )}
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="h-5 w-5 rounded-full border"
-                            style={{ backgroundColor: color.code }}
-                          />
-                          <span className="font-medium">{color.name}</span>
-                        </div>
-                        <p className="mt-1 text-xs text-slate-500">
-                          {color.code}
-                        </p>
-                      </div>
+                    <div>
+                      <p className="font-medium">{color.name}</p>
+                      <p className="text-xs text-slate-500">{color.code}</p>
                     </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => editColor(index)}
+                      className={`${buttonClass} bg-amber-100 text-amber-800`}
+                    >
+                      Edit
+                    </button>
                     <button
                       type="button"
                       onClick={() => removeColor(index)}
-                      className="flex h-8 w-8 items-center justify-center rounded-full bg-red-50 text-red-500 hover:bg-red-100"
+                      className={`${buttonClass} bg-red-50 text-red-600`}
                     >
-                      ×
+                      Remove
                     </button>
                   </div>
-                ))}
-              </div>
-            )}
-          </section>
+                </div>
+              ))}
+            </div>
+          </Section>
 
-          {/* ================= SIZES ================= */}
-          <section className="rounded-2xl bg-white p-6 shadow-sm">
-            <h2 className="mb-5 text-xl font-semibold">Sizes</h2>
-            <div className="flex gap-3">
+          {/* SIZES */}
+          <Section title="Sizes">
+            <div className="flex flex-wrap gap-3">
               <input
                 value={size}
                 onChange={(e) => setSize(e.target.value)}
                 placeholder="S / M / L / XL"
-                className="flex-1 rounded-xl border border-slate-300 px-4 py-3"
+                className={`${inputClass} min-w-[200px] flex-1`}
               />
               <button
                 type="button"
                 onClick={addSize}
-                className="rounded-xl bg-blue-600 px-6 py-3 text-white"
+                className={`${buttonClass} bg-blue-600 text-white`}
               >
-                Add size
+                {editingSizeIndex !== null ? "Update Size" : "+ Add Size"}
               </button>
+              {editingSizeIndex !== null && (
+                <button
+                  type="button"
+                  onClick={resetSizeEditor}
+                  className={`${buttonClass} border bg-white`}
+                >
+                  Cancel
+                </button>
+              )}
             </div>
+
             <div className="mt-4 flex flex-wrap gap-3">
               {formData.sizes.map((item, index) => (
                 <div
-                  key={`${item}-${index}`}
-                  className="rounded-lg bg-slate-100 px-4 py-2"
+                  key={`size-${index}`}
+                  className="flex items-center gap-2 rounded-lg border bg-white px-3 py-2"
                 >
-                  {item}
+                  <span>{item}</span>
+                  <button
+                    type="button"
+                    onClick={() => editSize(index)}
+                    className="text-sm font-semibold text-amber-700"
+                  >
+                    Edit
+                  </button>
                   <button
                     type="button"
                     onClick={() => removeSize(index)}
-                    className="ml-3 text-red-500"
+                    className="text-sm font-semibold text-red-600"
                   >
                     ×
                   </button>
                 </div>
               ))}
             </div>
-          </section>
+          </Section>
 
-          {/* ================= SPECIFICATIONS ================= */}
-          <section className="rounded-2xl bg-white p-6 shadow-sm">
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold text-slate-900">
-                Specifications
-              </h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Add product technical specifications
-              </p>
+          {/* SPECIFICATIONS */}
+          <Section title="Specifications">
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field label="Specification Name">
+                <input
+                  value={specKey}
+                  onChange={(e) => setSpecKey(e.target.value)}
+                  placeholder="e.g. Display Type"
+                  className={inputClass}
+                />
+              </Field>
+              <Field label="Specification Value">
+                <input
+                  value={specValue}
+                  onChange={(e) => setSpecValue(e.target.value)}
+                  placeholder="e.g. OLED"
+                  className={inputClass}
+                />
+              </Field>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-              <h3 className="mb-4 text-base font-semibold text-slate-800">
-                Add Specification
-              </h3>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
-                    Specification Name
-                  </label>
-                  <input
-                    value={specKey}
-                    onChange={(e) => setSpecKey(e.target.value)}
-                    placeholder="e.g. Display Type"
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
-                    Specification Value
-                  </label>
-                  <input
-                    value={specValue}
-                    onChange={(e) => setSpecValue(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        addSpecification();
-                      }
-                    }}
-                    placeholder="e.g. LTPO Super Retina XDR OLED"
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-blue-500"
-                  />
-                </div>
-              </div>
+            <div className="mt-4 flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={addSpecification}
-                className="mt-4 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white hover:bg-blue-700"
+                className={`${buttonClass} bg-blue-600 text-white`}
               >
-                + Add Specification
+                {editingSpecIndex !== null
+                  ? "Update Specification"
+                  : "+ Add Specification"}
               </button>
-            </div>
-
-            {/* RAM */}
-            <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
-              <div className="mb-4">
-                <h3 className="text-base font-semibold text-slate-800">
-                  Memory / RAM
-                </h3>
-                <p className="mt-1 text-sm text-slate-500">
-                  You can add multiple memory variants
-                </p>
-              </div>
-              <div className="flex flex-col gap-3 md:flex-row">
-                <input
-                  value={ramValue}
-                  onChange={(e) => setRamValue(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      addRam();
-                    }
-                  }}
-                  placeholder="e.g. 256GB / 12GB RAM"
-                  className="flex-1 rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-blue-500"
-                />
+              {editingSpecIndex !== null && (
                 <button
                   type="button"
-                  onClick={addRam}
-                  className="rounded-xl bg-slate-900 px-6 py-3 font-semibold text-white hover:bg-slate-800"
+                  onClick={resetSpecEditor}
+                  className={`${buttonClass} border bg-white`}
                 >
-                  + Add Memory
+                  Cancel
                 </button>
-              </div>
-              {formData.ram.length > 0 && (
-                <div className="mt-4 flex flex-wrap gap-3">
-                  {formData.ram.map((item, index) => (
-                    <div
-                      key={`${item}-${index}`}
-                      className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3"
-                    >
-                      <span className="text-sm font-medium text-slate-700">
-                        {item}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => removeRam(index)}
-                        className="font-bold text-red-500 hover:text-red-700"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
               )}
             </div>
 
-            {formData.specifications.length > 0 && (
-              <div className="mt-6">
-                <div className="mb-3 flex items-center justify-between">
-                  <h3 className="text-base font-semibold text-slate-800">
-                    Added Specifications
-                  </h3>
-                  <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-600">
-                    {formData.specifications.length} items
-                  </span>
-                </div>
-                <div className="overflow-hidden rounded-2xl border border-slate-200">
-                  <div className="divide-y divide-slate-200">
-                    {formData.specifications.map((item, index) => (
-                      <div
-                        key={`${item.key}-${index}`}
-                        className="grid grid-cols-1 md:grid-cols-[220px_1fr_auto] md:items-center"
-                      >
-                        <div className="bg-slate-50 px-4 py-4 font-medium text-slate-700">
-                          {item.key}
-                        </div>
-                        <div className="px-4 py-4 text-sm text-slate-600">
-                          {item.value}
-                        </div>
-                        <div className="px-4 py-3">
+            <div className="mt-5 overflow-x-auto rounded-xl border">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="px-4 py-3">Name</th>
+                    <th className="px-4 py-3">Value</th>
+                    <th className="px-4 py-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {formData.specifications.map((item, index) => (
+                    <tr key={`spec-${index}`}>
+                      <td className="px-4 py-3 font-medium">{item.key}</td>
+                      <td className="px-4 py-3">{item.value}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => editSpecification(index)}
+                            className="text-amber-700"
+                          >
+                            Edit
+                          </button>
                           <button
                             type="button"
                             onClick={() => removeSpecification(index)}
-                            className="rounded-lg px-3 py-2 text-sm font-medium text-red-500 hover:bg-red-50 hover:text-red-700"
+                            className="text-red-600"
                           >
                             Remove
                           </button>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-          </section>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Section>
 
-          {/* ================= KEY FEATURES ================= */}
-          <section className="rounded-2xl bg-white p-6 shadow-sm">
-            <h2 className="mb-2 text-xl font-semibold text-slate-900">
-              Key Features
-            </h2>
-
-            <p className="mb-4 text-sm text-slate-500">
-              Add the main highlights of this product.
-            </p>
-
-            <div className="flex flex-col gap-3 sm:flex-row">
+          {/* RAM */}
+          <Section title="Memory / RAM">
+            <div className="flex flex-wrap gap-3">
               <input
-                type="text"
-                value={keyFeatureInput}
-                onChange={(e) => setKeyFeatureInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    addKeyFeature();
-                  }
-                }}
-                placeholder="e.g. Ryzen 5 PRO 5650GE Processor"
-                className="flex-1 rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
+                value={ramValue}
+                onChange={(e) => setRamValue(e.target.value)}
+                placeholder="e.g. 8GB RAM"
+                className={`${inputClass} min-w-[200px] flex-1`}
               />
-
               <button
                 type="button"
-                onClick={addKeyFeature}
-                className="rounded-xl bg-blue-600 px-5 py-3 text-white"
+                onClick={addRam}
+                className={`${buttonClass} bg-blue-600 text-white`}
               >
-                + Add Feature
+                {editingRamIndex !== null ? "Update RAM" : "+ Add RAM"}
               </button>
+              {editingRamIndex !== null && (
+                <button
+                  type="button"
+                  onClick={resetRamEditor}
+                  className={`${buttonClass} border bg-white`}
+                >
+                  Cancel
+                </button>
+              )}
             </div>
 
-            <ul className="mt-4 space-y-3">
-              {formData.keyFeatures.map((feature, index) => (
-                <li
-                  key={`${feature}-${index}`}
-                  className="flex items-start gap-3"
+            <div className="mt-4 flex flex-wrap gap-3">
+              {formData.ram.map((item, index) => (
+                <div
+                  key={`ram-${index}`}
+                  className="flex items-center gap-3 rounded-xl border bg-white px-4 py-3"
                 >
-                  <span className="flex-1 text-sm text-slate-700">
-                    • {feature}
-                  </span>
-
+                  <span>{item}</span>
                   <button
                     type="button"
-                    onClick={() => removeKeyFeature(index)}
+                    onClick={() => editRam(index)}
+                    className="text-sm text-amber-700"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeRam(index)}
                     className="text-sm text-red-600"
                   >
                     Remove
                   </button>
+                </div>
+              ))}
+            </div>
+          </Section>
+
+          {/* KEY FEATURES */}
+          <Section title="Key Features">
+            <div className="flex flex-wrap gap-3">
+              <input
+                value={keyFeatureInput}
+                onChange={(e) => setKeyFeatureInput(e.target.value)}
+                placeholder="Enter a product feature"
+                className={`${inputClass} min-w-[200px] flex-1`}
+              />
+              <button
+                type="button"
+                onClick={addKeyFeature}
+                className={`${buttonClass} bg-blue-600 text-white`}
+              >
+                {editingFeatureIndex !== null
+                  ? "Update Feature"
+                  : "+ Add Feature"}
+              </button>
+              {editingFeatureIndex !== null && (
+                <button
+                  type="button"
+                  onClick={resetFeatureEditor}
+                  className={`${buttonClass} border bg-white`}
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
+
+            <ul className="mt-5 space-y-3">
+              {formData.keyFeatures.map((feature, index) => (
+                <li
+                  key={`feature-${index}`}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-white p-3"
+                >
+                  <span className="flex-1">{feature}</span>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => editKeyFeature(index)}
+                      className="text-sm font-semibold text-amber-700"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeKeyFeature(index)}
+                      className="text-sm font-semibold text-red-600"
+                    >
+                      Remove
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>
-          </section>
+          </Section>
 
-          {/* ================= VARIANTS ================= */}
-          <section className="rounded-2xl bg-white p-6 shadow-sm">
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold text-slate-900">
-                Product Variants
-              </h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Combine a color, RAM and storage to create a purchasable variant
-                with its own stock, cost price, price and SKU.
-              </p>
-            </div>
-
+          {/* VARIANTS */}
+          <Section title="Product Variants">
             {formData.colors.length === 0 && (
-              <p className="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-700">
-                Add at least one color above before creating variants.
+              <p className="mb-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
+                Add a color before creating variants.
               </p>
             )}
 
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-              <div className="grid gap-4 md:grid-cols-4 lg:grid-cols-7">
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
-                    Color
-                  </label>
-                  <select
-                    value={variantColorName}
-                    onChange={(e) => setVariantColorName(e.target.value)}
-                    disabled={formData.colors.length === 0}
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-blue-500 disabled:bg-slate-100"
-                  >
-                    <option value="">Select color</option>
-                    {formData.colors.map((color) => (
-                      <option key={color.name} value={color.name}>
-                        {color.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <Field label="Color">
+                <select
+                  name="colorName"
+                  value={variantForm.colorName}
+                  onChange={handleVariantChange}
+                  disabled={formData.colors.length === 0}
+                  className={inputClass}
+                >
+                  <option value="">Select color</option>
+                  {formData.colors.map((color, index) => (
+                    <option key={`variant-color-${index}`} value={color.name}>
+                      {color.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
 
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
-                    RAM
-                  </label>
-                  <input
-                    list="variant-ram-options"
-                    value={variantRam}
-                    onChange={(e) => setVariantRam(e.target.value)}
-                    placeholder="8GB"
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-blue-500"
-                  />
-                  <datalist id="variant-ram-options">
-                    {formData.ram.map((item, index) => (
-                      <option key={`${item}-${index}`} value={item} />
-                    ))}
-                  </datalist>
-                </div>
+              <Field label="RAM">
+                <input
+                  name="ram"
+                  list="variant-ram-options"
+                  value={variantForm.ram}
+                  onChange={handleVariantChange}
+                  placeholder="8GB"
+                  className={inputClass}
+                />
+                <datalist id="variant-ram-options">
+                  {formData.ram.map((item, index) => (
+                    <option key={`ram-option-${index}`} value={item} />
+                  ))}
+                </datalist>
+              </Field>
 
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
-                    Storage
-                  </label>
-                  <input
-                    value={variantStorage}
-                    onChange={(e) => setVariantStorage(e.target.value)}
-                    placeholder="256GB"
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-blue-500"
-                  />
-                </div>
+              <Field label="Storage">
+                <input
+                  name="storage"
+                  value={variantForm.storage}
+                  onChange={handleVariantChange}
+                  placeholder="256GB"
+                  className={inputClass}
+                />
+              </Field>
 
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
-                    Stock
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={variantStock}
-                    onChange={(e) => setVariantStock(e.target.value)}
-                    placeholder="5"
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-blue-500"
-                  />
-                </div>
+              <Field label="Stock">
+                <input
+                  name="stock"
+                  type="number"
+                  min="0"
+                  value={variantForm.stock}
+                  onChange={handleVariantChange}
+                  className={inputClass}
+                />
+              </Field>
 
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
-                    Cost Price
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={variantCostPrice}
-                    onChange={(e) => setVariantCostPrice(e.target.value)}
-                    placeholder="48000"
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-blue-500"
-                  />
-                </div>
+              <Field label="Cost Price">
+                <input
+                  name="costPrice"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={variantForm.costPrice}
+                  onChange={handleVariantChange}
+                  className={inputClass}
+                />
+              </Field>
 
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
-                    Price
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={variantPrice}
-                    onChange={(e) => setVariantPrice(e.target.value)}
-                    placeholder="55000"
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-blue-500"
-                  />
-                </div>
+              <Field label="Price">
+                <input
+                  name="price"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={variantForm.price}
+                  onChange={handleVariantChange}
+                  className={inputClass}
+                />
+              </Field>
 
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
-                    SKU
-                  </label>
-                  <input
-                    value={variantSku}
-                    onChange={(e) => setVariantSku(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        addVariant();
-                      }
-                    }}
-                    placeholder="IQOO-BLK-8-256"
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-blue-500"
-                  />
-                </div>
-              </div>
+              <Field label="SKU">
+                <input
+                  name="sku"
+                  value={variantForm.sku}
+                  onChange={handleVariantChange}
+                  className={inputClass}
+                />
+              </Field>
+            </div>
 
+            <div className="mt-4 flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={addVariant}
                 disabled={formData.colors.length === 0}
-                className="mt-4 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                className={`${buttonClass} bg-blue-600 text-white`}
               >
-                + Add Variant
+                {editingVariantIndex !== null
+                  ? "Update Variant"
+                  : "+ Add Variant"}
               </button>
+              {editingVariantIndex !== null && (
+                <button
+                  type="button"
+                  onClick={resetVariantEditor}
+                  className={`${buttonClass} border bg-white`}
+                >
+                  Cancel Edit
+                </button>
+              )}
             </div>
 
-            {formData.variants.length > 0 && (
-              <div className="mt-6">
-                <div className="mb-3 flex items-center justify-between">
-                  <h3 className="text-base font-semibold text-slate-800">
-                    Added Variants
-                  </h3>
-                  <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-600">
-                    {formData.variants.length} variants
-                  </span>
-                </div>
-                <div className="overflow-x-auto rounded-2xl border border-slate-200">
-                  <table className="w-full min-w-[820px] text-left text-sm">
-                    <thead className="bg-slate-50 text-slate-600">
-                      <tr>
-                        <th className="px-4 py-3 font-medium">Color</th>
-                        <th className="px-4 py-3 font-medium">RAM</th>
-                        <th className="px-4 py-3 font-medium">Storage</th>
-                        <th className="px-4 py-3 font-medium">Stock</th>
-                        <th className="px-4 py-3 font-medium">Cost Price</th>
-                        <th className="px-4 py-3 font-medium">Price</th>
-                        <th className="px-4 py-3 font-medium">SKU</th>
-                        <th className="px-4 py-3 font-medium" />
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200">
-                      {formData.variants.map((variant, index) => (
-                        <tr key={`${variant.sku}-${index}`}>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              <span
-                                className="h-4 w-4 rounded-full border"
-                                style={{
-                                  backgroundColor: variant.color?.code,
-                                }}
-                              />
-                              {variant.color?.name}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">{variant.ram}</td>
-                          <td className="px-4 py-3">{variant.storage}</td>
-                          <td className="px-4 py-3">
-                            {variant.stock === 0 ? (
-                              <span className="rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-600">
-                                Out of stock
-                              </span>
-                            ) : (
-                              variant.stock
-                            )}
-                          </td>
-                          <td className="px-4 py-3">{variant.costPrice ?? 0}</td>
-                          <td className="px-4 py-3">{variant.price}</td>
-                          <td className="px-4 py-3">{variant.sku}</td>
-                          <td className="px-4 py-3 text-right">
-                            <button
-                              type="button"
-                              onClick={() => removeVariant(index)}
-                              className="rounded-lg px-3 py-2 text-sm font-medium text-red-500 hover:bg-red-50 hover:text-red-700"
-                            >
-                              Remove
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-          </section>
+            <div className="mt-6 overflow-x-auto rounded-xl border">
+              <table className="w-full min-w-[950px] text-left text-sm">
+                <thead className="bg-slate-50">
+                  <tr>
+                    {[
+                      "Color",
+                      "RAM",
+                      "Storage",
+                      "Stock",
+                      "Cost Price",
+                      "Price",
+                      "SKU",
+                      "Actions",
+                    ].map((heading) => (
+                      <th key={heading} className="px-4 py-3">
+                        {heading}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {formData.variants.map((variant, index) => (
+                    <tr key={`variant-${index}`}>
+                      <td className="px-4 py-3">
+                        <span
+                          className="mr-2 inline-block h-4 w-4 rounded-full border align-middle"
+                          style={{
+                            backgroundColor:
+                              variant.color?.code || "#000000",
+                          }}
+                        />
+                        {variant.color?.name}
+                      </td>
+                      <td className="px-4 py-3">{variant.ram}</td>
+                      <td className="px-4 py-3">{variant.storage}</td>
+                      <td className="px-4 py-3">{variant.stock}</td>
+                      <td className="px-4 py-3">
+                        {variant.costPrice ?? 0}
+                      </td>
+                      <td className="px-4 py-3">{variant.price}</td>
+                      <td className="px-4 py-3">{variant.sku}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-3">
+                          <button
+                            type="button"
+                            onClick={() => editVariant(index)}
+                            className="font-semibold text-amber-700"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeVariant(index)}
+                            className="font-semibold text-red-600"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Section>
 
-          {/* ================= STATUS + RATING ================= */}
-          <section className="rounded-2xl bg-white p-6 shadow-sm">
-            <h2 className="mb-5 text-xl font-semibold">
-              Product Status &amp; Rating
-            </h2>
-
-            <div className="mb-5">
-              <Input
-                label="Rating (0-5)"
-                name="rating"
-                type="number"
-                value={formData.rating}
-                onChange={handleChange}
-                placeholder="0"
-                min="0"
-                max="5"
-                step="0.1"
-              />
+          {/* STATUS AND RATING */}
+          <Section title="Product Status & Rating">
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field label="Rating (0-5)">
+                <input
+                  name="rating"
+                  type="number"
+                  min="0"
+                  max="5"
+                  step="0.1"
+                  value={formData.rating}
+                  onChange={handleChange}
+                  className={inputClass}
+                />
+              </Field>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-4">
-              <Checkbox
-                name="isActive"
-                checked={formData.isActive}
-                onChange={handleChange}
-                label="Active"
-              />
-              <Checkbox
-                name="isFeatured"
-                checked={formData.isFeatured}
-                onChange={handleChange}
-                label="Featured"
-              />
-              <Checkbox
-                name="isNew"
-                checked={formData.isNew}
-                onChange={handleChange}
-                label="New product"
-              />
-              <Checkbox
-                name="isBestSeller"
-                checked={formData.isBestSeller}
-                onChange={handleChange}
-                label="Best seller"
-              />
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                ["isActive", "Active"],
+                ["isFeatured", "Featured"],
+                ["isNew", "New product"],
+                ["isBestSeller", "Best seller"],
+              ].map(([name, label]) => (
+                <label
+                  key={name}
+                  className="flex items-center gap-3 rounded-xl border p-4"
+                >
+                  <input
+                    type="checkbox"
+                    name={name}
+                    checked={Boolean(formData[name])}
+                    onChange={handleChange}
+                    className="h-4 w-4"
+                  />
+                  {label}
+                </label>
+              ))}
             </div>
-          </section>
+          </Section>
 
-          {/* ================= SEO ================= */}
-          <section className="rounded-2xl bg-white p-6 shadow-sm">
-            <h2 className="mb-5 text-xl font-semibold">SEO</h2>
-            <div className="space-y-5">
-              <Input
-                label="Meta Title"
+          {/* SEO */}
+          <Section title="SEO">
+            <Field label="Meta Title">
+              <input
                 name="metaTitle"
                 value={formData.metaTitle}
                 onChange={handleChange}
-                placeholder="Product SEO title"
+                className={inputClass}
               />
-              <div>
-                <label className="mb-2 block text-sm font-medium">
-                  Meta Description
-                </label>
-                <textarea
-                  name="metaDescription"
-                  value={formData.metaDescription}
-                  onChange={handleChange}
-                  rows={4}
-                  placeholder="SEO description..."
-                  className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
-                />
-              </div>
-            </div>
-          </section>
+            </Field>
 
-          {/* ================= SUBMIT ================= */}
-          <div className="flex justify-end gap-3">
+            <Field label="Meta Description">
+              <textarea
+                name="metaDescription"
+                value={formData.metaDescription}
+                onChange={handleChange}
+                rows={4}
+                className={inputClass}
+              />
+            </Field>
+          </Section>
+
+          {/* SUBMIT */}
+          <div className="flex flex-wrap justify-end gap-3">
             <button
               type="button"
               onClick={() => setSelectedProductId(null)}
               disabled={loading}
-              className="rounded-xl border border-slate-300 px-8 py-4 font-semibold text-slate-700 hover:bg-white disabled:opacity-50"
+              className={`${buttonClass} border border-slate-300 bg-white px-6 py-3`}
             >
               Cancel
             </button>
@@ -2228,7 +2522,7 @@ data.append(
             <button
               type="submit"
               disabled={loading}
-              className="rounded-xl bg-slate-900 px-10 py-4 font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+              className={`${buttonClass} bg-slate-900 px-8 py-3 text-white hover:bg-slate-800`}
             >
               {loading ? "Updating..." : "Update Product"}
             </button>
@@ -2239,52 +2533,26 @@ data.append(
   );
 }
 
-// ======================================
-// INPUT
-// ======================================
-function Input({
-  label,
-  name,
-  value,
-  onChange,
-  placeholder,
-  type = "text",
-  required = false,
-  ...rest
-}) {
+// ------------------------------------------
+// Reusable UI components
+// ------------------------------------------
+
+function Section({ title, children }) {
   return (
-    <div>
-      <label className="mb-2 block text-sm font-medium text-slate-700">
-        {label}
-      </label>
-      <input
-        type={type}
-        name={name}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        required={required}
-        {...rest}
-        className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 read-only:bg-slate-50"
-      />
-    </div>
+    <section className="space-y-4 rounded-2xl bg-white p-5 shadow-sm md:p-6">
+      <h2 className="text-xl font-semibold text-slate-900">{title}</h2>
+      {children}
+    </section>
   );
 }
 
-// ======================================
-// CHECKBOX
-// ======================================
-function Checkbox({ name, checked, onChange, label }) {
+function Field({ label, children, full = false }) {
   return (
-    <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-4">
-      <input
-        type="checkbox"
-        name={name}
-        checked={checked}
-        onChange={onChange}
-        className="h-5 w-5"
-      />
-      <span className="font-medium text-slate-700">{label}</span>
-    </label>
+    <div className={full ? "md:col-span-2" : ""}>
+      <label className="mb-2 block text-sm font-medium text-slate-700">
+        {label}
+      </label>
+      {children}
+    </div>
   );
 }
