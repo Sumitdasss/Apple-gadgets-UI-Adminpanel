@@ -1,3 +1,4 @@
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { landingPageApi } from "../services/landingPageApi.js";
 
@@ -6,6 +7,11 @@ import { landingPageApi } from "../services/landingPageApi.js";
 ============================================================ */
 
 const STOREFRONT_URL = "https://apple-gadgets-ui.vercel.app";
+
+const API_BASE = (
+  import.meta.env.VITE_API_URL ||
+  "https://apple-gadgets-ui-backend.vercel.app"
+).replace(/\/+$/, "");
 
 const STATUS_STYLES = {
   published: {
@@ -31,7 +37,11 @@ const VIEWPORTS = [
   { id: "mobile", label: "Mobile", width: "390px" },
 ];
 
-const INITIAL_FILTERS = { search: "", sectionType: "all", publishStatus: "all" };
+const INITIAL_FILTERS = {
+  search: "",
+  sectionType: "all",
+  publishStatus: "all",
+};
 
 const getPreviewUrl = (page) =>
   `${STOREFRONT_URL}/lp/${encodeURIComponent(page.slug || "")}`;
@@ -40,22 +50,26 @@ const getStatus = (page) => page.status || "draft";
 
 const isPublished = (page) => getStatus(page) === "published";
 
-/** All unique, lower-cased section types of a page (including `page.type`). */
 function getPageTypes(page) {
   const types = new Set();
 
   if (Array.isArray(page.sections)) {
     page.sections.forEach((section) => {
-      if (section?.type) types.add(String(section.type).toLowerCase());
+      if (section?.type) {
+        types.add(String(section.type).toLowerCase());
+      }
     });
   }
 
-  if (page.type) types.add(String(page.type).toLowerCase());
+  if (page.type) {
+    types.add(String(page.type).toLowerCase());
+  }
 
   return [...types];
 }
 
-const capitalize = (text) => text.charAt(0).toUpperCase() + text.slice(1);
+const capitalize = (text) =>
+  text.charAt(0).toUpperCase() + text.slice(1);
 
 const formatDate = (value) =>
   value
@@ -64,6 +78,99 @@ const formatDate = (value) =>
         timeStyle: "short",
       })
     : "Not available";
+
+/* ============================================================
+   AUTHORIZATION HELPERS
+============================================================ */
+
+function getAuthToken() {
+  if (typeof window === "undefined") return "";
+
+  try {
+    const token = localStorage.getItem("token");
+
+    if (token) return token;
+
+    const savedUser = localStorage.getItem("user");
+
+    if (savedUser) {
+      const user = JSON.parse(savedUser);
+      return user?.token || user?.accessToken || "";
+    }
+
+    return "";
+  } catch (error) {
+    console.error("Unable to read authentication token:", error);
+    return "";
+  }
+}
+
+/*
+  Use this helper for any direct fetch request added to this page.
+  Existing landingPageApi methods should also send the token in
+  landingPageApi.js because those requests happen in that service.
+*/
+async function authorizedFetch(url, options = {}) {
+  const token = getAuthToken();
+
+  const headers = {
+    Accept: "application/json",
+    ...(options.body !== undefined
+      ? { "Content-Type": "application/json" }
+      : {}),
+    ...options.headers,
+  };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  let response;
+
+  try {
+    response = await fetch(url, {
+      ...options,
+      headers,
+    });
+  } catch (error) {
+    console.error("API connection error:", error);
+    throw new Error("Backend-এর সঙ্গে সংযোগ হচ্ছে না।");
+  }
+
+  const text = await response.text();
+
+  let result = {};
+
+  if (text) {
+    try {
+      result = JSON.parse(text);
+    } catch {
+      result = { message: text };
+    }
+  }
+
+  if (response.status === 401) {
+    throw new Error(
+      "401 Unauthorized: Login token পাওয়া যায়নি বা token invalid/expired। আবার login করে চেষ্টা করো।"
+    );
+  }
+
+  if (response.status === 403) {
+    throw new Error(
+      "403 Forbidden: তোমার account-এর এই কাজ করার permission নেই।"
+    );
+  }
+
+  if (!response.ok || result?.success === false) {
+    throw new Error(
+      result?.message ||
+        result?.error ||
+        `Request failed (${response.status})`
+    );
+  }
+
+  return result;
+}
 
 /* ============================================================
    Small UI pieces
@@ -199,13 +306,19 @@ function SectionChips({ page }) {
   return <span className="text-xs text-slate-400">No sections</span>;
 }
 
-function PageCard({ page, busy, onEdit, onView, onTogglePublish, onDelete }) {
+function PageCard({
+  page,
+  busy,
+  onEdit,
+  onView,
+  onTogglePublish,
+  onDelete,
+}) {
   const published = isPublished(page);
 
   return (
     <article className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-slate-300 hover:shadow-md sm:p-6">
       <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-        {/* Info */}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-3">
             <h2 className="break-words text-lg font-bold text-slate-900">
@@ -230,7 +343,6 @@ function PageCard({ page, busy, onEdit, onView, onTogglePublish, onDelete }) {
           </p>
         </div>
 
-        {/* Actions */}
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
@@ -287,9 +399,9 @@ function PreviewModal({ page, onClose }) {
   const [viewport, setViewport] = useState("desktop");
 
   const url = getPreviewUrl(page);
-  const width = VIEWPORTS.find((v) => v.id === viewport)?.width ?? "100%";
+  const width =
+    VIEWPORTS.find((v) => v.id === viewport)?.width ?? "100%";
 
-  // Close on Escape + lock background scroll
   useEffect(() => {
     const onKeyDown = (event) => {
       if (event.key === "Escape") onClose();
@@ -318,7 +430,6 @@ function PreviewModal({ page, onClose }) {
         aria-label="Landing page preview"
         className="flex h-[95vh] w-full max-w-7xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
       >
-        {/* Header */}
         <header className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 sm:px-6">
           <div className="min-w-0">
             <h2 className="truncate text-base font-bold text-slate-900 sm:text-lg">
@@ -329,7 +440,6 @@ function PreviewModal({ page, onClose }) {
             </p>
           </div>
 
-          {/* Device switcher */}
           <div
             role="group"
             aria-label="Preview size"
@@ -373,7 +483,6 @@ function PreviewModal({ page, onClose }) {
           </div>
         </header>
 
-        {/* Body */}
         <div className="relative flex min-h-0 flex-1 justify-center bg-slate-100">
           {loading && !failed && (
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-white">
@@ -442,9 +551,15 @@ export default function LandingPages({ onCreate, onEdit }) {
   const [previewPage, setPreviewPage] = useState(null);
 
   const { search, sectionType, publishStatus } = filters;
+
   const updateFilter = (key) => (event) =>
-    setFilters((prev) => ({ ...prev, [key]: event.target.value }));
+    setFilters((prev) => ({
+      ...prev,
+      [key]: event.target.value,
+    }));
+
   const resetFilters = () => setFilters(INITIAL_FILTERS);
+
   const closePreview = useCallback(() => setPreviewPage(null), []);
 
   /* ---------- Data ---------- */
@@ -452,8 +567,24 @@ export default function LandingPages({ onCreate, onEdit }) {
   const loadPages = useCallback(async () => {
     try {
       setError("");
+
+      /*
+       * landingPageApi.getAll() is defined in the API service.
+       * Make sure that service adds:
+       * Authorization: Bearer <token>
+       * to its fetch request.
+       */
       const result = await landingPageApi.getAll();
-      setPages(Array.isArray(result.data) ? result.data : []);
+
+      const rows = Array.isArray(result?.data)
+        ? result.data
+        : Array.isArray(result?.data?.pages)
+          ? result.data.pages
+          : Array.isArray(result?.pages)
+            ? result.pages
+            : [];
+
+      setPages(rows);
     } catch (err) {
       setError(err.message || "Failed to load landing pages.");
     } finally {
@@ -465,7 +596,6 @@ export default function LandingPages({ onCreate, onEdit }) {
     loadPages();
   }, [loadPages]);
 
-  /** Runs an async action for one page with shared busy/error handling. */
   async function runAction(page, action, fallbackMessage) {
     setBusyId(page._id);
     setError("");
@@ -498,7 +628,10 @@ export default function LandingPages({ onCreate, onEdit }) {
       page,
       async () => {
         await landingPageApi.remove(page._id);
-        if (previewPage?._id === page._id) closePreview();
+
+        if (previewPage?._id === page._id) {
+          closePreview();
+        }
       },
       "Failed to delete landing page."
     );
@@ -518,6 +651,7 @@ export default function LandingPages({ onCreate, onEdit }) {
 
   const stats = useMemo(() => {
     const published = pages.filter(isPublished).length;
+
     return {
       total: pages.length,
       published,
@@ -535,7 +669,8 @@ export default function LandingPages({ onCreate, onEdit }) {
         String(page.slug || "").toLowerCase().includes(query);
 
       const matchesSection =
-        sectionType === "all" || getPageTypes(page).includes(sectionType);
+        sectionType === "all" ||
+        getPageTypes(page).includes(sectionType);
 
       const matchesStatus =
         publishStatus === "all" ||
@@ -567,15 +702,16 @@ export default function LandingPages({ onCreate, onEdit }) {
     <>
       <main className="min-h-[calc(100vh-65px)] bg-slate-50 px-4 py-8 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-6xl">
-          {/* Header */}
           <header className="mb-8 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-indigo-600">
                 Admin Dashboard
               </p>
+
               <h1 className="text-3xl font-bold tracking-tight text-slate-900">
                 Landing Pages
               </h1>
+
               <p className="mt-1.5 text-sm text-slate-500">
                 Create, edit and manage your campaign pages.
               </p>
@@ -590,20 +726,23 @@ export default function LandingPages({ onCreate, onEdit }) {
             </button>
           </header>
 
-          {error && <ErrorBanner message={error} onRetry={retry} />}
+          {error && (
+            <ErrorBanner message={error} onRetry={retry} />
+          )}
 
-          {/* Stats */}
           <section className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
             <StatCard
               label="Total Pages"
               value={stats.total}
               accent="bg-indigo-500"
             />
+
             <StatCard
               label="Published"
               value={stats.published}
               accent="bg-emerald-500"
             />
+
             <StatCard
               label="Unpublished"
               value={stats.unpublished}
@@ -612,6 +751,7 @@ export default function LandingPages({ onCreate, onEdit }) {
           </section>
 
           {/* Filters */}
+
           <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-[2fr_1fr_1fr_auto] md:items-end">
               <Field id="page-search" label="Search">
@@ -633,6 +773,7 @@ export default function LandingPages({ onCreate, onEdit }) {
                   className={inputBase}
                 >
                   <option value="all">All Types</option>
+
                   {sectionTypes.map((type) => (
                     <option key={type} value={type}>
                       {capitalize(type)}
@@ -670,12 +811,15 @@ export default function LandingPages({ onCreate, onEdit }) {
                 {filteredPages.length}
               </span>{" "}
               of{" "}
-              <span className="font-bold text-slate-900">{pages.length}</span>{" "}
+              <span className="font-bold text-slate-900">
+                {pages.length}
+              </span>{" "}
               pages
             </p>
           </section>
 
           {/* List */}
+
           {filteredPages.length === 0 ? (
             <EmptyState
               hasPages={pages.length > 0}
@@ -701,7 +845,10 @@ export default function LandingPages({ onCreate, onEdit }) {
       </main>
 
       {previewPage && (
-        <PreviewModal page={previewPage} onClose={closePreview} />
+        <PreviewModal
+          page={previewPage}
+          onClose={closePreview}
+        />
       )}
     </>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
   AlertCircle,
@@ -26,7 +26,11 @@ import {
 } from "lucide-react";
 
 const API_BASE = "https://apple-gadgets-ui-backend.vercel.app";
-
+const getAdminToken = () => {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("token");
+};
+const token = getAdminToken()
 const REPORT_ENDPOINTS = {
   overview: "/api/dashboard/summary?allTime=true",
   sales: "/api/dashboard/Allorders",
@@ -95,6 +99,21 @@ const getId = (value) => {
     return String(value._id ?? value.$oid ?? value.id ?? "");
   }
   return String(value);
+};
+
+/* ---------- ID hiding helpers (IDs are never shown in the UI) ---------- */
+
+const MONGO_ID = /^[a-f0-9]{24}$/i;
+
+/** true for keys like _id, id, orderId, productId, customerId, user_id ... */
+const isIdKey = (key) =>
+  /^(_id|id|__v)$/i.test(key) || /(Id|ID|Ids|_id)$/.test(key);
+
+/** returns a human-readable reference, or "" if the value looks like a DB id */
+const cleanRef = (value) => {
+  if (value == null) return "";
+  const s = String(value).trim();
+  return s && !MONGO_ID.test(s) ? s : "";
 };
 
 const dateInput = (date) => {
@@ -167,7 +186,7 @@ function asArray(payload, keys = []) {
 async function requestJSON(url, signal) {
   const response = await fetch(url, {
     method: "GET",
-    headers: { Accept: "application/json" },
+    headers: { Accept: "application/json",Authorization: `Bearer ${token}` },
     credentials: "include",
     signal,
   });
@@ -406,13 +425,14 @@ function itemName(item) {
   );
 }
 
+/** Human-readable order number only — never a database id */
 function orderRef(order) {
-  const ref =
-    order?.orderId ??
-    order?.orderNumber ??
-    order?.invoiceNumber ??
-    String(order?._id ?? "").slice(-6).toUpperCase();
-  return String(ref || "—");
+  return (
+    cleanRef(order?.orderNumber) ||
+    cleanRef(order?.invoiceNumber) ||
+    cleanRef(order?.orderId) ||
+    ""
+  );
 }
 
 function customerOf(order) {
@@ -478,13 +498,89 @@ function filterByDate(list, from, to) {
 }
 
 /* =========================================================
+   PRODUCT HELPERS
+========================================================= */
+
+const textOf = (value) => {
+  if (value == null) return "";
+  if (typeof value === "object") {
+    return str(value.name) || str(value.title) || str(value.label) || "";
+  }
+  return String(value).trim();
+};
+
+function productImageOf(product) {
+  if (!product || typeof product !== "object") return "";
+  const candidates = [
+    product.image,
+    product.images,
+    product.thumbnail,
+    product.photo,
+    product.img,
+    product.picture,
+    product.cover,
+  ];
+  if (Array.isArray(product.variants)) {
+    for (const variant of product.variants) {
+      candidates.push(variant?.image, variant?.images);
+    }
+  }
+  for (const candidate of candidates) {
+    const urls = imageUrls(candidate);
+    if (urls.length) return urls[0];
+  }
+  return "";
+}
+
+function productTitle(product) {
+  return (
+    str(product?.name) ||
+    str(product?.title) ||
+    str(product?.productName) ||
+    "Untitled product"
+  );
+}
+
+function productStock(product) {
+  const direct =
+    product?.stock ?? product?.quantity ?? product?.countInStock ?? product?.totalStock;
+  if (direct !== undefined && direct !== null && direct !== "") return n(direct);
+  if (Array.isArray(product?.variants) && product.variants.length) {
+    const hasStock = product.variants.some(
+      (v) => v?.stock !== undefined || v?.quantity !== undefined
+    );
+    if (hasStock) {
+      return product.variants.reduce((sum, v) => sum + n(v?.stock ?? v?.quantity), 0);
+    }
+  }
+  return null;
+}
+
+function productPrice(product) {
+  const value = pick(
+    product,
+    ["price", "sellingPrice", "salePrice", "offerPrice", "regularPrice"],
+    null
+  );
+  if (value !== null) return n(value);
+  if (Array.isArray(product?.variants) && product.variants.length) {
+    const prices = product.variants
+      .map((v) => pick(v, ["price", "sellingPrice", "salePrice"], null))
+      .filter((p) => p !== null)
+      .map(n);
+    if (prices.length) return Math.min(...prices);
+  }
+  return null;
+}
+
+/* =========================================================
    CSV EXPORT
 ========================================================= */
 
 function downloadCSV(filename, rows) {
   if (!Array.isArray(rows) || !rows.length) return;
   const columns = [...new Set(rows.flatMap((row) => Object.keys(row ?? {})))].filter(
-    (key) => !HIDDEN_KEYS.has(key)
+    (key) => !HIDDEN_KEYS.has(key) && !isIdKey(key)
   );
   const escapeCSV = (value) => {
     let raw =
@@ -538,18 +634,34 @@ function imageUrls(value) {
 }
 
 const badgeTones = {
-  gray: "bg-slate-100 text-slate-700",
-  red: "bg-red-100 text-red-700",
-  amber: "bg-amber-100 text-amber-800",
-  green: "bg-emerald-100 text-emerald-700",
-  blue: "bg-blue-100 text-blue-700",
-  violet: "bg-violet-100 text-violet-700",
+  gray: "bg-slate-100 text-slate-700 ring-slate-200",
+  red: "bg-red-50 text-red-700 ring-red-200",
+  amber: "bg-amber-50 text-amber-800 ring-amber-200",
+  green: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  blue: "bg-blue-50 text-blue-700 ring-blue-200",
+  violet: "bg-violet-50 text-violet-700 ring-violet-200",
 };
+
+const dotTones = {
+  gray: "bg-slate-400",
+  red: "bg-red-500",
+  amber: "bg-amber-400",
+  green: "bg-emerald-500",
+  blue: "bg-blue-500",
+  violet: "bg-violet-500",
+};
+
+const cardTones = [
+  "bg-blue-50 text-blue-600",
+  "bg-emerald-50 text-emerald-600",
+  "bg-violet-50 text-violet-600",
+  "bg-amber-50 text-amber-600",
+];
 
 function Badge({ tone = "gray", children }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${badgeTones[tone] || badgeTones.gray}`}
+      className={`inline-flex items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ring-1 ring-inset ${badgeTones[tone] || badgeTones.gray}`}
     >
       {children}
     </span>
@@ -559,11 +671,15 @@ function Badge({ tone = "gray", children }) {
 function Thumb({ src, size = "md", alt = "" }) {
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [src]);
-  const sizeClass = size === "sm" ? "h-8 w-8" : "h-10 w-10";
+  const sizeClass =
+    size === "sm" ? "h-8 w-8" : size === "lg" ? "h-14 w-14" : "h-10 w-10";
+  const iconSize = size === "sm" ? 14 : size === "lg" ? 22 : 18;
   if (!src || failed) {
     return (
-      <span className={`inline-flex items-center justify-center rounded-lg bg-slate-100 text-slate-400 ${sizeClass}`}>
-        <ImageOff size={size === "sm" ? 14 : 18} />
+      <span
+        className={`inline-flex shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-400 ring-1 ring-slate-200 ${sizeClass}`}
+      >
+        <ImageOff size={iconSize} />
       </span>
     );
   }
@@ -572,14 +688,14 @@ function Thumb({ src, size = "md", alt = "" }) {
       src={src}
       alt={alt}
       loading="lazy"
-      className={`rounded-lg object-cover ${sizeClass}`}
+      className={`shrink-0 rounded-xl bg-white object-cover ring-1 ring-slate-200 ${sizeClass}`}
       onError={() => setFailed(true)}
     />
   );
 }
 
 function Cell({ column, value }) {
-  if (value == null || value === "") return <>—</>;
+  if (value == null || value === "") return <span className="text-slate-400">—</span>;
   if (IMAGE_KEY.test(column)) {
     const urls = imageUrls(value);
     if (urls.length) {
@@ -601,13 +717,14 @@ function Cell({ column, value }) {
   }
   if (typeof value === "object") {
     if (Array.isArray(value)) return <>{value.length} items</>;
-    return (
-      <>
-        {String(
-          value.name ?? value.productName ?? value.orderId ?? value.title ?? value._id ?? "[Object]"
-        )}
-      </>
-    );
+    // Never fall back to _id — IDs must not be shown
+    const label =
+      cleanRef(value.name) ||
+      cleanRef(value.productName) ||
+      cleanRef(value.title) ||
+      cleanRef(value.orderNumber) ||
+      "";
+    return label ? <>{label}</> : <span className="text-slate-400">—</span>;
   }
   if (/status/i.test(column)) {
     const status = norm(value);
@@ -628,17 +745,31 @@ function Cell({ column, value }) {
 function TableState({ loading, empty, emptyText }) {
   if (loading) {
     return (
-      <div className="flex items-center justify-center gap-2 py-16 text-slate-500">
-        <LoaderCircle className="animate-spin" size={22} />
-        Loading report data…
+      <div className="space-y-3 p-5">
+        <div className="flex items-center justify-center gap-2 pb-2 text-sm text-slate-500">
+          <LoaderCircle className="animate-spin" size={18} />
+          Loading report data…
+        </div>
+        {[0, 1, 2, 3, 4].map((i) => (
+          <div key={i} className="flex animate-pulse items-center gap-4">
+            <div className="h-12 w-12 rounded-xl bg-slate-100" />
+            <div className="flex-1 space-y-2">
+              <div className="h-3 w-1/3 rounded bg-slate-100" />
+              <div className="h-3 w-1/5 rounded bg-slate-100" />
+            </div>
+            <div className="h-3 w-16 rounded bg-slate-100" />
+          </div>
+        ))}
       </div>
     );
   }
   if (empty) {
     return (
-      <div className="flex items-center justify-center gap-2 py-16 text-slate-500">
-        <AlertCircle size={20} />
-        <span>{emptyText || "No report records found."}</span>
+      <div className="flex flex-col items-center justify-center gap-2 py-16 text-slate-500">
+        <span className="rounded-full bg-slate-100 p-3">
+          <AlertCircle size={22} />
+        </span>
+        <span className="text-sm">{emptyText || "No report records found."}</span>
       </div>
     );
   }
@@ -648,12 +779,18 @@ function TableState({ loading, empty, emptyText }) {
 const columnRank = (key) =>
   IMAGE_KEY.test(key) ? 0 : /^(name|title|productName)$/i.test(key) ? 1 : 2;
 
+const prettyHeader = (column) =>
+  column.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase());
+
+const thClass =
+  "sticky top-0 z-10 whitespace-nowrap bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500";
+
 function Table({ rows, loading, emptyText }) {
   const columns = useMemo(() => {
     const list = Array.isArray(rows) ? rows : [];
     const keys = [...new Set(list.slice(0, 100).flatMap((row) => Object.keys(row ?? {})))];
     return keys
-      .filter((key) => !["_id", "id", "__v", "password", "token"].includes(key) && !HIDDEN_KEYS.has(key))
+      .filter((key) => !HIDDEN_KEYS.has(key) && !isIdKey(key))
       .sort((a, b) => columnRank(a) - columnRank(b))
       .slice(0, 8);
   }, [rows]);
@@ -663,27 +800,115 @@ function Table({ rows, loading, emptyText }) {
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div className="max-h-[70vh] overflow-auto">
       <table className="w-full text-left text-sm">
         <thead>
-          <tr className="border-b border-slate-200 bg-slate-50/80 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <tr className="border-b border-slate-200">
             {columns.map((column) => (
-              <th key={column} className="px-4 py-3">
-                {column.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase())}
+              <th key={column} className={thClass}>
+                {prettyHeader(column)}
               </th>
             ))}
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
           {rows.map((row, index) => (
-            <tr key={row._id ?? row.id ?? row.orderId ?? index} className="hover:bg-slate-50/60">
+            <tr key={row._id ?? row.id ?? index} className="transition hover:bg-slate-50/70">
               {columns.map((column) => (
-                <td key={column} className="px-4 py-3">
+                <td key={column} className="px-4 py-3 align-middle text-slate-700">
                   <Cell column={column} value={row[column]} />
                 </td>
               ))}
             </tr>
           ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** Dedicated products table: image + name first, no IDs anywhere */
+function ProductTable({ rows, loading, emptyText }) {
+  if (loading || !rows?.length) {
+    return <TableState loading={loading} empty={!rows?.length} emptyText={emptyText} />;
+  }
+
+  return (
+    <div className="max-h-[70vh] overflow-auto">
+      <table className="w-full text-left text-sm">
+        <thead>
+          <tr className="border-b border-slate-200">
+            <th className={thClass}>Product</th>
+            <th className={thClass}>Category</th>
+            <th className={thClass}>Price</th>
+            <th className={thClass}>Stock</th>
+            <th className={thClass}>Status</th>
+            <th className={thClass}>Added</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100">
+          {rows.map((product, index) => {
+            const title = productTitle(product);
+            const brand = textOf(product.brand);
+            const sku = cleanRef(product.sku);
+            const category = textOf(product.category) || textOf(product.categoryName);
+            const price = productPrice(product);
+            const stock = productStock(product);
+            const rawStatus =
+              product.status ??
+              (typeof product.isActive === "boolean"
+                ? product.isActive
+                  ? "Active"
+                  : "Inactive"
+                : "");
+
+            return (
+              <tr key={product._id ?? product.id ?? index} className="transition hover:bg-slate-50/70">
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <Thumb src={productImageOf(product)} alt={title} size="lg" />
+                    <div className="min-w-0">
+                      <div className="max-w-[260px] truncate font-semibold text-slate-900" title={title}>
+                        {title}
+                      </div>
+                      {(brand || sku) && (
+                        <div className="truncate text-xs text-slate-500">
+                          {[brand, sku].filter(Boolean).join(" · ")}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </td>
+                <td className="px-4 py-3 text-slate-600">{category || "—"}</td>
+                <td className="px-4 py-3 font-medium tabular-nums text-slate-900">
+                  {price === null ? "—" : money(price)}
+                </td>
+                <td className="px-4 py-3">
+                  {stock === null ? (
+                    <span className="text-slate-400">—</span>
+                  ) : stock <= 0 ? (
+                    <Badge tone="red">Out of stock</Badge>
+                  ) : stock <= 5 ? (
+                    <Badge tone="amber">Low · {number(stock)}</Badge>
+                  ) : (
+                    <Badge tone="green">{number(stock)} in stock</Badge>
+                  )}
+                </td>
+                <td className="px-4 py-3">
+                  {rawStatus ? (
+                    <Badge tone={/inactive|draft|hidden|disable/i.test(String(rawStatus)) ? "gray" : "green"}>
+                      {String(rawStatus)}
+                    </Badge>
+                  ) : (
+                    <span className="text-slate-400">—</span>
+                  )}
+                </td>
+                <td className="whitespace-nowrap px-4 py-3 text-slate-500">
+                  {fmtDate(product.createdAt)}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -697,13 +922,13 @@ function ItemsCell({ order }) {
   const extra = items.length - 1;
   return (
     <div className="flex items-center gap-3">
-      <div className="flex -space-x-2">
+      <div className="flex -space-x-3">
         {items.slice(0, 3).map((item, index) => (
           <Thumb key={index} src={itemImage(item)} alt={itemName(item)} size="md" />
         ))}
       </div>
       <div className="min-w-0">
-        <div className="truncate font-medium text-slate-800" title={itemName(items[0])}>
+        <div className="max-w-[200px] truncate font-medium text-slate-800" title={itemName(items[0])}>
           {itemName(items[0])}
         </div>
         <div className="text-xs text-slate-500">
@@ -719,12 +944,15 @@ function orderColumns(tab, costMap) {
   const orderCol = {
     key: "order",
     label: "Order",
-    render: (o) => (
-      <div>
-        <div className="font-semibold text-slate-900">#{orderRef(o)}</div>
-        <div className="text-xs text-slate-500">{fmtDate(o.createdAt ?? o.orderDate ?? o.date)}</div>
-      </div>
-    ),
+    render: (o) => {
+      const ref = orderRef(o);
+      return (
+        <div>
+          <div className="font-semibold text-slate-900">{ref ? `#${ref}` : "Order"}</div>
+          <div className="text-xs text-slate-500">{fmtDate(o.createdAt ?? o.orderDate ?? o.date)}</div>
+        </div>
+      );
+    },
   };
 
   const customerCol = {
@@ -734,11 +962,11 @@ function orderColumns(tab, costMap) {
       const { name, phone } = customerOf(o);
       return (
         <div className="flex items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-xs font-semibold text-slate-700">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-slate-200 to-slate-300 text-xs font-semibold text-slate-700">
             {name.charAt(0).toUpperCase() || "G"}
           </span>
           <div className="min-w-0">
-            <div className="truncate font-medium text-slate-800">{name}</div>
+            <div className="max-w-[180px] truncate font-medium text-slate-800">{name}</div>
             {phone && <div className="text-xs text-slate-500">{phone}</div>}
           </div>
         </div>
@@ -755,10 +983,9 @@ function orderColumns(tab, costMap) {
   const totalCol = {
     key: "total",
     label: "Total",
-    render: (o) => <span className="font-medium tabular-nums">{money(orderTotal(o))}</span>,
+    render: (o) => <span className="font-semibold tabular-nums text-slate-900">{money(orderTotal(o))}</span>,
   };
 
-  // FIXED: always show a meaningful payment status
   const paymentCol = {
     key: "payment",
     label: "Payment",
@@ -805,7 +1032,7 @@ function orderColumns(tab, costMap) {
           if (!c.found) return <span className="text-slate-400">N/A</span>;
           const profit = orderTotal(o) - c.value;
           return (
-            <span className={`font-medium tabular-nums ${profit >= 0 ? "text-emerald-600" : "text-red-600"}`}>
+            <span className={`font-semibold tabular-nums ${profit >= 0 ? "text-emerald-600" : "text-red-600"}`}>
               {profit >= 0 ? "+" : "−"}
               {money(Math.abs(profit))}
             </span>
@@ -832,7 +1059,7 @@ function orderColumns(tab, costMap) {
         render: (o) => {
           const due = isCancelled(o) || isReturned(o) ? 0 : Math.max(0, orderTotal(o) - paidOf(o));
           return (
-            <span className={`font-medium tabular-nums ${due > 0 ? "text-red-600" : ""}`}>
+            <span className={`font-medium tabular-nums ${due > 0 ? "text-red-600" : "text-slate-700"}`}>
               {money(due)}
             </span>
           );
@@ -855,13 +1082,13 @@ function orderColumns(tab, costMap) {
       },
       {
         key: "tracking",
-        label: "Tracking",
+        label: "Tracking No.",
         render: (o) => {
           const id =
-            str(cd(o).trackingId) ||
-            str(cd(o).consignmentId) ||
-            str(o.trackingId) ||
-            str(o.consignmentId);
+            cleanRef(str(cd(o).trackingId)) ||
+            cleanRef(str(cd(o).consignmentId)) ||
+            cleanRef(str(o.trackingId)) ||
+            cleanRef(str(o.consignmentId));
           return id ? <code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs">{id}</code> : "—";
         },
       },
@@ -885,12 +1112,12 @@ function OrderTable({ rows, columns, loading, emptyText }) {
     return <TableState loading={loading} empty={!rows?.length} emptyText={emptyText} />;
   }
   return (
-    <div className="overflow-x-auto">
+    <div className="max-h-[70vh] overflow-auto">
       <table className="w-full text-left text-sm">
         <thead>
-          <tr className="border-b border-slate-200 bg-slate-50/80 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <tr className="border-b border-slate-200">
             {columns.map((column) => (
-              <th key={column.key} className="px-4 py-3">
+              <th key={column.key} className={thClass}>
                 {column.label}
               </th>
             ))}
@@ -898,9 +1125,9 @@ function OrderTable({ rows, columns, loading, emptyText }) {
         </thead>
         <tbody className="divide-y divide-slate-100">
           {rows.map((order, index) => (
-            <tr key={order._id ?? order.id ?? order.orderId ?? index} className="hover:bg-slate-50/60">
+            <tr key={order._id ?? order.id ?? index} className="transition hover:bg-slate-50/70">
               {columns.map((column) => (
-                <td key={column.key} className="px-4 py-3">
+                <td key={column.key} className="px-4 py-3 align-middle text-slate-700">
                   {column.render(order)}
                 </td>
               ))}
@@ -912,17 +1139,17 @@ function OrderTable({ rows, columns, loading, emptyText }) {
   );
 }
 
-function StatCard({ label, value, icon: Icon, hint }) {
+function StatCard({ label, value, icon: Icon, hint, tone }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="mb-3 flex items-center justify-between">
+    <div className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+      <div className="mb-4 flex items-center justify-between">
         <span className="text-sm font-medium text-slate-500">{label}</span>
-        <span className="rounded-xl bg-slate-100 p-2 text-slate-600">
+        <span className={`rounded-xl p-2.5 ${tone}`}>
           <Icon size={19} />
         </span>
       </div>
       <div className="text-2xl font-bold tracking-tight text-slate-900">{value}</div>
-      {hint && <div className="mt-1 text-xs text-slate-500">{hint}</div>}
+      {hint && <div className="mt-1.5 text-xs text-slate-500">{hint}</div>}
     </div>
   );
 }
@@ -937,24 +1164,12 @@ function StatusOverview({ counts, total, selected, onSelect }) {
         </p>
       </div>
 
-      <div className="mb-4 flex h-2 overflow-hidden rounded-full bg-slate-100">
+      <div className="mb-4 flex h-2.5 overflow-hidden rounded-full bg-slate-100">
         {STATUS_META.map(({ key, tone }) =>
           counts[key] ? (
             <span
               key={key}
-              className={`h-full ${
-                tone === "amber"
-                  ? "bg-amber-400"
-                  : tone === "violet"
-                    ? "bg-violet-500"
-                    : tone === "blue"
-                      ? "bg-blue-500"
-                      : tone === "green"
-                        ? "bg-emerald-500"
-                        : tone === "red"
-                          ? "bg-red-500"
-                          : "bg-slate-400"
-              }`}
+              className={`h-full ${dotTones[tone]}`}
               style={{ flexGrow: counts[key] }}
               title={`${key}: ${counts[key]}`}
             />
@@ -965,9 +1180,9 @@ function StatusOverview({ counts, total, selected, onSelect }) {
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
-          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition ${
+          className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium transition ${
             selected === "all"
-              ? "bg-slate-900 text-white"
+              ? "bg-slate-900 text-white shadow"
               : "bg-slate-100 text-slate-700 hover:bg-slate-200"
           }`}
           onClick={() => onSelect("all")}
@@ -980,28 +1195,14 @@ function StatusOverview({ counts, total, selected, onSelect }) {
           <button
             key={key}
             type="button"
-            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition ${
+            className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium transition ${
               selected === key
-                ? "bg-slate-900 text-white"
+                ? "bg-slate-900 text-white shadow"
                 : "bg-slate-100 text-slate-700 hover:bg-slate-200"
             }`}
             onClick={() => onSelect(selected === key ? "all" : key)}
           >
-            <span
-              className={`h-2 w-2 rounded-full ${
-                tone === "amber"
-                  ? "bg-amber-400"
-                  : tone === "violet"
-                    ? "bg-violet-500"
-                    : tone === "blue"
-                      ? "bg-blue-500"
-                      : tone === "green"
-                        ? "bg-emerald-500"
-                        : tone === "red"
-                          ? "bg-red-500"
-                          : "bg-slate-400"
-              }`}
-            />
+            <span className={`h-2 w-2 rounded-full ${dotTones[tone]}`} />
             {label} <b>{number(counts[key] ?? 0)}</b>
           </button>
         ))}
@@ -1021,7 +1222,7 @@ export default function ReportSection() {
   const [to, setTo] = useState(dateInput(new Date()));
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [payload, setPayload] = useState(null);
+  const [payloadCache, setPayloadCache] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
@@ -1053,72 +1254,118 @@ export default function ReportSection() {
     setLimit(PAGE_SIZE);
   }, [active, statusFilter, from, to, debouncedSearch]);
 
-  const loadCosts = useCallback(async (signal) => {
-    setCostLoading(true);
-    setCostError("");
-    try {
-      const json = await requestJSON(
-        new URL(REPORT_ENDPOINTS.productCosts, API_BASE).toString(),
-        signal
-      );
-      const products = asArray(json, ["products", "items", "rows", "results", "records"]);
-      const map = buildCostMap(products);
-      if (signal.aborted) return;
-      setCostMap(map);
-      if (!products.length) {
-        setCostError("No products returned by product-costs-report.");
-      } else if (!map.size) {
-        setCostError("Products returned, but no valid cost fields were found.");
-      }
-    } catch (err) {
-      if (err.name !== "AbortError") {
-        setCostMap(new Map());
-        setCostError(err.message || "Could not load product costs.");
-      }
-    } finally {
-      if (!signal.aborted) setCostLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (active !== "profit") return;
-    const controller = new AbortController();
-    loadCosts(controller.signal);
-    return () => controller.abort();
-  }, [active, refreshKey, loadCosts]);
-
+  // Parallel fetch of ALL unique report endpoints + product costs via Promise.all
   useEffect(() => {
     const controller = new AbortController();
     const currentRequest = ++requestId.current;
 
-    async function run() {
+    async function loadAll() {
       setLoading(true);
+      setCostLoading(true);
       setError("");
-      try {
-        const endpoint = REPORT_ENDPOINTS[active];
-        if (!endpoint) throw new Error("Invalid report endpoint.");
+      setCostError("");
+
+      // Unique endpoints to avoid duplicate network calls
+      const uniqueFetches = {
+        overview: REPORT_ENDPOINTS.overview,
+        allOrders: REPORT_ENDPOINTS.sales, // shared by sales / profit / payments / courier
+        orders: REPORT_ENDPOINTS.orders,
+        products: REPORT_ENDPOINTS.products,
+        customers: REPORT_ENDPOINTS.customers,
+        employees: REPORT_ENDPOINTS.employees,
+        productCosts: REPORT_ENDPOINTS.productCosts,
+      };
+
+      const buildUrl = (endpoint, key) => {
         const url = new URL(endpoint, API_BASE);
-        if (active !== "overview") {
+        if (key !== "overview" && key !== "productCosts") {
           if (from) url.searchParams.set("from", from);
           if (to) url.searchParams.set("to", to);
         }
-        if (debouncedSearch) url.searchParams.set("search", debouncedSearch);
-        const json = await requestJSON(url.toString(), controller.signal);
-        if (currentRequest === requestId.current) setPayload(json);
+        if (debouncedSearch && key !== "productCosts") {
+          url.searchParams.set("search", debouncedSearch);
+        }
+        return url.toString();
+      };
+
+      try {
+        const entries = Object.entries(uniqueFetches);
+        const results = await Promise.all(
+          entries.map(async ([key, endpoint]) => {
+            try {
+              const json = await requestJSON(buildUrl(endpoint, key), controller.signal);
+              return [key, json, null];
+            } catch (err) {
+              if (err.name === "AbortError") throw err;
+              return [key, null, err.message || "Request failed"];
+            }
+          })
+        );
+
+        if (currentRequest !== requestId.current || controller.signal.aborted) return;
+
+        const nextCache = {};
+        let firstError = "";
+
+        for (const [key, json, errMsg] of results) {
+          if (key === "productCosts") {
+            if (json) {
+              const products = asArray(json, ["products", "items", "rows", "results", "records"]);
+              const map = buildCostMap(products);
+              setCostMap(map);
+              if (!products.length) {
+                setCostError("No products returned by product-costs-report.");
+              } else if (!map.size) {
+                setCostError("Products returned, but no valid cost fields were found.");
+              }
+            } else {
+              setCostMap(new Map());
+              setCostError(errMsg || "Could not load product costs.");
+            }
+            continue;
+          }
+
+          if (json) {
+            nextCache[key] = json;
+          } else if (errMsg && !firstError) {
+            firstError = errMsg;
+          }
+        }
+
+        // Map unique results back to report tabs
+        setPayloadCache({
+          overview: nextCache.overview ?? null,
+          sales: nextCache.allOrders ?? null,
+          orders: nextCache.orders ?? null,
+          profit: nextCache.allOrders ?? null,
+          products: nextCache.products ?? null,
+          customers: nextCache.customers ?? null,
+          employees: nextCache.employees ?? null,
+          payments: nextCache.allOrders ?? null,
+          courier: nextCache.allOrders ?? null,
+        });
+
+        if (firstError) setError(firstError);
       } catch (err) {
         if (err.name !== "AbortError" && currentRequest === requestId.current) {
-          setPayload(null);
-          setError(err.message || "Could not load report.");
+          setPayloadCache({});
+          setCostMap(new Map());
+          setError(err.message || "Could not load reports.");
+          setCostError(err.message || "Could not load product costs.");
         }
       } finally {
-        if (currentRequest === requestId.current) setLoading(false);
+        if (currentRequest === requestId.current) {
+          setLoading(false);
+          setCostLoading(false);
+        }
       }
     }
 
-    run();
+    loadAll();
     return () => controller.abort();
-  }, [active, from, to, debouncedSearch, refreshKey]);
+  }, [from, to, debouncedSearch, refreshKey]);
 
+  const payload = payloadCache[active] ?? null;
   const isOrderTab = ORDER_TABS.includes(active);
 
   const data = useMemo(() => {
@@ -1230,7 +1477,7 @@ export default function ReportSection() {
       ],
     };
 
-    return (definitions[active] ?? []).map(([label, paths, isMoney, icon]) => {
+    return (definitions[active] ?? []).map(([label, paths, isMoney, icon], index) => {
       let value = stat(paths);
       let hint = "";
 
@@ -1260,6 +1507,7 @@ export default function ReportSection() {
         value: value === null ? "Unavailable" : isMoney ? money(value) : number(value),
         icon,
         hint,
+        tone: cardTones[index % cardTones.length],
       };
     });
   }, [active, isOrderTab, rows, costMap, costLoading, costError, data, summary]);
@@ -1282,219 +1530,236 @@ export default function ReportSection() {
 
   return (
     <main className="min-h-screen bg-slate-50 p-4 md:p-6 lg:p-8">
-      {/* Hero */}
-      <header className="mb-6 flex flex-col gap-4 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 p-6 text-white shadow-lg md:flex-row md:items-center md:justify-between">
-        <div>
-          <div className="mb-1 text-xs font-semibold uppercase tracking-widest text-slate-400">
-            APPLE GADGETS · ANALYTICS
+      <div className="mx-auto max-w-[1400px]">
+        {/* Hero */}
+        <header className="relative mb-6 flex flex-col gap-4 overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 text-white shadow-xl md:flex-row md:items-center md:justify-between md:p-8">
+          <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-blue-500/20 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-20 left-1/3 h-48 w-48 rounded-full bg-violet-500/20 blur-3xl" />
+
+          <div className="relative">
+            <div className="mb-1 text-xs font-semibold uppercase tracking-widest text-slate-400">
+              APPLE GADGETS · ANALYTICS
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Reports & Analytics</h1>
+            <p className="mt-1 max-w-xl text-slate-300">
+              Track sales, orders, products, customers and business performance.
+            </p>
+            <div className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-sm ring-1 ring-white/15">
+              <CalendarDays size={14} /> {rangeLabel}
+            </div>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Reports & Analytics</h1>
-          <p className="mt-1 text-slate-300">
-            Track sales, orders, products, customers and business performance.
-          </p>
-          <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-sm">
-            <CalendarDays size={14} /> {rangeLabel}
-          </div>
-        </div>
 
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-medium text-slate-900 shadow transition hover:bg-slate-100 disabled:opacity-50"
-            onClick={exportCurrent}
-            disabled={!payload || loading || !exportRows.length}
-          >
-            <Download size={16} /> Export CSV
-          </button>
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-medium text-white backdrop-blur transition hover:bg-white/20 disabled:opacity-50"
-            onClick={refresh}
-            disabled={loading || costLoading}
-          >
-            <RefreshCw size={16} className={loading || costLoading ? "animate-spin" : ""} />
-            Refresh
-          </button>
-        </div>
-      </header>
-
-      {/* Tabs */}
-      <nav className="mb-5 flex flex-wrap gap-1.5" aria-label="Report types">
-        {REPORTS.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setActive(id)}
-            className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium transition ${
-              active === id
-                ? "bg-slate-900 text-white shadow"
-                : "bg-white text-slate-600 shadow-sm hover:bg-slate-100"
-            }`}
-            aria-current={active === id ? "page" : undefined}
-          >
-            <Icon size={16} /> {label}
-          </button>
-        ))}
-      </nav>
-
-      {/* Filters */}
-      <section className="mb-5 flex flex-wrap items-end gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="flex flex-wrap gap-1" role="group" aria-label="Period">
-          {PERIODS.map((item) => (
+          <div className="relative flex flex-wrap gap-2">
             <button
-              key={item.value}
               type="button"
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
-                period === item.value
-                  ? "bg-slate-900 text-white"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-              }`}
-              onClick={() => setPeriod(item.value)}
+              className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 shadow transition hover:bg-slate-100 disabled:opacity-50"
+              onClick={exportCurrent}
+              disabled={!payload || loading || !exportRows.length}
             >
-              {item.label}
+              <Download size={16} /> Export CSV
+            </button>
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-medium text-white backdrop-blur transition hover:bg-white/20 disabled:opacity-50"
+              onClick={refresh}
+              disabled={loading || costLoading}
+            >
+              <RefreshCw size={16} className={loading || costLoading ? "animate-spin" : ""} />
+              Refresh
+            </button>
+          </div>
+        </header>
+
+        {/* Tabs */}
+        <nav
+          className="mb-5 flex gap-1.5 overflow-x-auto rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm"
+          aria-label="Report types"
+        >
+          {REPORTS.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setActive(id)}
+              className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium transition ${
+                active === id
+                  ? "bg-slate-900 text-white shadow"
+                  : "text-slate-600 hover:bg-slate-100"
+              }`}
+              aria-current={active === id ? "page" : undefined}
+            >
+              <Icon size={16} /> {label}
             </button>
           ))}
-        </div>
+        </nav>
 
-        <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
-          <span className="inline-flex items-center gap-1">
-            <CalendarDays size={14} /> From
-          </span>
-          <input
-            type="date"
-            value={from}
-            max={to || undefined}
-            onChange={(e) => {
-              setFrom(e.target.value);
-              setPeriod("custom");
-            }}
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
-          />
-        </label>
-
-        <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
-          <span className="inline-flex items-center gap-1">
-            <CalendarDays size={14} /> To
-          </span>
-          <input
-            type="date"
-            value={to}
-            min={from || undefined}
-            max={dateInput(new Date())}
-            onChange={(e) => {
-              setTo(e.target.value);
-              setPeriod("custom");
-            }}
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
-          />
-        </label>
-
-        <label className="flex min-w-[200px] flex-1 flex-col gap-1 text-xs font-medium text-slate-500">
-          <span className="inline-flex items-center gap-1">
-            <Search size={14} /> Search
-          </span>
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Order, product, customer…"
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
-          />
-        </label>
-      </section>
-
-      {error && (
-        <div className="mb-5 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-800" role="alert">
-          <AlertCircle size={18} className="mt-0.5 shrink-0" />
-          <div>
-            <strong>Could not load {activeLabel.toLowerCase()}</strong>
-            <p className="mt-0.5 text-sm">{error}</p>
-            <small className="text-red-600">
-              Verify the backend route, response format, CORS and authentication.
-            </small>
+        {/* Filters */}
+        <section className="mb-5 flex flex-wrap items-end gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-wrap gap-1 rounded-xl bg-slate-100 p-1" role="group" aria-label="Period">
+            {PERIODS.map((item) => (
+              <button
+                key={item.value}
+                type="button"
+                className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+                  period === item.value
+                    ? "bg-white text-slate-900 shadow-sm"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+                onClick={() => setPeriod(item.value)}
+              >
+                {item.label}
+              </button>
+            ))}
           </div>
-        </div>
-      )}
 
-      {/* Stats */}
-      <section className="mb-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {cards.map((card) => (
-          <StatCard key={card.label} {...card} />
-        ))}
-      </section>
+          <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
+            <span className="inline-flex items-center gap-1">
+              <CalendarDays size={14} /> From
+            </span>
+            <input
+              type="date"
+              value={from}
+              max={to || undefined}
+              onChange={(e) => {
+                setFrom(e.target.value);
+                setPeriod("custom");
+              }}
+              className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200"
+            />
+          </label>
 
-      {/* Order status */}
-      {isOrderTab && !loading && rows.length > 0 && (
-        <div className="mb-5">
-          <StatusOverview
-            counts={statusCounts}
-            total={rows.length}
-            selected={statusFilter}
-            onSelect={setStatusFilter}
-          />
-        </div>
-      )}
+          <label className="flex flex-col gap-1 text-xs font-medium text-slate-500">
+            <span className="inline-flex items-center gap-1">
+              <CalendarDays size={14} /> To
+            </span>
+            <input
+              type="date"
+              value={to}
+              min={from || undefined}
+              max={dateInput(new Date())}
+              onChange={(e) => {
+                setTo(e.target.value);
+                setPeriod("custom");
+              }}
+              className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200"
+            />
+          </label>
 
-      {/* Data panel */}
-      <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900">
-              {active === "overview" ? "Recent Activity & Top Products" : `${activeLabel} Details`}
-            </h2>
-            <p className="text-sm text-slate-500">
-              {loading
-                ? "Loading…"
-                : `${number(visibleRows.length)} record${visibleRows.length === 1 ? "" : "s"}${
-                    statusFilter !== "all" ? ` · ${statusFilter}` : ""
-                  } · filtered report data from your backend`}
-            </p>
-          </div>
-          <button
-            type="button"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
-            onClick={exportCurrent}
-            disabled={!payload || loading || !exportRows.length}
+          <label className="flex min-w-[200px] flex-1 flex-col gap-1 text-xs font-medium text-slate-500">
+            <span className="inline-flex items-center gap-1">
+              <Search size={14} /> Search
+            </span>
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Order, product, customer…"
+              className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-200"
+            />
+          </label>
+        </section>
+
+        {error && (
+          <div
+            className="mb-5 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-800"
+            role="alert"
           >
-            <FileSpreadsheet size={16} /> Export
-          </button>
-        </div>
-
-        {isOrderTab ? (
-          <OrderTable
-            rows={pagedRows}
-            columns={columns}
-            loading={loading}
-            emptyText="No orders match these filters."
-          />
-        ) : (
-          <Table
-            rows={pagedRows}
-            loading={loading}
-            emptyText={
-              active === "overview"
-                ? "No activity or top-product data was returned."
-                : "No records returned for these filters."
-            }
-          />
+            <AlertCircle size={18} className="mt-0.5 shrink-0" />
+            <div>
+              <strong>Could not load {activeLabel.toLowerCase()}</strong>
+              <p className="mt-0.5 text-sm">{error}</p>
+              <small className="text-red-600">
+                Verify the backend route, response format, CORS and authentication.
+              </small>
+            </div>
+          </div>
         )}
 
-        {!loading && visibleRows.length > pagedRows.length && (
-          <div className="border-t border-slate-100 p-4 text-center">
+        {/* Stats */}
+        <section className="mb-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {cards.map((card) => (
+            <StatCard key={card.label} {...card} />
+          ))}
+        </section>
+
+        {/* Order status */}
+        {isOrderTab && !loading && rows.length > 0 && (
+          <div className="mb-5">
+            <StatusOverview
+              counts={statusCounts}
+              total={rows.length}
+              selected={statusFilter}
+              onSelect={setStatusFilter}
+            />
+          </div>
+        )}
+
+        {/* Data panel */}
+        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">
+                {active === "overview" ? "Recent Activity & Top Products" : `${activeLabel} Details`}
+              </h2>
+              <p className="text-sm text-slate-500">
+                {loading
+                  ? "Loading…"
+                  : `${number(visibleRows.length)} record${visibleRows.length === 1 ? "" : "s"}${
+                      statusFilter !== "all" ? ` · ${statusFilter}` : ""
+                    } · filtered report data from your backend`}
+              </p>
+            </div>
             <button
               type="button"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
-              onClick={() => setLimit((value) => value + PAGE_SIZE)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
+              onClick={exportCurrent}
+              disabled={!payload || loading || !exportRows.length}
             >
-              <ChevronDown size={16} /> Show more ({number(visibleRows.length - pagedRows.length)} remaining)
+              <FileSpreadsheet size={16} /> Export
             </button>
           </div>
-        )}
-      </section>
 
-      <p className="mt-4 text-center text-xs text-slate-400">
-        Reports use the data returned by your backend. Profit is only reliable when delivered order
-        totals and product purchase costs are available.
-      </p>
+          {isOrderTab ? (
+            <OrderTable
+              rows={pagedRows}
+              columns={columns}
+              loading={loading}
+              emptyText="No orders match these filters."
+            />
+          ) : active === "products" ? (
+            <ProductTable
+              rows={pagedRows}
+              loading={loading}
+              emptyText="No products returned for these filters."
+            />
+          ) : (
+            <Table
+              rows={pagedRows}
+              loading={loading}
+              emptyText={
+                active === "overview"
+                  ? "No activity or top-product data was returned."
+                  : "No records returned for these filters."
+              }
+            />
+          )}
+
+          {!loading && visibleRows.length > pagedRows.length && (
+            <div className="border-t border-slate-100 p-4 text-center">
+              <button
+                type="button"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+                onClick={() => setLimit((value) => value + PAGE_SIZE)}
+              >
+                <ChevronDown size={16} /> Show more ({number(visibleRows.length - pagedRows.length)} remaining)
+              </button>
+            </div>
+          )}
+        </section>
+
+        <p className="mt-4 text-center text-xs text-slate-400">
+          Reports use the data returned by your backend. Profit is only reliable when delivered order
+          totals and product purchase costs are available.
+        </p>
+      </div>
     </main>
   );
 }

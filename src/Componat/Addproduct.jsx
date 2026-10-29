@@ -8,11 +8,11 @@ import { showReviewToast } from "./SavedToast";
 const API_BASE = "https://apple-gadgets-ui-backend.vercel.app";
 
 const CATEGORY_API = {
-  tree: `${API_BASE}/category/tree`,
-  main: `${API_BASE}/category/main`,
-  sub: `${API_BASE}/category/sub`,
-  child: `${API_BASE}/category/child`,
-  subChild: `${API_BASE}/category/sub-child`,
+  tree: `${API_BASE}/api/dashboard/tree`,
+  main: `${API_BASE}/api/dashboard/main`,
+  sub: `${API_BASE}/api/dashboard/sub`,
+  child: `${API_BASE}/api/dashboard/child`,
+  subChild: `${API_BASE}/api/dashboard/sub-child`,
 };
 
 const initialFormData = {
@@ -121,6 +121,33 @@ export default function AddProductPage() {
   const [sectionImage, setSectionImage] = useState(null);
   const [sectionImagePreview, setSectionImagePreview] = useState("");
 
+
+const getAdminToken = () => {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("token");
+};
+
+  // All admin API calls go through this so Authorization is always attached
+  const authFetch = async (url, options = {}) => {
+    const token = getAdminToken();
+    const headers = {
+      ...(options.headers || {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+    // Never force Content-Type when body is FormData
+    if (options.body instanceof FormData) {
+      delete headers["Content-Type"];
+    }
+    const res = await fetch(url, { ...options, headers });
+    if (res.status === 401) {
+      localStorage.removeItem("token");
+      // optional: window.location.href = "/admin/login";
+    }
+    return res;
+  };
+
+
+
   const handleSectionImageChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -180,7 +207,7 @@ export default function AddProductPage() {
     try {
       setCategoriesLoading(true);
       setCategoriesError("");
-      const response = await fetch(CATEGORY_API.tree, { method: "GET", cache: "no-store" });
+      const response = await authFetch(CATEGORY_API.tree, { method: "GET", cache: "no-store" });
       const data = await response.json();
       if (!response.ok) throw new Error(data?.message || "Could not load categories");
       setCategories(Array.isArray(data?.categories) ? data.categories : []);
@@ -617,7 +644,7 @@ export default function AddProductPage() {
 
       formData.images.forEach((image) => data.append("images", image));
 
-      const response = await fetch(`${API_BASE}/products/addproduct`, {
+      const response = await authFetch(`${API_BASE}/api/dashboard/addproduct`, {
         method: "POST",
         body: data,
       });
@@ -747,7 +774,10 @@ export default function AddProductPage() {
       if (newCategoryImage) formDataToSend.append("image", newCategoryImage);
       if (newCategoryBannerImage) formDataToSend.append("bannerImage", newCategoryBannerImage);
 
-      const response = await fetch(CATEGORY_API.main, { method: "POST", body: formDataToSend });
+      const response = await authFetch(CATEGORY_API.main, {
+        method: "POST",
+        body: formDataToSend,
+      });
       const data = await response.json();
       if (!response.ok) throw new Error(data?.message || "Could not add main category");
       const created = data?.category;
@@ -791,7 +821,10 @@ export default function AddProductPage() {
       if (newSubCategoryImage) formDataToSend.append("image", newSubCategoryImage);
       if (newSubCategoryBannerImage) formDataToSend.append("bannerImage", newSubCategoryBannerImage);
 
-      const response = await fetch(CATEGORY_API.sub, { method: "POST", body: formDataToSend });
+      const response = await authFetch(CATEGORY_API.sub, {
+        method: "POST",
+        body: formDataToSend,
+      });
       const data = await response.json();
       if (!response.ok) throw new Error(data?.message || "Could not add sub category");
       const created = data?.category;
@@ -840,7 +873,10 @@ export default function AddProductPage() {
       if (newChildCategoryImage) formDataToSend.append("image", newChildCategoryImage);
       if (newChildCategoryBannerImage) formDataToSend.append("bannerImage", newChildCategoryBannerImage);
 
-      const response = await fetch(CATEGORY_API.child, { method: "POST", body: formDataToSend });
+      const response = await authFetch(CATEGORY_API.child, {
+        method: "POST",
+        body: formDataToSend,
+      });
       const data = await response.json();
       if (!response.ok) throw new Error(data?.message || "Could not add child category");
       const created = data?.category;
@@ -895,7 +931,10 @@ export default function AddProductPage() {
       if (newSubChildCategoryBannerImage)
         formDataToSend.append("bannerImage", newSubChildCategoryBannerImage);
 
-      const response = await fetch(CATEGORY_API.subChild, { method: "POST", body: formDataToSend });
+      const response = await authFetch(CATEGORY_API.subChild, {
+        method: "POST",
+        body: formDataToSend,
+      });
       const data = await response.json();
       if (!response.ok) throw new Error(data?.message || "Could not add sub child category");
       const created = data?.category;

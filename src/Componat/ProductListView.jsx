@@ -1,7 +1,4 @@
-
-
-
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Search,
   RefreshCw,
@@ -17,12 +14,41 @@ import {
 import UpdateProductPage from "./UpdateProduct";
 
 const API_BASE = "https://apple-gadgets-ui-backend.vercel.app";
-
+const getAdminToken = () => {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("token");
+};
+const token = getAdminToken()
 const API = {
   list: `${API_BASE}/api/dashboard/products`,
-  details: (id) => `${API_BASE}/products/${id}`,
-  delete: (id) => `${API_BASE}/products/${id}`,
+  details: (id) => `${API_BASE}/api/dashboard/${id}`,
+  delete: (id) => `${API_BASE}/api/dashboard/${id}`,
+  categoryTree: `${API_BASE}/api/dashboard/tree`,
 };
+
+// Build flat id → name map from category tree (supports nested children)
+function buildCategoryMap(list) {
+  const map = new Map();
+
+  const walk = (items) => {
+    if (!Array.isArray(items)) return;
+    for (const item of items) {
+      if (!item || typeof item !== "object") continue;
+      const id = String(item._id ?? item.id ?? "");
+      const name = item.name || item.title || "";
+      if (id && name) map.set(id, name);
+
+      // support different nesting keys used by backend
+      walk(item.children);
+      walk(item.subCategories);
+      walk(item.childCategories);
+      walk(item.subChildCategories);
+    }
+  };
+
+  walk(list);
+  return map;
+}
 
 export default function ProductListView() {
   const [products, setProducts] = useState([]);
@@ -39,6 +65,12 @@ export default function ProductListView() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState("");
+
+  // category id → name map (loaded once, parallel with products)
+  const [categoryMap, setCategoryMap] = useState(() => new Map());
+
+  const requestId = useRef(0);
+  const abortRef = useRef(null);
 
   // Safely read JSON API responses.
   const readResponse = async (response) => {
@@ -74,8 +106,52 @@ export default function ProductListView() {
     return [];
   };
 
-  // Fetch product list.
+  // Load categories once (parallel-friendly, same style as Header)
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadCategories = async () => {
+      try {
+        const response = await fetch(API.categoryTree, {
+          method: "GET",
+          headers: { Accept: "application/json",Authorization: `Bearer ${token}` },
+          cache: "default",
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) return;
+
+        const list = Array.isArray(data?.categories)
+          ? data.categories
+          : Array.isArray(data?.data)
+            ? data.data
+            : Array.isArray(data)
+              ? data
+              : [];
+
+        if (!cancelled) {
+          setCategoryMap(buildCategoryMap(list));
+        }
+      } catch (err) {
+        console.error("Category load error:", err);
+      }
+    };
+
+    loadCategories();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Fetch product list (AbortController + race-safe).
   const fetchProducts = useCallback(async (searchValue = "", pageNumber = 1) => {
+    // Cancel any in-flight list request
+    if (abortRef.current) {
+      abortRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const currentRequest = ++requestId.current;
+
     try {
       setLoading(true);
       setError("");
@@ -90,11 +166,15 @@ export default function ProductListView() {
         method: "GET",
         headers: {
           Accept: "application/json",
+          Authorization: `Bearer ${token}`
         },
         cache: "no-store",
+        signal: controller.signal,
       });
 
       const result = await readResponse(response);
+
+      if (currentRequest !== requestId.current) return;
 
       const productList = getProductList(result);
 
@@ -109,17 +189,25 @@ export default function ProductListView() {
       setProducts(productList);
       setTotalPages(Math.max(1, pages));
     } catch (err) {
+      if (err.name === "AbortError") return;
       console.error("FETCH PRODUCTS ERROR:", err);
-      setProducts([]);
-      setTotalPages(1);
-      setError(err.message || "Failed to load products.");
+      if (currentRequest === requestId.current) {
+        setProducts([]);
+        setTotalPages(1);
+        setError(err.message || "Failed to load products.");
+      }
     } finally {
-      setLoading(false);
+      if (currentRequest === requestId.current) {
+        setLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
     fetchProducts("", 1);
+    return () => {
+      if (abortRef.current) abortRef.current.abort();
+    };
   }, [fetchProducts]);
 
   // Get product ID.
@@ -147,15 +235,46 @@ export default function ProductListView() {
   const formatPrice = (price) =>
     Number(price || 0).toLocaleString("en-BD");
 
-  // Get category name.
+  // Get brand name — handles string, object, or alternate field names
+  const getBrandName = (product) => {
+    if (!product || typeof product !== "object") return "";
+
+    const brand = product.brand ?? product.brandName ?? product.Brand;
+
+    if (brand == null || brand === "") return "";
+
+    if (typeof brand === "object") {
+      return String(brand.name || brand.title || brand.label || "").trim();
+    }
+
+    return String(brand).trim();
+  };
+
+  // Get category name — resolve ID via categoryMap, never show raw ObjectId
   const getCategoryName = (product) => {
     const category = product?.category;
 
+    // Populated object
     if (category && typeof category === "object") {
       return category.name || category.title || "-";
     }
 
-    return category ? String(category) : "-";
+    // Raw ID (string / number) → look up name from category tree
+    if (category != null && category !== "") {
+      const id = String(category);
+      const name = categoryMap.get(id);
+      if (name) return name;
+    }
+
+    // Also try categoryId / category_id fields if present
+    const fallbackId =
+      product?.categoryId ?? product?.category_id ?? product?.catId;
+    if (fallbackId != null && fallbackId !== "") {
+      const name = categoryMap.get(String(fallbackId));
+      if (name) return name;
+    }
+
+    return "-";
   };
 
   // Stock status.
@@ -508,9 +627,9 @@ export default function ProductListView() {
                                 SKU: {product.sku || "-"}
                               </p>
 
-                              {product.brand && (
+                              {getBrandName(product) && (
                                 <p className="mt-1 text-xs text-gray-500">
-                                  {product.brand}
+                                  {getBrandName(product)}
                                 </p>
                               )}
                             </div>
@@ -714,7 +833,7 @@ export default function ProductListView() {
                 <div className="grid gap-3 sm:grid-cols-2">
                   {[
                     ["Name", selectedProduct.name],
-                    ["Brand", selectedProduct.brand],
+                    ["Brand", getBrandName(selectedProduct) || "-"],
                     ["SKU", selectedProduct.sku],
                     ["Price", `৳ ${formatPrice(selectedProduct.price)}`],
                     [

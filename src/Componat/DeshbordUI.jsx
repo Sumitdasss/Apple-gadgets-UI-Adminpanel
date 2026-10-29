@@ -19,6 +19,8 @@ import {
   TrendingUp,
   CalendarDays,
   RotateCcw,
+  LogOut,
+  ShieldCheck,
 } from "lucide-react";
 
 import OrderActivityChart from "./OderActivityChart.jsx";
@@ -39,9 +41,17 @@ const API = (
   import.meta.env.VITE_API_URL || "https://apple-gadgets-ui-backend.vercel.app"
 ).replace(/\/+$/, "");
 
+// If your router is mounted under a prefix (for example /api/admin),
+// set VITE_ADMIN_ME_URL to the complete Admin-me URL in your .env file.
+const ADMIN_ME_URL = (import.meta.env.VITE_ADMIN_ME_URL || `${API}/api/dashboard/Admin-me`).replace(/\/+$/, "");
+
 // =====================================================
 // DATE HELPERS — ASIA/DHAKA
 // =====================================================
+const getAdminToken = () => {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("token"); 
+};
 
 const getToday = () => {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -150,10 +160,78 @@ export default function DeshbordUI() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
-const [selectedLandingPageId, setSelectedLandingPageId] = useState("");
+  const [selectedLandingPageId, setSelectedLandingPageId] = useState("");
+  const [adminProfile, setAdminProfile] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [profileError, setProfileError] = useState("");
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const today = getToday();
 
   // =====================================================
+  // ADMIN PROFILE + AUTH CHECK
+  // =====================================================
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const loadAdminProfile = async () => {
+      const token = getAdminToken();
+      if (!token) {
+        window.location.replace("/login");
+        return;
+      }
+
+      setProfileLoading(true);
+      setProfileError("");
+
+      try {
+        const response = await fetch(ADMIN_ME_URL, {
+          method: "GET",
+          signal: controller.signal,
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+          },
+        });
+        const result = await response.json().catch(() => ({}));
+
+        if (response.status === 401 || response.status === 403) {
+          ["token", "adminToken"].forEach((key) => {
+            localStorage.removeItem(key);
+            sessionStorage.removeItem(key);
+          });
+          window.location.replace("/login");
+          return;
+        }
+        if (!response.ok || result?.success === false) {
+          throw new Error(result?.message || `Admin profile request failed (${response.status})`);
+        }
+        const profile = result?.data?.user;
+     
+        setAdminProfile(profile && typeof profile === "object" ? profile : null);
+      } catch (err) {
+        if (err.name === "AbortError") return;
+        console.error("Admin profile error:", err);
+        setProfileError(err.message || "Could not load admin profile");
+      } finally {
+        if (!controller.signal.aborted) setProfileLoading(false);
+      }
+    };
+
+    loadAdminProfile();
+    return () => controller.abort();
+  }, []);
+
+  const handleLogout = () => {
+    setLoggingOut(true);
+    ["token", "adminToken", "admin", "adminProfile", "user", "userInfo"].forEach((key) => {
+      localStorage.removeItem(key);
+      sessionStorage.removeItem(key);
+    });
+    window.location.replace("/login");
+  };
+
   // LOAD DASHBOARD
   // =====================================================
 
@@ -165,11 +243,20 @@ const [selectedLandingPageId, setSelectedLandingPageId] = useState("");
       setError("");
 
       try {
+        const token = getAdminToken();
+        if (!token) {
+          window.location.replace("/login");
+          return;
+        }
         const response = await fetch(
           `${API}/api/dashboard/summary?date=${encodeURIComponent(selectedDate)}`,
           {
             signal: controller.signal,
-            headers: { Accept: "application/json" },
+                   headers: {
+    Authorization: `Bearer ${token}`,
+    Accept: "application/json"
+
+  },
           },
         );
 
@@ -402,10 +489,57 @@ const [selectedLandingPageId, setSelectedLandingPageId] = useState("");
           )}
         </button>
 
-        <div className="flex items-center gap-2 border-l border-gray-200 pl-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full border border-red-200 bg-gradient-to-br from-red-50 to-red-100 text-xs font-bold text-red-700 shadow-sm">
-            A
-          </div>
+        <div className="relative flex items-center gap-2 border-l border-gray-200 pl-3">
+          <button
+            type="button"
+            onClick={() => setProfileMenuOpen((open) => !open)}
+            aria-expanded={profileMenuOpen}
+            aria-label="Open admin profile menu"
+            className="flex max-w-[230px] items-center gap-2 rounded-xl p-1.5 text-left transition hover:bg-gray-50"
+          >
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-red-200 bg-gradient-to-br from-red-50 to-red-100 text-xs font-bold uppercase text-red-700 shadow-sm">
+              {(adminProfile?.name || adminProfile?.fullName || adminProfile?.username || adminProfile?.email || "A").charAt(0)}
+            </div>
+            <div className="hidden min-w-0 sm:block">
+              <p className="max-w-[145px] truncate text-xs font-bold text-gray-800">
+                {profileLoading ? "Loading profile..." : (adminProfile?.name || adminProfile?.fullName || adminProfile?.username || "Admin")}
+              </p>
+              <p className="max-w-[145px] truncate text-[10px] text-gray-500">
+                {adminProfile?.email || adminProfile?.role || "Administrator"}
+              </p>
+            </div>
+            <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-gray-500 transition ${profileMenuOpen ? "rotate-180" : ""}`} />
+          </button>
+
+          {profileMenuOpen && (
+            <>
+              <button type="button" aria-label="Close profile menu" className="fixed inset-0 z-40 cursor-default" onClick={() => setProfileMenuOpen(false)} />
+              <div className="absolute right-0 top-full z-50 mt-2 w-72 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl">
+                <div className="border-b border-gray-100 bg-slate-50 p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-red-100 text-sm font-bold uppercase text-red-700">
+                      {(adminProfile?.name || adminProfile?.fullName || adminProfile?.username || adminProfile?.email || "A").charAt(0)}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold text-gray-900">{adminProfile?.name || adminProfile?.fullName || adminProfile?.username || "Admin"}</p>
+                      <p className="truncate text-xs text-gray-500">{adminProfile?.email || "Email not provided"}</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-center gap-2 text-xs text-gray-600">
+                    <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                    <span>Role: {adminProfile?.role || adminProfile?.userRole || "Administrator"}</span>
+                  </div>
+                  {profileError && <p className="mt-2 break-words text-xs text-amber-700">{profileError}</p>}
+                </div>
+                <div className="p-2">
+                  <button type="button" disabled={loggingOut} onClick={handleLogout} className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60">
+                    <LogOut className="h-4 w-4" />
+                    {loggingOut ? "Logging out..." : "Logout"}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </header>
@@ -824,6 +958,33 @@ const [selectedLandingPageId, setSelectedLandingPageId] = useState("");
   };
 
   const storeName = d.store?.store_name || "Apple Gadgets";
+
+  if (profileLoading && !adminProfile) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-9 w-9 animate-spin rounded-full border-[3px] border-red-700 border-t-transparent" />
+          <p className="text-sm font-medium text-gray-500">Verifying admin session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (profileError && !adminProfile) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
+        <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 text-center shadow-sm">
+          <ShieldCheck className="mx-auto h-10 w-10 text-amber-600" />
+          <h2 className="mt-3 text-lg font-bold text-gray-900">Admin profile could not be loaded</h2>
+          <p className="mt-2 break-words text-sm text-gray-500">{profileError}</p>
+          <div className="mt-5 flex justify-center gap-2">
+            <button type="button" onClick={() => window.location.reload()} className="rounded-xl bg-red-800 px-4 py-2 text-sm font-semibold text-white hover:bg-red-900">Retry</button>
+            <button type="button" onClick={handleLogout} className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">Logout</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // =====================================================
   // MAIN LAYOUT

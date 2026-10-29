@@ -1,8 +1,30 @@
 import { useEffect, useState, useRef } from "react";
-import { landingPageApi } from "../services/landingPageApi.js";
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 const API_BASE = "https://apple-gadgets-ui-backend.vercel.app";
+
+const getAdminToken = () => {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("token");
+};
+
+const authFetch = async (url, options = {}) => {
+  const token = getAdminToken();
+  const headers = {
+    ...(options.headers || {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+  // FormData হলে Content-Type সেট করো না
+  if (options.body instanceof FormData) {
+    delete headers["Content-Type"];
+  }
+  const res = await fetch(url, { ...options, headers });
+  if (res.status === 401) {
+    localStorage.removeItem("token");
+    // optional: window.location.href = "/admin/login";
+  }
+  return res;
+};
 
 const emptyBanner = () => ({
   image: "",
@@ -189,7 +211,7 @@ export default function CreateLandingPage({ onCancel, onSuccess }) {
       try {
         setSearchLoading((prev) => ({ ...prev, [offerIndex]: true }));
 
-        const response = await fetch(
+        const response = await authFetch(
           `${API_BASE}/api/dashboard/products?search=${encodeURIComponent(
             query.trim()
           )}`
@@ -459,9 +481,24 @@ export default function CreateLandingPage({ onCancel, onSuccess }) {
           if (o.file) formData.append("offerImages", o.file);
         });
 
-      const result = await landingPageApi.create(formData);
+      // Auth token সহ create — /api/dashboard path
+      const response = await authFetch(
+        `${API_BASE}/api/dashboard/createLandingPage`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
 
-      if (result?.success === false) {
+      const text = await response.text();
+      let result;
+      try {
+        result = text ? JSON.parse(text) : {};
+      } catch {
+        result = { success: false, message: text || "Invalid server response" };
+      }
+
+      if (!response.ok || result?.success === false) {
         throw new Error(result.message || "Failed to create landing page.");
       }
 

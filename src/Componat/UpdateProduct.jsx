@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
@@ -9,7 +8,29 @@ import { showReviewToast } from "./SavedToast";
 const API_BASE = "https://apple-gadgets-ui-backend.vercel.app";
 
 const CATEGORY_API = {
-  tree: `${API_BASE}/category/tree`,
+  tree: `${API_BASE}/api/dashboard/tree`,
+};
+
+const getAdminToken = () => {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("token");
+};
+
+const authFetch = async (url, options = {}) => {
+  const token = getAdminToken();
+  const headers = {
+    ...(options.headers || {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+  if (options.body instanceof FormData) {
+    delete headers["Content-Type"];
+  }
+  const res = await fetch(url, { ...options, headers });
+  if (res.status === 401) {
+    localStorage.removeItem("token");
+    // optional: window.location.href = "/admin/login";
+  }
+  return res;
 };
 
 const initialFormData = {
@@ -249,7 +270,7 @@ export default function UpdateProductPage({ productId: propProductId }) {
       try {
         setListLoading(true);
 
-        const response = await fetch(
+        const response = await authFetch(
           `${API_BASE}/products/getALLproducts`,
           { cache: "no-store" }
         );
@@ -294,7 +315,7 @@ export default function UpdateProductPage({ productId: propProductId }) {
       setCategoriesLoading(true);
       setCategoriesError("");
 
-      const response = await fetch(CATEGORY_API.tree, {
+      const response = await authFetch(CATEGORY_API.tree, {
         cache: "no-store",
       });
 
@@ -355,7 +376,7 @@ export default function UpdateProductPage({ productId: propProductId }) {
       try {
         setFetching(true);
 
-        const response = await fetch(
+        const response = await authFetch(
           `${API_BASE}/products/${selectedProductId}`,
           {
             headers: { Accept: "application/json" },
@@ -1283,7 +1304,7 @@ export default function UpdateProductPage({ productId: propProductId }) {
         data.append("images", image);
       });
 
-      const response = await fetch(
+      const response = await authFetch(
         `${API_BASE}/products/updateproduct/${selectedProductId}`,
         {
           method: "PUT",

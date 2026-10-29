@@ -57,6 +57,12 @@ export default function CreateOrderModal({
     upazila: "",
   });
 
+const getAdminToken = () => {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("token");
+};
+
+const token=getAdminToken()
   const divisions = Object.keys(BANGLADESH_GEO);
 
   const districts = geo.division
@@ -522,7 +528,11 @@ export default function CreateOrderModal({
       setSearchLoading(true);
 
       const response = await fetch(
-        `${API_BASE}/api/dashboard/products?search=${encodeURIComponent(value.trim())}`,
+        `${API_BASE}/api/dashboard/products?search=${encodeURIComponent(value.trim())}`,{
+          headers:{
+              Authorization: `Bearer ${token}`,
+          }
+        }
       );
 
       const data = await response.json();
@@ -969,11 +979,12 @@ export default function CreateOrderModal({
       =================================================== */
 
       const response = await fetch(
-        `${API_BASE}/products/CreateOrder`,
+        `${API_BASE}/api/dashboard/CreateOrder`,
         {
           method: "POST",
 
           headers: {
+            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
 

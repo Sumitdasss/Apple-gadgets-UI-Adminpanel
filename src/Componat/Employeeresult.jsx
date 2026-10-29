@@ -5,7 +5,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 /* =====================================================
    CONFIG
 ===================================================== */
+const getAdminToken = () => {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("token");
+};
 
+const token=getAdminToken()
 const API_BASE = "https://apple-gadgets-ui-backend.vercel.app";
 const ROUTE_PREFIX = "/api/dashboard";
 
@@ -14,7 +19,9 @@ const request = async (path) => {
 
   const res = await fetch(url, {
     method: "GET",
-    headers: { Accept: "application/json" },
+    headers: { Accept: "application/json",
+      Authorization: `Bearer ${token}`,
+     },
     cache: "no-store",
   });
 

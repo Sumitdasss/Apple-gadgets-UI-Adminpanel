@@ -40,7 +40,12 @@ import "./invoice-print.css";
 /* ------------------------------------------------------------------ */
 /* Config                                                              */
 /* ------------------------------------------------------------------ */
+const getAdminToken = () => {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("token");
+};
 
+const token=getAdminToken()
 const API_BASE = (
   import.meta.env.VITE_API_URL || "https://apple-gadgets-ui-backend.vercel.app"
 ).replace(/\/+$/, "");
@@ -55,6 +60,7 @@ const COURIER_RIDER_API = (orderId) =>
   `${API_BASE}/api/dashboard/orders/${orderId}/courier-rider`;
 
 const PAGE_SIZE = 20;
+const CACHE_LIMIT = 40;
 
 const STATUSES = [
   "pending",
@@ -261,12 +267,15 @@ async function apiRequest(url, options = {}) {
     response = await fetch(url, {
       ...options,
       headers: {
+         Authorization: `Bearer ${token}`,
         Accept: "application/json",
         ...(options.body ? { "Content-Type": "application/json" } : {}),
         ...options.headers,
       },
     });
   } catch (error) {
+    // Cancelled requests (stale filters / unmount) must not look like errors
+    if (error?.name === "AbortError") throw error;
     console.error("Network/API connection error:", error);
     throw new Error(
       "Backend server-এর সঙ্গে সংযোগ হচ্ছে না। Server চালু আছে কি না দেখো।"
@@ -291,6 +300,46 @@ async function apiRequest(url, options = {}) {
     );
   }
   return result;
+}
+
+/**
+ * Promise.all wrapper that never rejects: every promise resolves to
+ * { ok: true, value } or { ok: false, reason }, so one failed order
+ * does not cancel the rest of a bulk operation.
+ */
+const settleAll = (promises) =>
+  Promise.all(
+    promises.map((promise) =>
+      promise.then(
+        (value) => ({ ok: true, value }),
+        (reason) => ({ ok: false, reason })
+      )
+    )
+  );
+
+const buildOrdersUrl = (filters, pageNo) => {
+  const params = new URLSearchParams({
+    page: String(pageNo),
+    limit: String(PAGE_SIZE),
+  });
+  if (filters.search) params.set("search", filters.search);
+  if (filters.status !== "all") params.set("status", filters.status);
+  if (filters.deliveryStatus !== "all")
+    params.set("deliveryStatus", filters.deliveryStatus);
+  if (filters.courierProvider) params.set("courierProvider", filters.courierProvider);
+  if (filters.source) params.set("source", filters.source);
+  return `${ORDERS_API}?${params.toString()}`;
+};
+
+async function fetchOrdersPage(url, signal) {
+  const result = await apiRequest(url, { signal });
+  const rows = Array.isArray(result.data) ? result.data : [];
+  const total = Number(result.pagination?.total ?? 0);
+  const pages = Math.max(
+    1,
+    Number(result.pagination?.pages ?? (Math.ceil(total / PAGE_SIZE) || 1))
+  );
+  return { rows, total, pages };
 }
 
 function useDebounced(value, delay = 400) {
@@ -523,6 +572,7 @@ const OrderRow = memo(function OrderRow({
                       src={product.image}
                       alt={product.name}
                       loading="lazy"
+                      decoding="async"
                       className="h-11 w-11 shrink-0 rounded-lg border border-slate-200 bg-white object-contain p-0.5"
                       onError={(e) => {
                         e.currentTarget.style.display = "none";
@@ -823,18 +873,41 @@ export default function OrderManege() {
   const [pagination, setPagination] = useState({ total: 0, pages: 1 });
 
   const requestRef = useRef(0);
+  const abortRef = useRef(null);
+  const detailsReqRef = useRef(0);
+  const employeesPromiseRef = useRef(null);
+  const pageCacheRef = useRef(new Map());
+  const cacheVersionRef = useRef(0);
 
-  /* ---- Employees ---- */
+  /* ---- Cache helpers ---- */
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const result = await apiRequest(EMPLOYEES_API);
-        setAllEmployees(Array.isArray(result.data) ? result.data : []);
-      } catch (err) {
-        console.error("Failed to load employees:", err);
-      }
-    })();
+  const cachePut = useCallback((key, data, version) => {
+    // ignore results that were fetched before a mutation invalidated the cache
+    if (version !== cacheVersionRef.current) return;
+    const cache = pageCacheRef.current;
+    if (cache.size >= CACHE_LIMIT) cache.delete(cache.keys().next().value);
+    cache.set(key, data);
+  }, []);
+
+  const invalidateCache = useCallback(() => {
+    pageCacheRef.current.clear();
+    cacheVersionRef.current += 1;
+  }, []);
+
+  /* ---- Employees (single shared request, runs in parallel with orders) ---- */
+
+  const loadEmployees = useCallback(() => {
+    if (!employeesPromiseRef.current) {
+      employeesPromiseRef.current = apiRequest(EMPLOYEES_API)
+        .then((result) => {
+          setAllEmployees(Array.isArray(result.data) ? result.data : []);
+        })
+        .catch((err) => {
+          console.error("Failed to load employees:", err);
+          employeesPromiseRef.current = null; // allow retry on next load
+        });
+    }
+    return employeesPromiseRef.current;
   }, []);
 
   // id -> employee, used to resolve names when API returns only an ID
@@ -854,48 +927,85 @@ export default function OrderManege() {
 
   /* ---- Orders ---- */
 
-  const loadOrders = useCallback(async () => {
-    const requestId = ++requestRef.current;
-    setLoading(true);
-    setError("");
-    try {
-      const params = new URLSearchParams({
-        page: String(page),
-        limit: String(PAGE_SIZE),
+  const applyPage = useCallback((data) => {
+    setOrders(data.rows);
+    setPagination({ total: data.total, pages: data.pages });
+    const visible = new Set(data.rows.map(getOrderId));
+    setSelectedIds((prev) => prev.filter((id) => visible.has(id)));
+  }, []);
+
+  const loadOrders = useCallback(
+    async ({ force = false } = {}) => {
+      // cancel any in-flight list request that is now stale
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+      const requestId = ++requestRef.current;
+
+      const filters = { search, status, deliveryStatus, courierProvider, source };
+      const url = buildOrdersUrl(filters, page);
+      const version = cacheVersionRef.current;
+
+      // stale-while-revalidate: show cached page instantly, refresh in background
+      const cached = force ? null : pageCacheRef.current.get(url);
+      if (cached) {
+        applyPage(cached);
+        setLoading(false);
+      } else {
+        setLoading(true);
+      }
+      setError("");
+
+      // Orders render as soon as they arrive (not blocked by employees)
+      const ordersTask = fetchOrdersPage(url, controller.signal).then((data) => {
+        if (requestId !== requestRef.current) return;
+        cachePut(url, data, version);
+        applyPage(data);
+        setLoading(false);
+
+        // warm the cache for the next page so "Next" feels instant
+        if (data.pages > page) {
+          const nextUrl = buildOrdersUrl(filters, page + 1);
+          if (!pageCacheRef.current.has(nextUrl)) {
+            fetchOrdersPage(nextUrl)
+              .then((next) => cachePut(nextUrl, next, version))
+              .catch(() => {});
+          }
+        }
       });
-      if (search) params.set("search", search);
-      if (status !== "all") params.set("status", status);
-      if (deliveryStatus !== "all") params.set("deliveryStatus", deliveryStatus);
-      if (courierProvider) params.set("courierProvider", courierProvider);
-      if (source) params.set("source", source);
 
-      const result = await apiRequest(`${ORDERS_API}?${params.toString()}`);
-      if (requestId !== requestRef.current) return; // stale response
-
-      const rows = Array.isArray(result.data) ? result.data : [];
-      const total = Number(result.pagination?.total ?? 0);
-      const pages = Math.max(
-        1,
-        Number(result.pagination?.pages ?? (Math.ceil(total / PAGE_SIZE) || 1))
-      );
-
-      setOrders(rows);
-      setPagination({ total, pages });
-      const visible = new Set(rows.map(getOrderId));
-      setSelectedIds((prev) => prev.filter((id) => visible.has(id)));
-    } catch (err) {
-      if (requestId !== requestRef.current) return;
-      setError(err.message || "অর্ডার লোড করা যায়নি।");
-      setOrders([]);
-      setPagination({ total: 0, pages: 1 });
-    } finally {
-      if (requestId === requestRef.current) setLoading(false);
-    }
-  }, [page, search, status, deliveryStatus, courierProvider, source]);
+      try {
+        // orders + employees are fetched in parallel
+        await Promise.all([ordersTask, loadEmployees()]);
+      } catch (err) {
+        if (err?.name === "AbortError" || requestId !== requestRef.current) return;
+        setError(err.message || "অর্ডার লোড করা যায়নি।");
+        if (!cached) {
+          setOrders([]);
+          setPagination({ total: 0, pages: 1 });
+        }
+        setLoading(false);
+      }
+    },
+    [
+      page,
+      search,
+      status,
+      deliveryStatus,
+      courierProvider,
+      source,
+      applyPage,
+      cachePut,
+      loadEmployees,
+    ]
+  );
 
   useEffect(() => {
     loadOrders();
   }, [loadOrders]);
+
+  // abort whatever is in flight when the component unmounts
+  useEffect(() => () => abortRef.current?.abort(), []);
 
   const ordersById = useMemo(
     () => new Map(orders.map((o) => [getOrderId(o), o])),
@@ -953,11 +1063,13 @@ export default function OrderManege() {
   /* ---- Details ---- */
 
   const fetchDetails = useCallback(async (id) => {
+    const reqId = ++detailsReqRef.current;
     setDetailsLoading(true);
     try {
       const result = await apiRequest(
         `${SINGLE_ORDER_API}/${encodeURIComponent(id)}`
       );
+      if (reqId !== detailsReqRef.current) return; // user moved to another order
       const data =
         result?.data?.order ??
         result?.data?.data ??
@@ -970,7 +1082,7 @@ export default function OrderManege() {
     } catch {
       // list data is already shown
     } finally {
-      setDetailsLoading(false);
+      if (reqId === detailsReqRef.current) setDetailsLoading(false);
     }
   }, []);
 
@@ -979,7 +1091,7 @@ export default function OrderManege() {
       const id = getOrderId(order);
       if (!id) return;
       setShowDetails(true);
-      setDetailsOrder(order);
+      setDetailsOrder(order); // instant: list data is shown while full details load
       setError("");
       fetchDetails(id);
     },
@@ -987,6 +1099,7 @@ export default function OrderManege() {
   );
 
   const closeOrderDetails = () => {
+    detailsReqRef.current += 1; // invalidate any pending details response
     setShowDetails(false);
     setDetailsOrder(null);
     setDetailsLoading(false);
@@ -1054,7 +1167,8 @@ export default function OrderManege() {
       trackingCode: riderForm.trackingCode.trim(),
     });
 
-    const results = await Promise.allSettled(
+    // all orders are updated in parallel
+    const results = await settleAll(
       assignTargetIds.map((orderId) =>
         apiRequest(COURIER_RIDER_API(encodeURIComponent(orderId)), {
           method: "PATCH",
@@ -1063,8 +1177,8 @@ export default function OrderManege() {
       )
     );
 
-    const successCount = results.filter((r) => r.status === "fulfilled").length;
-    const failed = results.find((r) => r.status === "rejected");
+    const successCount = results.filter((r) => r.ok).length;
+    const failed = results.find((r) => !r.ok);
     const lastError = failed?.reason?.message || "";
 
     if (successCount > 0) {
@@ -1077,10 +1191,14 @@ export default function OrderManege() {
       setSelectedIds([]);
       const targets = assignTargetIds;
       setAssignTargetIds([]);
-      await loadOrders();
-      if (detailsOrder && targets.includes(getOrderId(detailsOrder))) {
-        fetchDetails(getOrderId(detailsOrder));
-      }
+      invalidateCache();
+      // refresh list and details at the same time
+      await Promise.all([
+        loadOrders({ force: true }),
+        detailsOrder && targets.includes(getOrderId(detailsOrder))
+          ? fetchDetails(getOrderId(detailsOrder))
+          : null,
+      ]);
     } else {
       setError(lastError || "Delivery person সেভ করা যায়নি।");
     }
@@ -1116,14 +1234,15 @@ export default function OrderManege() {
           prev && getOrderId(prev) === orderId ? clearRider(prev) : prev
         );
         setNotice("Custom delivery person remove করা হয়েছে।");
-        await loadOrders();
+        invalidateCache();
+        await loadOrders({ force: true });
       } catch (err) {
         setError(err.message || "Delivery person remove করা যায়নি।");
       } finally {
         setBusy(false);
       }
     },
-    [loadOrders]
+    [loadOrders, invalidateCache]
   );
 
   const handleAssign = async () => {
@@ -1137,7 +1256,8 @@ export default function OrderManege() {
     setError("");
     setNotice("");
 
-    const results = await Promise.allSettled(
+    // all orders are assigned in parallel
+    const results = await settleAll(
       assignTargetIds.map((orderId) => {
         const existing = ordersById.get(orderId);
         const alreadyAssigned = existing
@@ -1157,8 +1277,8 @@ export default function OrderManege() {
       })
     );
 
-    const successCount = results.filter((r) => r.status === "fulfilled").length;
-    const failed = results.find((r) => r.status === "rejected");
+    const successCount = results.filter((r) => r.ok).length;
+    const failed = results.find((r) => !r.ok);
     const lastError = failed?.reason?.message || "";
 
     if (successCount > 0) {
@@ -1171,10 +1291,14 @@ export default function OrderManege() {
       setSelectedIds([]);
       const targets = assignTargetIds;
       setAssignTargetIds([]);
-      await loadOrders();
-      if (detailsOrder && targets.includes(getOrderId(detailsOrder))) {
-        fetchDetails(getOrderId(detailsOrder));
-      }
+      invalidateCache();
+      // refresh list and details at the same time
+      await Promise.all([
+        loadOrders({ force: true }),
+        detailsOrder && targets.includes(getOrderId(detailsOrder))
+          ? fetchDetails(getOrderId(detailsOrder))
+          : null,
+      ]);
     } else {
       setError(lastError || "Assign করা যায়নি।");
     }
@@ -1202,30 +1326,34 @@ export default function OrderManege() {
 
   /* ---- Updates ---- */
 
-  const updateSingleOrder = useCallback(async (id, newStatus) => {
-    if (!id || !newStatus) return;
-    setBusy(true);
-    setError("");
-    setNotice("");
-    try {
-      await apiRequest(`${SINGLE_ORDER_API}/${encodeURIComponent(id)}`, {
-        method: "PUT",
-        body: JSON.stringify({ status: newStatus }),
-      });
-      setNotice("অর্ডারের স্ট্যাটাস আপডেট হয়েছে।");
-      // optimistic local update instead of re-fetching the whole page
-      setOrders((prev) =>
-        prev.map((o) => (getOrderId(o) === id ? { ...o, status: newStatus } : o))
-      );
-      setDetailsOrder((prev) =>
-        prev && getOrderId(prev) === id ? { ...prev, status: newStatus } : prev
-      );
-    } catch (err) {
-      setError(err.message || "স্ট্যাটাস আপডেট করা যায়নি।");
-    } finally {
-      setBusy(false);
-    }
-  }, []);
+  const updateSingleOrder = useCallback(
+    async (id, newStatus) => {
+      if (!id || !newStatus) return;
+      setBusy(true);
+      setError("");
+      setNotice("");
+      try {
+        await apiRequest(`${SINGLE_ORDER_API}/${encodeURIComponent(id)}`, {
+          method: "PUT",
+          body: JSON.stringify({ status: newStatus }),
+        });
+        setNotice("অর্ডারের স্ট্যাটাস আপডেট হয়েছে।");
+        // optimistic local update instead of re-fetching the whole page
+        setOrders((prev) =>
+          prev.map((o) => (getOrderId(o) === id ? { ...o, status: newStatus } : o))
+        );
+        setDetailsOrder((prev) =>
+          prev && getOrderId(prev) === id ? { ...prev, status: newStatus } : prev
+        );
+        invalidateCache();
+      } catch (err) {
+        setError(err.message || "স্ট্যাটাস আপডেট করা যায়নি।");
+      } finally {
+        setBusy(false);
+      }
+    },
+    [invalidateCache]
+  );
 
   const bulkUpdate = async (field, value) => {
     if (!selectedIds.length) {
@@ -1260,7 +1388,8 @@ export default function OrderManege() {
       });
       setNotice(result.message || "অর্ডারগুলো আপডেট হয়েছে।");
       setSelectedIds([]);
-      await loadOrders();
+      invalidateCache();
+      await loadOrders({ force: true });
     } catch (err) {
       setError(err.message || "Bulk update করা যায়নি।");
     } finally {
@@ -1284,15 +1413,16 @@ export default function OrderManege() {
         setNotice(result.message || "অর্ডার ডিলিট হয়েছে।");
         setSelectedIds((prev) => prev.filter((x) => x !== id));
         if (detailsOrder && getOrderId(detailsOrder) === id) closeOrderDetails();
+        invalidateCache();
         if (orders.length === 1 && page > 1) setPage((p) => p - 1);
-        else await loadOrders();
+        else await loadOrders({ force: true });
       } catch (err) {
         setError(err.message || "অর্ডার ডিলিট করা যায়নি।");
       } finally {
         setBusy(false);
       }
     },
-    [detailsOrder, orders.length, page, loadOrders]
+    [detailsOrder, orders.length, page, loadOrders, invalidateCache]
   );
 
   const changeFilter = (setter, value) => {
@@ -1378,7 +1508,7 @@ export default function OrderManege() {
             <StatCard label="Unassigned (page)" value={pageStats.unassigned} tone="blue" />
             <button
               type="button"
-              onClick={loadOrders}
+              onClick={() => loadOrders({ force: true })}
               disabled={loading || busy}
               className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
             >
@@ -1671,7 +1801,7 @@ export default function OrderManege() {
             <div className="flex gap-2">
               <button
                 type="button"
-                disabled={page <= 1 || loading || busy}
+                disabled={page <= 1 || busy}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-40"
               >
@@ -1680,7 +1810,7 @@ export default function OrderManege() {
               </button>
               <button
                 type="button"
-                disabled={page >= pagination.pages || loading || busy}
+                disabled={page >= pagination.pages || busy}
                 onClick={() => setPage((p) => Math.min(pagination.pages, p + 1))}
                 className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-40"
               >
@@ -1939,7 +2069,7 @@ export default function OrderManege() {
               <div className="mt-4 flex items-center gap-2">
                 <button
                   type="button"
-                  disabled={!hasPrev || detailsLoading}
+                  disabled={!hasPrev}
                   onClick={() => goToAdjacentDetails("previous")}
                   className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-35"
                 >
@@ -1951,7 +2081,7 @@ export default function OrderManege() {
                 </span>
                 <button
                   type="button"
-                  disabled={!hasNext || detailsLoading}
+                  disabled={!hasNext}
                   onClick={() => goToAdjacentDetails("next")}
                   className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-35"
                 >
@@ -2208,6 +2338,7 @@ export default function OrderManege() {
                                     alt={info.name}
                                     className="h-full w-full object-contain p-1.5 transition group-hover:scale-105"
                                     loading="lazy"
+                                    decoding="async"
                                   />
                                 ) : (
                                   <Package size={26} className="text-slate-300" />

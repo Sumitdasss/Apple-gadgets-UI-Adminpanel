@@ -27,7 +27,7 @@ import {
 import { showReviewToast } from ".//SavedToast";
 
 const API_BASE = "https://apple-gadgets-ui-backend.vercel.app";
-const CUSTOMER_API = `${API_BASE}/api/customers`;
+const CUSTOMER_API = `${API_BASE}/api/dashboard`;
 const PAGE_SIZE = 10;
 
 const ROLE_OPTIONS = [
@@ -37,11 +37,16 @@ const ROLE_OPTIONS = [
   { value: "employee", label: "Employee" },
   { value: "admin", label: "Admin" },
 ];
-
+const getAdminToken = () => {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("token");
+};
+const token = getAdminToken()
 async function apiRequest(endpoint, options = {}) {
   const response = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
     headers: {
+        Authorization: `Bearer ${token}`,
       ...(options.body
         ? { "Content-Type": "application/json" }
         : {}),
@@ -101,11 +106,14 @@ export default function CustomerManagementPage() {
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
 
+
   const fetchCustomers = useCallback(async () => {
     setLoading(true);
     setError("");
 
     try {
+
+
       const result = await apiRequest("/api/customers/AllCustomers");
       setCustomers(normalizeCustomerResponse(result));
     } catch (err) {
