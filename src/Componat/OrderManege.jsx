@@ -33,8 +33,10 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
+  ShieldAlert,
 } from "lucide-react";
 import ShipmentRoute from "./ShipmentRoute";
+import { IpLocationCheck, CustomerOrderStats } from "./CustomerRiskSection";
 import "./invoice-print.css";
 
 /* ------------------------------------------------------------------ */
@@ -45,7 +47,6 @@ const getAdminToken = () => {
   return localStorage.getItem("token");
 };
 
-const token=getAdminToken()
 const API_BASE = (
   import.meta.env.VITE_API_URL || "https://apple-gadgets-ui-backend.vercel.app"
 ).replace(/\/+$/, "");
@@ -264,10 +265,12 @@ const avatarColor = (seed = "") => {
 async function apiRequest(url, options = {}) {
   let response;
   try {
+    // token প্রতিবার fresh পড়া হয়, তাই লগইনের পর রিলোড লাগে না
+    const token = getAdminToken();
     response = await fetch(url, {
       ...options,
       headers: {
-         Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
         Accept: "application/json",
         ...(options.body ? { "Content-Type": "application/json" } : {}),
         ...options.headers,
@@ -2279,6 +2282,18 @@ export default function OrderManege() {
                           typeof d.customer === "object" ? d.customer?._id : d.customerId
                         }
                         icon={Hash}
+                      />
+                    </div>
+                  </SectionCard>
+
+                  {/* Fraud check: IP location + customer order history */}
+                  <SectionCard title="Fraud Check" icon={ShieldAlert}>
+                    <div className="space-y-4">
+                      <IpLocationCheck order={d} />
+                      <CustomerOrderStats
+                        order={d}
+                        ordersApi={ORDERS_API}
+                        apiRequest={apiRequest}
                       />
                     </div>
                   </SectionCard>
