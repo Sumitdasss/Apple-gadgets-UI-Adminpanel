@@ -20,6 +20,10 @@ const getOrderIp = (order) =>
   order?.meta?.ip ||
   "";
 
+// Admin / Shop লোকেশন (Maps origin)
+const ADMIN_ORIGIN =
+  "Keraniganj, Konakhola, Basta Radha Krishna Mondir, Dhaka, Bangladesh";
+
 /**
  * অর্ডার খোলার সাথে সাথেই IP থেকে লোকেশন লোড করে দেখায়
  * অর্ডারের selectArea থাকলে সেটা প্রাধান্য পায়
@@ -128,10 +132,10 @@ export function IpLocationCheck({ order }) {
     const destination = getMapDestination();
     if (!destination) return;
 
-    // Directions mode (স্ক্রিনশটের মতো)
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
-      destination
-    )}`;
+    // Shop → Customer area (Directions mode)
+    const url = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(
+      ADMIN_ORIGIN
+    )}&destination=${encodeURIComponent(destination)}`;
 
     window.open(url, "_blank", "noopener,noreferrer");
   };
@@ -208,7 +212,7 @@ export function IpLocationCheck({ order }) {
           )}
 
           <p className="mt-2 text-[11px] text-slate-400">
-            অর্ডারের এলাকা প্রাধান্য পায়। IP লোকেশন আনুমানিক (শহর পর্যন্ত)।
+            রুট: Keraniganj (Shop) → কাস্টমারের এলাকা
           </p>
         </>
       )}
