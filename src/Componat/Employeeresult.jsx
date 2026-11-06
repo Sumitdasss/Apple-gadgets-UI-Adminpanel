@@ -5,29 +5,45 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 /* =====================================================
    CONFIG
 ===================================================== */
+const API_BASE = "https://apple-gadgets-ui-backend.vercel.app";
+const ROUTE_PREFIX = "/api/dashboard";
+
+// Token ta protibar request-er shomoy fresh read hobe (module load-e noy)
 const getAdminToken = () => {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("token");
 };
 
-const token=getAdminToken()
-const API_BASE = "https://apple-gadgets-ui-backend.vercel.app";
-const ROUTE_PREFIX = "/api/dashboard";
-
 const request = async (path) => {
+  const token = getAdminToken();
+
+  if (!token) {
+    throw new Error("Token paoa jayni. Abar login korun.");
+  }
+
   const url = `${API_BASE}${ROUTE_PREFIX}${path}`;
 
   const res = await fetch(url, {
     method: "GET",
-    headers: { Accept: "application/json",
+    headers: {
+      Accept: "application/json",
       Authorization: `Bearer ${token}`,
-     },
+    },
     cache: "no-store",
   });
 
+  // Token invalid/expired hole login page-e pathao
+  if (res.status === 401) {
+    localStorage.removeItem("token");
+    if (typeof window !== "undefined") {
+      window.location.href = "/login";
+    }
+    throw new Error("Session shesh. Abar login korun.");
+  }
+
   const contentType = res.headers.get("content-type") || "";
   if (!contentType.includes("application/json")) {
-    throw new Error(`API JSON response দেয়নি। Status: ${res.status}`);
+    throw new Error(`API JSON response দেয়নি। Status: ${res.status}`);
   }
 
   const json = await res.json();
@@ -83,7 +99,7 @@ function calcSuccessRate(stats = {}) {
    UI COMPONENTS
 ===================================================== */
 
-function SummaryCard({ label, value, color, icon }) {
+function SummaryCard({ label, value, color }) {
   return (
     <div className="group relative overflow-hidden rounded-2xl border border-white/60 bg-white/80 p-5 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.06)] backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_32px_-8px_rgba(0,0,0,0.12)]">
       <div className="absolute -right-4 -top-4 h-20 w-20 rounded-full bg-gradient-to-br from-indigo-50 to-transparent opacity-60" />
@@ -159,7 +175,6 @@ function DetailModal({ employee, loading, error, onClose }) {
       >
         {/* Modal header */}
         <div className="relative bg-gradient-to-br from-indigo-600 via-indigo-500 to-violet-600 px-6 py-6 text-white">
-          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNCI+PHBhdGggZD0iTTM2IDM0djItaDJ2LTJoLTJ6bTAtNHYyaDJ2LTJoLTJ6bTAtNHYyaDJ2LTJoLTJ6bTAtNHYyaDJ2LTJoLTJ6bTAtNHYyaDJ2LTJoLTJ6bTAtNHYyaDJ2LTJoLTJ6bTAtNHYyaDJ2LTJoLTJ6Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-40" />
           <div className="relative flex items-start justify-between">
             <div>
               <h2 className="text-xl font-bold tracking-tight">

@@ -14,11 +14,22 @@ import {
 import UpdateProductPage from "./UpdateProduct";
 
 const API_BASE = "https://apple-gadgets-ui-backend.vercel.app";
+
+// Token ta protibar request-er shomoy fresh read hobe (module load-e noy)
 const getAdminToken = () => {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("token");
 };
-const token = getAdminToken()
+
+// Shob request-er jonno common headers (Authorization shoho)
+const authHeaders = () => {
+  const token = getAdminToken();
+  return {
+    Accept: "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+};
+
 const API = {
   list: `${API_BASE}/api/dashboard/products`,
   details: (id) => `${API_BASE}/api/dashboard/${id}`,
@@ -74,6 +85,15 @@ export default function ProductListView() {
 
   // Safely read JSON API responses.
   const readResponse = async (response) => {
+    // Token invalid/expired hole login page-e pathao
+    if (response.status === 401) {
+      localStorage.removeItem("token");
+      if (typeof window !== "undefined") {
+        window.location.href = "/login";
+      }
+      throw new Error("Session shesh. Abar login korun.");
+    }
+
     const text = await response.text();
 
     let result;
@@ -114,7 +134,7 @@ export default function ProductListView() {
       try {
         const response = await fetch(API.categoryTree, {
           method: "GET",
-          headers: { Accept: "application/json",Authorization: `Bearer ${token}` },
+          headers: authHeaders(),
           cache: "default",
         });
         const data = await response.json().catch(() => ({}));
@@ -164,10 +184,7 @@ export default function ProductListView() {
 
       const response = await fetch(`${API.list}?${params.toString()}`, {
         method: "GET",
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${token}`
-        },
+        headers: authHeaders(),
         cache: "no-store",
         signal: controller.signal,
       });
@@ -346,9 +363,7 @@ export default function ProductListView() {
     try {
       const response = await fetch(API.details(id), {
         method: "GET",
-        headers: {
-          Accept: "application/json",
-        },
+        headers: authHeaders(),
         cache: "no-store",
       });
 
@@ -423,9 +438,7 @@ export default function ProductListView() {
 
       const response = await fetch(API.delete(id), {
         method: "DELETE",
-        headers: {
-          Accept: "application/json",
-        },
+        headers: authHeaders(),
       });
 
       await readResponse(response);

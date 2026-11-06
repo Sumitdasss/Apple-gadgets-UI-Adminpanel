@@ -26,11 +26,13 @@ import {
 } from "lucide-react";
 
 const API_BASE = "https://apple-gadgets-ui-backend.vercel.app";
+
+// Token ta protibar request-er shomoy fresh read hobe (module load-e noy)
 const getAdminToken = () => {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("token");
 };
-const token = getAdminToken()
+
 const REPORT_ENDPOINTS = {
   overview: "/api/dashboard/summary?allTime=true",
   sales: "/api/dashboard/Allorders",
@@ -184,12 +186,32 @@ function asArray(payload, keys = []) {
 }
 
 async function requestJSON(url, signal) {
+  // Protibar fresh token read kora hocche
+  const token = getAdminToken();
+
+  if (!token) {
+    throw new Error("Token paoa jayni. Abar login korun.");
+  }
+
   const response = await fetch(url, {
     method: "GET",
-    headers: { Accept: "application/json",Authorization: `Bearer ${token}` },
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${token}`,
+    },
     credentials: "include",
     signal,
   });
+
+  // Token invalid/expired hole login page-e pathao
+  if (response.status === 401) {
+    localStorage.removeItem("token");
+    if (typeof window !== "undefined") {
+      window.location.href = "/login";
+    }
+    throw new Error("Session shesh. Abar login korun.");
+  }
+
   const json = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw new Error(json?.message || `Request failed with status ${response.status}`);
